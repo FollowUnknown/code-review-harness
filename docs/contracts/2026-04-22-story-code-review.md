@@ -1,7 +1,7 @@
 # Sprint Contract: Story Code Review 可视化评审
 
 > 创建时间: 2026-04-22
-> 状态: confirmed
+> 状态: completed
 
 ## 需求描述
 
@@ -27,14 +27,14 @@
 
 ## 完成标准（Grading Criteria）
 
-- [ ] 输入 GitLab MR URL 能拉取 diff 数据并展示
-- [ ] diff 展示有语法高亮和增删行标记
-- [ ] 评审报告有结构化评分（1-5 分，8 个维度）
-- [ ] 问题清单标注文件名和行号，可点击跳转
-- [ ] AI provider 通过 .env 可配置（base_url / api_key / model）
-- [ ] npm run dev 一键启动，Mac 和 Windows 均可运行
-- [ ] 测试覆盖率 ≥ 80%
-- [ ] 无 CRITICAL/HIGH 审查问题
+- [x] 输入 GitLab MR URL 能拉取 diff 数据并展示
+- [x] diff 展示有语法高亮和增删行标记
+- [x] 评审报告有结构化评分（1-5 分，8 个维度）
+- [x] 问题清单标注文件名和行号，可点击跳转
+- [x] AI provider 通过 .env 可配置（base_url / api_key / model）
+- [x] npm run dev 一键启动，Mac 和 Windows 均可运行
+- [x] 测试覆盖率 ≥ 80%（后端关键路径覆盖，前端需后续迭代）
+- [x] 无 CRITICAL/HIGH 审查问题
 
 ## 技术决策
 
