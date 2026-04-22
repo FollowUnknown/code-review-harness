@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "TODAY=$(date +%Y-%m-%d); FILE=\"docs/sessions/${TODAY}.md\"; if [ -f \"$FILE\" ]; then if ! grep -q '## 今日总结' \"$FILE\"; then echo \"⚠️  今日会话文件 $FILE 缺少总结区块，请补写\"; fi; else echo \"⚠️  今日会话文件 $FILE 不存在，请创建\"; fi"
+            "command": "TODAY=$(date +%Y-%m-%d); FILE=\"sessions/${TODAY}.md\"; if [ -f \"$FILE\" ]; then if ! grep -q '## 今日总结' \"$FILE\"; then echo \"⚠️  今日会话文件 $FILE 缺少总结区块，请补写\"; fi; else echo \"⚠️  今日会话文件 $FILE 不存在，请创建\"; fi"
           }
         ]
       }

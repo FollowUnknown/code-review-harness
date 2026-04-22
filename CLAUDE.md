@@ -31,8 +31,8 @@
 AI 每次对话自动遵循以下规则，记录会话内容和任务清单。
 
 **规则 1：对话开始时**
-1. 读取 `docs/sessions/active-tasks.md`（了解当前待办）
-2. 读取 `docs/sessions/YYYY-MM-DD.md`（当天文件，如存在）
+1. 读取 `sessions/active-tasks.md`（了解当前待办）
+2. 读取 `sessions/YYYY-MM-DD.md`（当天文件，如存在）
 3. 当天文件不存在时，基于模板创建，从 active-tasks.md 填写"今日目标"
 
 **规则 2：关键节点记录任务**
@@ -134,10 +134,11 @@ AI 每次对话自动遵循以下规则，记录会话内容和任务清单。
 ## 知识组织
 
 ```
-docs/
-├── sessions/
-│   ├── active-tasks.md       # 跨天活跃任务汇总
-│   └── YYYY-MM-DD.md         # 每日会话记录
+sessions/                       # 会话机制（运营日志，与 docs/ 分离）
+├── active-tasks.md          # 跨天活跃任务汇总
+└── YYYY-MM-DD.md            # 每日会话记录
+
+docs/                            # 项目知识（参考型）
 ├── contracts/
 │   └── YYYY-MM-DD-<task>.md  # Sprint Contract
 ├── methodology.md             # Harness 方法论
