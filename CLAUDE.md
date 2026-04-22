@@ -119,10 +119,6 @@ AI 每次对话自动遵循以下规则，记录会话内容和任务清单。
 3. Contract 状态改为 completed
 4. 更新当天会话记录
 
-### 方法论参考
-
-详见 `docs/methodology.md`（Anthropic harness 方法论）。
-
 ### Agent 规范
 
 - Planner: `.claude/agents/planner.md`
@@ -141,7 +137,6 @@ sessions/                       # 会话机制（运营日志，与 docs/ 分离
 docs/                            # 项目知识（参考型）
 ├── contracts/
 │   └── YYYY-MM-DD-<task>.md  # Sprint Contract
-├── methodology.md             # Harness 方法论
 ├── architecture/
 │   ├── index.md              # 项目架构总览
 │   └── implicit-contracts.md # 隐性业务约定
