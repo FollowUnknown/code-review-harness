@@ -86,6 +86,51 @@ AI 每次对话自动遵循以下规则，记录会话内容和任务清单。
 
 ---
 
+## Harness 编排
+
+当用户提出业务需求时，按以下四阶段流程执行。每个阶段完成后**主动暂停**，等用户说"继续"。
+
+### 阶段 1: Planning（Planner Agent）
+
+1. 切换到 Planner 角色（参考 `.claude/agents/planner.md`）
+2. 理解需求，创建 Sprint Contract → `docs/contracts/YYYY-MM-DD-<task>.md`
+3. 展示 Contract 给用户，等待确认
+4. 用户确认后，Contract 状态改为 confirmed
+
+### 阶段 2: Development（Generator Agent）
+
+1. 切换到 Generator 角色（参考 `.claude/agents/generator.md`）
+2. 读取 confirmed 的 Contract，按 TDD 流程开发
+3. RED → GREEN → IMPROVE 循环
+4. 测试全部通过 + 覆盖率 ≥ 80% 后展示代码，等待确认
+
+### 阶段 3: Review（Evaluator Agent）
+
+1. 切换到 Evaluator 角色（参考 `.claude/agents/evaluator.md`）
+2. 对照 Contract 的 Grading Criteria 逐项评分
+3. 输出评审报告（通过/不通过）
+4. 不通过时回到阶段 2 修复，最多循环 2 次
+5. 通过后展示报告，等待确认
+
+### 阶段 4: Commit
+
+1. 确认无 CRITICAL/HIGH 问题
+2. git commit（conventional commits 格式）
+3. Contract 状态改为 completed
+4. 更新当天会话记录
+
+### 方法论参考
+
+详见 `docs/methodology.md`（Anthropic harness 方法论）。
+
+### Agent 规范
+
+- Planner: `.claude/agents/planner.md`
+- Generator: `.claude/agents/generator.md`
+- Evaluator: `.claude/agents/evaluator.md`
+
+---
+
 ## 知识组织
 
 ```
@@ -93,6 +138,9 @@ docs/
 ├── sessions/
 │   ├── active-tasks.md       # 跨天活跃任务汇总
 │   └── YYYY-MM-DD.md         # 每日会话记录
+├── contracts/
+│   └── YYYY-MM-DD-<task>.md  # Sprint Contract
+├── methodology.md             # Harness 方法论
 ├── architecture/
 │   ├── index.md              # 项目架构总览
 │   └── implicit-contracts.md # 隐性业务约定
