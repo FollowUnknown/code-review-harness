@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(kubectl*)",
+      "Bash(terraform*)",
+      "Bash(helm*)",
+      "Edit(**/.env*)",
+      "Edit(**/*secret*)",
+      "Edit(**/*credential*)",
+      "Edit(**/*-prod.yml)",
+      "Edit(**/*-prod.yaml)",
+      "Edit(**/*-production.yml)"
+    ],
+    "allow": [
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(git push*)",
+      "Bash(mkdir*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "TODAY=$(date +%Y-%m-%d); FILE=\"docs/sessions/${TODAY}.md\"; if [ -f \"$FILE\" ]; then if ! grep -q '## 今日总结' \"$FILE\"; then echo \"⚠️  今日会话文件 $FILE 缺少总结区块，请补写\"; fi; else echo \"⚠️  今日会话文件 $FILE 不存在，请创建\"; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
