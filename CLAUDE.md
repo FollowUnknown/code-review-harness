@@ -26,13 +26,76 @@
 
 ---
 
+## 会话机制
+
+AI 每次对话自动遵循以下规则，记录会话内容和任务清单。
+
+**规则 1：对话开始时**
+1. 读取 `docs/sessions/active-tasks.md`（了解当前待办）
+2. 读取 `docs/sessions/YYYY-MM-DD.md`（当天文件，如存在）
+3. 当天文件不存在时，基于模板创建，从 active-tasks.md 填写"今日目标"
+
+**规则 2：关键节点记录任务**
+满足以下任一条件时，在当天 session 的"会话记录"区块追加一条，同步更新 active-tasks.md：
+- 写了/改了代码
+- 做出了技术决策
+- 产生了新任务或完成任务
+- 发现了隐性约定
+
+**重要：会话中产出的任务只记录不自动执行，等用户说"开始"才动手。**
+
+**规则 3：对话结束时**
+1. 生成"今日总结"
+2. 新产生的任务同步到 active-tasks.md
+3. 已完成的任务从 active-tasks.md 移除（标记归档）
+
+**上下文控制：只读当天 session + active-tasks.md。历史文件按需 grep。**
+
+### 会话文件模板
+
+```markdown
+# YYYY-MM-DD 会话
+
+## 今日目标
+<!-- AI 从 active-tasks.md 读取待办，填写这里 -->
+
+## 会话记录
+<!-- 关键节点实时追加 -->
+
+### HH:MM - [事件标题]
+- 做了什么
+- 决策/结论
+- 产出文件
+
+## 任务清单
+### 新增
+- [ ] TASK-NNN: 描述 (P0/P1/P2)
+
+### 进行中
+- [ ] TASK-NNN: 描述 (Pn, 来自 YYYY-MM-DD)
+
+### 已完成
+- [x] TASK-NNN: 描述
+
+## 今日总结
+<!-- 对话结束时 AI 自动生成 -->
+- 完成了什么
+- 未完成/待跟进
+- 新产生的任务（已同步到 active-tasks.md）
+```
+
+---
+
 ## 知识组织
 
 ```
 docs/
+├── sessions/
+│   ├── active-tasks.md       # 跨天活跃任务汇总
+│   └── YYYY-MM-DD.md         # 每日会话记录
 ├── architecture/
 │   ├── index.md              # 项目架构总览
-│   └── implicit-contracts.md  # 隐性业务约定
+│   └── implicit-contracts.md # 隐性业务约定
 ├── product/
 │   └── index.md              # 产品规则
 └── standards/
