@@ -1,5 +1,15 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(git push*)",
+      "Bash(mkdir*)",
+      "Bash(git add:*)"
+    ],
     "deny": [
       "Bash(rm -rf*)",
       "Bash(kubectl*)",
@@ -11,15 +21,6 @@
       "Edit(**/*-prod.yml)",
       "Edit(**/*-prod.yaml)",
       "Edit(**/*-production.yml)"
-    ],
-    "allow": [
-      "Bash(git status*)",
-      "Bash(git diff*)",
-      "Bash(git log*)",
-      "Bash(ls*)",
-      "Bash(cat*)",
-      "Bash(git push*)",
-      "Bash(mkdir*)"
     ]
   },
   "hooks": {
