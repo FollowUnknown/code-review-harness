@@ -66,7 +66,7 @@ export async function reviewBatches(
   return mergeReports(batchReports);
 }
 
-function mergeReports(reports: ReviewReport[]): ReviewReport {
+export function mergeReports(reports: ReviewReport[]): ReviewReport {
   if (reports.length === 0) {
     return {
       contractTitle: "Code Review",

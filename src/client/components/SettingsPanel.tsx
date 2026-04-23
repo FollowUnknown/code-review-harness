@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { LLMProvider } from "../../shared/types";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
@@ -42,16 +43,12 @@ export function SettingsPanel({ onClose }: Props) {
   }, []);
 
   function handleProviderChange(newProvider: LLMProvider) {
-    const oldProvider: LLMProvider = config.provider;
-    const oldDefaults = PROVIDER_DEFAULTS[oldProvider];
+    const oldDefaults = PROVIDER_DEFAULTS[config.provider];
     const newDefaults = PROVIDER_DEFAULTS[newProvider];
-
     setConfig({
       ...config,
       provider: newProvider,
-      // Auto-switch model if it was still the old default
       model: config.model === oldDefaults.model ? newDefaults.model : config.model,
-      // Auto-switch baseUrl if it was still the old default
       baseUrl: config.baseUrl === oldDefaults.baseUrl ? newDefaults.baseUrl : config.baseUrl,
     });
   }
@@ -79,7 +76,8 @@ export function SettingsPanel({ onClose }: Props) {
 
       const updated = await res.json();
       setConfig(updated as LLMConfigDisplay);
-      setMessage("Settings saved");
+      setMessage("Saved");
+      setTimeout(() => setMessage(null), 2000);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -88,19 +86,21 @@ export function SettingsPanel({ onClose }: Props) {
   }
 
   return (
-    <div style={{ padding: 16, border: "1px solid #d0d7de", borderRadius: 8, marginBottom: 16, background: "#fff" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <h3 style={{ margin: 0 }}>LLM Settings</h3>
-        <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", fontSize: 18 }}>x</button>
+    <div className="p-5 bg-slate-800/60 backdrop-blur-sm rounded-xl border border-slate-700/50">
+      <div className="flex justify-between items-center mb-5">
+        <h3 className="text-base font-semibold text-slate-200">LLM Configuration</h3>
+        <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors text-lg">
+          x
+        </button>
       </div>
 
-      <div style={{ display: "grid", gap: 12 }}>
+      <div className="space-y-4">
         <div>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Provider</label>
+          <label className="block text-xs font-medium text-slate-400 mb-1.5">Provider</label>
           <select
             value={config.provider}
             onChange={(e) => handleProviderChange(e.target.value as LLMProvider)}
-            style={{ width: "100%", padding: "8px 12px", fontSize: 14, border: "1px solid #d0d7de", borderRadius: 6 }}
+            className="w-full px-3 py-2.5 text-sm bg-slate-900/50 border border-slate-700/50 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500/50"
           >
             <option value="anthropic">Anthropic</option>
             <option value="deepseek">DeepSeek</option>
@@ -108,70 +108,70 @@ export function SettingsPanel({ onClose }: Props) {
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 4 }}>API Key</label>
-          <div style={{ display: "flex", gap: 4 }}>
+          <label className="block text-xs font-medium text-slate-400 mb-1.5">API Key</label>
+          <div className="flex gap-2">
             <input
               type={showKey ? "text" : "password"}
               value={config.apiKey}
               onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
               placeholder="Enter API key"
-              style={{ flex: 1, padding: "8px 12px", fontSize: 14, border: "1px solid #d0d7de", borderRadius: 6, boxSizing: "border-box" }}
+              className="flex-1 px-3 py-2.5 text-sm bg-slate-900/50 border border-slate-700/50 rounded-lg text-slate-200 placeholder-slate-700 focus:outline-none focus:border-blue-500/50 font-mono"
             />
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowKey(!showKey)}
-              style={{ padding: "6px 10px", border: "1px solid #d0d7de", borderRadius: 6, background: "#f6f8fa", cursor: "pointer", fontSize: 13 }}
-              title={showKey ? "Hide" : "Show"}
+              className="px-3 py-2 text-xs bg-slate-700/50 border border-slate-700/50 rounded-lg text-slate-400 hover:text-slate-200 hover:border-slate-600 transition-all"
             >
               {showKey ? "Hide" : "Show"}
-            </button>
+            </motion.button>
           </div>
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Base URL</label>
+          <label className="block text-xs font-medium text-slate-400 mb-1.5">Base URL</label>
           <input
             type="text"
             value={config.baseUrl}
             onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
-            placeholder={`e.g. ${PROVIDER_DEFAULTS[config.provider].baseUrl} (不含 /chat/completions)`}
-            style={{ width: "100%", padding: "8px 12px", fontSize: 14, border: "1px solid #d0d7de", borderRadius: 6, boxSizing: "border-box" }}
+            placeholder={`e.g. ${PROVIDER_DEFAULTS[config.provider].baseUrl}`}
+            className="w-full px-3 py-2.5 text-sm bg-slate-900/50 border border-slate-700/50 rounded-lg text-slate-200 placeholder-slate-700 focus:outline-none focus:border-blue-500/50 font-mono"
           />
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Model</label>
+          <label className="block text-xs font-medium text-slate-400 mb-1.5">Model</label>
           <input
             type="text"
             value={config.model}
             onChange={(e) => setConfig({ ...config, model: e.target.value })}
-            placeholder={PROVIDER_DEFAULTS[config.provider].model}
-            style={{ width: "100%", padding: "8px 12px", fontSize: 14, border: "1px solid #d0d7de", borderRadius: 6, boxSizing: "border-box" }}
+            placeholder={`e.g. ${PROVIDER_DEFAULTS[config.provider].model}`}
+            className="w-full px-3 py-2.5 text-sm bg-slate-900/50 border border-slate-700/50 rounded-lg text-slate-200 placeholder-slate-700 focus:outline-none focus:border-blue-500/50 font-mono"
           />
         </div>
       </div>
 
       {message && (
-        <div style={{ marginTop: 12, padding: "8px 12px", background: message.includes("saved") ? "#dcfce7" : "#fef2f2", borderRadius: 4, fontSize: 13 }}>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className={`mt-4 text-xs px-3 py-2 rounded-lg ${
+            message === "Saved" ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
+          }`}
+        >
           {message}
-        </div>
+        </motion.p>
       )}
 
-      <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-        <button
+      <div className="mt-5">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={handleSave}
           disabled={saving}
-          style={{
-            padding: "8px 16px",
-            fontSize: 14,
-            backgroundColor: saving ? "#9ca3af" : "#2563eb",
-            color: "white",
-            border: "none",
-            borderRadius: 6,
-            cursor: saving ? "not-allowed" : "pointer",
-          }}
+          className="px-5 py-2.5 text-sm font-medium bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg disabled:opacity-50 shadow-lg shadow-blue-500/20"
         >
-          {saving ? "Saving..." : "Save"}
-        </button>
+          {saving ? "Saving..." : "Save Configuration"}
+        </motion.button>
       </div>
     </div>
   );

@@ -1,33 +1,69 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ReviewResponse, SeverityLevel, RiskLevel } from "../../shared/types";
 import ReactDiffViewer from "react-diff-viewer-continued";
 
 interface Props {
   data: ReviewResponse;
+  onReset: () => void;
 }
 
-const SEVERITY_COLORS: Record<SeverityLevel, string> = {
-  CRITICAL: "#dc2626",
-  HIGH: "#ea580c",
-  MEDIUM: "#ca8a04",
-  LOW: "#16a34a",
+const RISK_STYLES: Record<RiskLevel, { bg: string; text: string; border: string; pulse?: string }> = {
+  S: { bg: "bg-red-500/15", text: "text-red-400", border: "border-red-500/30", pulse: "animate-pulse" },
+  A: { bg: "bg-orange-500/15", text: "text-orange-400", border: "border-orange-500/30" },
+  B: { bg: "bg-yellow-500/15", text: "text-yellow-400", border: "border-yellow-500/30" },
+  C: { bg: "bg-slate-500/15", text: "text-slate-400", border: "border-slate-500/30" },
 };
 
-const RISK_COLORS: Record<RiskLevel, string> = {
-  S: "#dc2626",
-  A: "#ea580c",
-  B: "#ca8a04",
-  C: "#6b7280",
+const RISK_LABELS: Record<RiskLevel, string> = { S: "High Risk", A: "Mid-High", B: "Mid-Low", C: "Low" };
+
+const SEVERITY_STYLES: Record<SeverityLevel, { bg: string; text: string }> = {
+  CRITICAL: { bg: "bg-red-500/20", text: "text-red-400" },
+  HIGH: { bg: "bg-orange-500/20", text: "text-orange-400" },
+  MEDIUM: { bg: "bg-yellow-500/20", text: "text-yellow-400" },
+  LOW: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
 };
 
-const RISK_LABELS: Record<RiskLevel, string> = {
-  S: "高风险",
-  A: "中高风险",
-  B: "中低风险",
-  C: "低风险",
-};
+function ScoreCircle({ score, label }: { score: number; label: string }) {
+  const radius = 28;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 5) * circumference;
+  const color = score >= 4 ? "#22c55e" : score >= 3 ? "#eab308" : "#ef4444";
 
-export function ReviewResult({ data }: Props) {
+  return (
+    <div className="flex flex-col items-center gap-2 p-3 bg-slate-800/40 rounded-lg border border-slate-700/30">
+      <svg width="64" height="64" className="-rotate-90">
+        <circle cx="32" cy="32" r={radius} fill="none" stroke="#1e293b" strokeWidth="5" />
+        <motion.circle
+          cx="32"
+          cy="32"
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        />
+      </svg>
+      <span className="text-lg font-bold" style={{ color }}>{score}</span>
+      <span className="text-xs text-slate-500 text-center leading-tight">{label}</span>
+    </div>
+  );
+}
+
+function RiskBadge({ level }: { level: RiskLevel }) {
+  const style = RISK_STYLES[level];
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${style.bg} ${style.text} ${style.border} border ${style.pulse ?? ""}`}>
+      {level}
+    </span>
+  );
+}
+
+export function ReviewResult({ data, onReset }: Props) {
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const { mr, diffs, report, classification, requirement } = data;
 
@@ -41,204 +77,258 @@ export function ReviewResult({ data }: Props) {
   }
 
   return (
-    <div style={{ marginTop: 24 }}>
-      {/* MR Info */}
-      <div style={{ padding: 16, background: "#f6f8fa", borderRadius: 8, marginBottom: 16 }}>
-        <h2 style={{ margin: "0 0 8px" }}>{mr.title}</h2>
-        <div style={{ color: "#656d76", fontSize: 14 }}>
+    <div className="space-y-6 mt-6">
+      {/* Header with reset */}
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-slate-500">
           {mr.author.name} · {mr.source_branch} → {mr.target_branch} · {mr.changes_count} files
         </div>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onReset}
+          className="px-4 py-2 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition-all"
+        >
+          New Review
+        </motion.button>
       </div>
 
       {/* Requirement Understanding */}
       {requirement && (
-        <div style={{ padding: 16, border: "1px solid #d0d7de", borderRadius: 8, marginBottom: 16 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 15 }}>需求理解</h3>
-          <div style={{ fontSize: 13, color: "#24292f" }}>
-            <div>
-              <span style={{ fontWeight: 500 }}>类型:</span> {requirement.type}
-              <span style={{ marginLeft: 16, fontWeight: 500 }}>模块:</span> {requirement.module}
-              <span style={{ marginLeft: 16, fontWeight: 500 }}>来源:</span>
-              {requirement.source === "lanhu" ? "蓝湖设计稿" : "MR 推断"}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-5 bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/40"
+        >
+          <h3 className="text-sm font-semibold text-slate-300 mb-3">Requirement Understanding</h3>
+          <div className="space-y-2 text-sm text-slate-400">
+            <div className="flex flex-wrap gap-3">
+              <span className="px-2.5 py-1 bg-blue-500/10 text-blue-400 rounded text-xs font-medium">{requirement.type}</span>
+              <span className="px-2.5 py-1 bg-purple-500/10 text-purple-400 rounded text-xs font-medium">{requirement.module}</span>
+              <span className="px-2.5 py-1 bg-slate-700/50 text-slate-400 rounded text-xs">
+                {requirement.source === "lanhu" ? "Lanhu Design" : "MR Inference"}
+              </span>
             </div>
             {requirement.features.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <span style={{ fontWeight: 500 }}>功能点:</span>
-                <ul style={{ margin: "4px 0", paddingLeft: 20 }}>
-                  {requirement.features.map((f, i) => (
-                    <li key={i}>{f}</li>
-                  ))}
-                </ul>
-              </div>
+              <ul className="space-y-1 text-xs text-slate-500">
+                {requirement.features.slice(0, 8).map((f, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="text-slate-700 mt-0.5">-</span> {f}
+                  </li>
+                ))}
+              </ul>
             )}
             {requirement.conflicts.length > 0 && (
-              <div style={{ marginTop: 8, padding: 8, background: "#fef3c7", borderRadius: 4 }}>
-                <span style={{ fontWeight: 500 }}>待确认:</span>
-                <ul style={{ margin: "4px 0", paddingLeft: 20 }}>
-                  {requirement.conflicts.map((c, i) => (
-                    <li key={i}>{c}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {requirement.lanhuSummary && (
-              <div style={{ marginTop: 8 }}>
-                <span style={{ fontWeight: 500 }}>设计稿:</span> {requirement.lanhuSummary}
+              <div className="p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
+                {requirement.conflicts.map((c, i) => (
+                  <p key={i} className="text-xs text-yellow-400">{c}</p>
+                ))}
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Classification Summary */}
+      {/* File Classification */}
       {classification && (
-        <div style={{ padding: 16, border: "1px solid #d0d7de", borderRadius: 8, marginBottom: 16 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 15 }}>文件分级</h3>
-          <div style={{ display: "flex", gap: 12, fontSize: 13, marginBottom: 8 }}>
-            <span>共 {classification.stats.total} 文件</span>
-            {(Object.entries(classification.stats.byLevel) as [RiskLevel, number][]).map(([level, count]) =>
-              count > 0 ? (
-                <span key={level} style={{ color: RISK_COLORS[level], fontWeight: 600 }}>
-                  {level}级({count})
-                </span>
-              ) : null
-            )}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="p-5 bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/40"
+        >
+          <h3 className="text-sm font-semibold text-slate-300 mb-3">File Classification</h3>
+          <div className="flex flex-wrap gap-2 mb-4 text-xs">
+            <span className="text-slate-500">{classification.stats.total} files</span>
+            {(Object.entries(classification.stats.byLevel) as [RiskLevel, number][])
+              .filter(([, c]) => c > 0)
+              .map(([level, count]) => (
+                <RiskBadge key={level} level={level} />
+              ))}
             {classification.stats.skipped > 0 && (
-              <span style={{ color: "#6b7280" }}>跳过({classification.stats.skipped})</span>
+              <span className="px-2 py-0.5 text-xs bg-slate-700/30 text-slate-600 rounded-full">
+                skipped({classification.stats.skipped})
+              </span>
             )}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 4 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
             {classification.batches.flatMap((batch) =>
               batch.files.map((file) => (
-                <div key={file.path} style={{ padding: "4px 8px", background: "#fff", borderRadius: 4, fontSize: 12 }}>
-                  <span style={{ color: RISK_COLORS[file.level], fontWeight: 600, marginRight: 6 }}>
-                    [{file.level}]
-                  </span>
-                  <span style={{ fontFamily: "monospace" }}>{file.path}</span>
+                <div key={file.path} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/30 rounded text-xs">
+                  <RiskBadge level={file.level} />
+                  <span className="font-mono text-slate-500 truncate">{file.path}</span>
                   {file.riskFlags.length > 0 && (
-                    <span style={{ marginLeft: 4, color: "#6b7280" }} title={file.riskFlags.join(", ")}>
-                      ({file.riskFlags.length} 风险标记)
+                    <span className="text-slate-700 ml-auto" title={file.riskFlags.join(", ")}>
+                      {file.riskFlags.length} flags
                     </span>
                   )}
                 </div>
               ))
             )}
             {classification.skipped.map((file) => (
-              <div key={file.path} style={{ padding: "4px 8px", background: "#f9fafb", borderRadius: 4, fontSize: 12, color: "#9ca3af" }}>
-                <span style={{ marginRight: 6 }}>[跳过]</span>
-                <span style={{ fontFamily: "monospace" }}>{file.path}</span>
-                <span style={{ marginLeft: 4 }}>({file.skipReason})</span>
+              <div key={file.path} className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/20 rounded text-xs text-slate-700">
+                <span className="text-slate-700">skip</span>
+                <span className="font-mono truncate">{file.path}</span>
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Report Summary */}
-      <div style={{ padding: 16, border: `2px solid ${report.passed ? "#16a34a" : "#dc2626"}`, borderRadius: 8, marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <span style={{ fontSize: 20 }}>{report.passed ? "✅" : "❌"}</span>
-          <span style={{ fontSize: 18, fontWeight: 600 }}>
-            {report.passed ? "评审通过" : "评审未通过"}
-          </span>
-        </div>
-
-        {/* Scores */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8, marginBottom: 12 }}>
-          {report.scores.map((s) => (
-            <div key={s.dimension} style={{ padding: "6px 10px", background: "#fff", borderRadius: 4, fontSize: 13 }}>
-              <span style={{ fontWeight: 500 }}>{s.dimension}</span>:{" "}
-              <span style={{ color: s.score >= 4 ? "#16a34a" : s.score >= 3 ? "#ca8a04" : "#dc2626", fontWeight: 700 }}>
-                {s.score}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Issues */}
-        {report.issues.length > 0 && (
+      {/* Report Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className={`p-5 rounded-xl border-2 backdrop-blur-sm ${
+          report.passed
+            ? "bg-emerald-500/5 border-emerald-500/30"
+            : "bg-red-500/5 border-red-500/30"
+        }`}
+      >
+        {/* Pass/Fail Header */}
+        <div className="flex items-center gap-3 mb-5">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
+            className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              report.passed ? "bg-emerald-500/20" : "bg-red-500/20"
+            }`}
+          >
+            <span className="text-lg">{report.passed ? "✓" : "✗"}</span>
+          </motion.div>
           <div>
-            <h3 style={{ fontSize: 15, marginBottom: 8 }}>问题清单</h3>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ borderBottom: "2px solid #d0d7de", textAlign: "left" }}>
-                  <th style={{ padding: "4px 8px" }}>级别</th>
-                  <th style={{ padding: "4px 8px" }}>问题</th>
-                  <th style={{ padding: "4px 8px" }}>位置</th>
-                  <th style={{ padding: "4px 8px" }}>建议</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.issues.map((issue, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid #e1e4e8" }}>
-                    <td style={{ padding: "4px 8px" }}>
-                      <span style={{ color: SEVERITY_COLORS[issue.severity], fontWeight: 600 }}>{issue.severity}</span>
-                    </td>
-                    <td style={{ padding: "4px 8px" }}>{issue.message}</td>
-                    <td style={{ padding: "4px 8px", fontFamily: "monospace", fontSize: 12 }}>
-                      {issue.file}{issue.line ? `:${issue.line}` : ""}
-                    </td>
-                    <td style={{ padding: "4px 8px", color: "#656d76" }}>{issue.suggestion || "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <h2 className={`text-lg font-bold ${report.passed ? "text-emerald-400" : "text-red-400"}`}>
+              {report.passed ? "Review Passed" : "Review Failed"}
+            </h2>
+            <p className="text-xs text-slate-500">{report.timestamp}</p>
+          </div>
+        </div>
+
+        {/* Score Circles */}
+        {report.scores.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {report.scores.map((s) => (
+              <ScoreCircle key={s.dimension} score={s.score} label={s.dimension} />
+            ))}
+          </div>
+        )}
+
+        {/* Issues Table */}
+        {report.issues.length > 0 && (
+          <div className="mb-5">
+            <h3 className="text-sm font-semibold text-slate-300 mb-3">
+              Issues ({report.issues.length})
+            </h3>
+            <div className="space-y-2">
+              {report.issues.map((issue, i) => {
+                const sev = SEVERITY_STYLES[issue.severity];
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + i * 0.05 }}
+                    className={`flex items-start gap-3 p-3 rounded-lg border-l-2 ${
+                      issue.severity === "CRITICAL"
+                        ? "border-l-red-500 bg-red-500/5"
+                        : issue.severity === "HIGH"
+                          ? "border-l-orange-500 bg-orange-500/5"
+                          : "border-l-slate-600 bg-slate-800/30"
+                    }`}
+                  >
+                    <span className={`px-2 py-0.5 text-xs font-semibold rounded ${sev.bg} ${sev.text}`}>
+                      {issue.severity}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-300">{issue.message}</p>
+                      <div className="flex gap-3 mt-1 text-xs text-slate-600">
+                        {issue.file && <span className="font-mono">{issue.file}{issue.line ? `:${issue.line}` : ""}</span>}
+                      </div>
+                      {issue.suggestion && (
+                        <p className="mt-1.5 text-xs text-slate-500 bg-slate-800/40 rounded px-2 py-1">
+                          {issue.suggestion}
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
         )}
 
         {/* Summary */}
         {report.summary && (
-          <div style={{ marginTop: 12, padding: "8px 10px", background: "#fff", borderRadius: 4, fontSize: 14, color: "#24292f" }}>
+          <div className="p-4 bg-slate-800/30 rounded-lg text-sm text-slate-400 leading-relaxed">
             {report.summary}
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Diff Viewer */}
-      <h3 style={{ marginBottom: 8 }}>代码变更</h3>
-      {diffs.map((diff) => {
-        const fileClass = classification?.batches
-          .flatMap((b) => b.files)
-          .find((f) => f.path === diff.new_path);
-        return (
-          <div key={diff.new_path} style={{ marginBottom: 8, border: "1px solid #d0d7de", borderRadius: 6 }}>
-            <button
-              onClick={() => toggleFile(diff.new_path)}
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                textAlign: "left",
-                background: "#f6f8fa",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 13,
-                fontFamily: "monospace",
-              }}
-            >
-              {expandedFiles.has(diff.new_path) ? "▼" : "▶"} {diff.new_path}
-              {fileClass && (
-                <span style={{ marginLeft: 8, color: RISK_COLORS[fileClass.level], fontWeight: 600, fontSize: 11 }}>
-                  [{RISK_LABELS[fileClass.level]}]
-                </span>
-              )}
-              {diff.new_file && <span style={{ color: "#16a34a", marginLeft: 8 }}>NEW</span>}
-              {diff.deleted_file && <span style={{ color: "#dc2626", marginLeft: 8 }}>DELETED</span>}
-            </button>
-            {expandedFiles.has(diff.new_path) && (
-              <div style={{ overflowX: "auto" }}>
-                <ReactDiffViewer
-                  oldValue={""}
-                  newValue={diff.diff}
-                  splitView={false}
-                  useDarkTheme={false}
-                  leftTitle={diff.old_path}
-                  rightTitle={diff.new_path}
-                />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+      >
+        <h3 className="text-sm font-semibold text-slate-300 mb-3">Code Changes</h3>
+        <div className="space-y-2">
+          {diffs.map((diff) => {
+            const fileClass = classification?.batches
+              .flatMap((b) => b.files)
+              .find((f) => f.path === diff.new_path);
+            const isExpanded = expandedFiles.has(diff.new_path);
+
+            return (
+              <div key={diff.new_path} className="rounded-lg border border-slate-700/40 overflow-hidden">
+                <button
+                  onClick={() => toggleFile(diff.new_path)}
+                  className="w-full px-4 py-3 text-left bg-slate-800/40 hover:bg-slate-800/60 transition-all flex items-center gap-3"
+                >
+                  <motion.span
+                    animate={{ rotate: isExpanded ? 90 : 0 }}
+                    className="text-slate-600 text-xs"
+                  >
+                    ▶
+                  </motion.span>
+                  <span className="font-mono text-xs text-slate-400">{diff.new_path}</span>
+                  {fileClass && <RiskBadge level={fileClass.level} />}
+                  {diff.new_file && (
+                    <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500/15 text-emerald-400 rounded">NEW</span>
+                  )}
+                  {diff.deleted_file && (
+                    <span className="px-1.5 py-0.5 text-[10px] bg-red-500/15 text-red-400 rounded">DEL</span>
+                  )}
+                </button>
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="bg-slate-900/50 overflow-x-auto">
+                        <ReactDiffViewer
+                          oldValue={""}
+                          newValue={diff.diff}
+                          splitView={false}
+                          useDarkTheme={true}
+                          leftTitle={diff.old_path}
+                          rightTitle={diff.new_path}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            )}
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      </motion.div>
     </div>
   );
 }

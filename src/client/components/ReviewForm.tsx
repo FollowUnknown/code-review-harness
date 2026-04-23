@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 
 interface Props {
   onSubmit: (mrUrl: string, lanhuUrl?: string) => void;
@@ -16,58 +17,46 @@ export function ReviewForm({ onSubmit, loading }: Props) {
   }
 
   return (
-    <div>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+    <div className="space-y-3">
+      <div className="flex gap-3">
         <input
           type="text"
-          placeholder="输入 GitLab MR URL，例如 https://gitlab.com/group/project/-/merge_requests/1"
+          placeholder="Enter GitLab MR URL"
           value={mrUrl}
           onChange={(e) => setMrUrl(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={loading}
-          style={{
-            flex: 1,
-            padding: "10px 14px",
-            fontSize: 14,
-            border: "1px solid #d0d7de",
-            borderRadius: 6,
-            outline: "none",
-          }}
+          className="flex-1 px-4 py-3 text-sm bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all disabled:opacity-50"
         />
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => onSubmit(mrUrl.trim(), lanhuUrl.trim() || undefined)}
           disabled={loading || !mrUrl.trim()}
-          style={{
-            padding: "10px 20px",
-            fontSize: 14,
-            backgroundColor: loading ? "#9ca3af" : "#2563eb",
-            color: "white",
-            border: "none",
-            borderRadius: 6,
-            cursor: loading ? "not-allowed" : "pointer",
-          }}
+          className="px-6 py-3 text-sm font-medium bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20"
         >
-          {loading ? "评审中..." : "开始评审"}
-        </button>
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <motion.span
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+              />
+              Reviewing...
+            </span>
+          ) : (
+            "Start Review"
+          )}
+        </motion.button>
       </div>
-      <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-        <input
-          type="text"
-          placeholder="蓝湖设计稿链接（可选）"
-          value={lanhuUrl}
-          onChange={(e) => setLanhuUrl(e.target.value)}
-          disabled={loading}
-          style={{
-            flex: 1,
-            padding: "8px 12px",
-            fontSize: 13,
-            border: "1px solid #d0d7de",
-            borderRadius: 6,
-            outline: "none",
-            color: "#656d76",
-          }}
-        />
-      </div>
+      <input
+        type="text"
+        placeholder="Lanhu design URL (optional)"
+        value={lanhuUrl}
+        onChange={(e) => setLanhuUrl(e.target.value)}
+        disabled={loading}
+        className="w-full px-4 py-2.5 text-sm bg-slate-800/30 border border-slate-700/30 rounded-lg text-slate-400 placeholder-slate-700 focus:outline-none focus:border-slate-600 transition-all disabled:opacity-50"
+      />
     </div>
   );
 }
