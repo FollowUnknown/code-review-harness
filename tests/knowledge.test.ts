@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   addEntry,
   getEntry,
+  updateEntry,
   confirmEntry,
   deprecateEntry,
   deleteEntry,
@@ -226,13 +227,15 @@ describe("extractLearnings", () => {
     expect(entries[0].type).toBe("EXP");
     expect(entries[0].title).toContain("测试覆盖率");
     expect(entries[0].status).toBe("TEMP");
+    expect(entries[0].source_type).toBe("LLM提取");
+    expect(entries[0].review_pass).toBe(1);
   });
 
   it("extracts learnings from high severity issues", () => {
     const report = {
       scores: [],
       issues: [
-        { severity: "CRITICAL", message: "SQL injection vulnerability", suggestion: "Use parameterized queries" },
+        { severity: "CRITICAL", message: "SQL injection vulnerability", suggestion: "Use parameterized queries", file: "db.ts" },
         { severity: "LOW", message: "Minor style issue" },
       ],
     };
@@ -241,5 +244,136 @@ describe("extractLearnings", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0].type).toBe("AP");
     expect(entries[0].severity).toBe("CRITICAL");
+    expect(entries[0].source_type).toBe("LLM提取");
+    expect(entries[0].source_file).toBe(JSON.stringify(["db.ts"]));
+  });
+});
+
+describe("new fields", () => {
+  it("adds entry with new fields", () => {
+    const entry = addEntry({
+      type: "AP",
+      project: "myapp",
+      severity: "HIGH",
+      title: "New field test",
+      content: "Content",
+      product_line: "qiqiao",
+      engineering: "console-web",
+      source_story: "STORY-100",
+      source_type: "交叉评审",
+      review_pass: 2,
+      scope: "全局弹窗组件",
+      first_seen_in: "STORY-100 + dialog.vue",
+    });
+
+    expect(entry.product_line).toBe("qiqiao");
+    expect(entry.engineering).toBe("console-web");
+    expect(entry.source_story).toBe("STORY-100");
+    expect(entry.source_type).toBe("交叉评审");
+    expect(entry.review_pass).toBe(2);
+    expect(entry.scope).toBe("全局弹窗组件");
+    expect(entry.first_seen_in).toBe("STORY-100 + dialog.vue");
+  });
+
+  it("adds BN with data_structure and default_value", () => {
+    const entry = addEntry({
+      type: "BN",
+      project: "myapp",
+      title: "数据安全配置",
+      content: "数据安全配置实体",
+      data_structure: "{ dataDisplayMode, dataMaskingConfig, permissionConfig }",
+      default_value: "dataDisplayMode=0, isAll=false",
+    });
+
+    expect(entry.data_structure).toBe("{ dataDisplayMode, dataMaskingConfig, permissionConfig }");
+    expect(entry.default_value).toBe("dataDisplayMode=0, isAll=false");
+  });
+
+  it("adds RULE with derivation", () => {
+    const entry = addEntry({
+      type: "RULE",
+      project: "myapp",
+      title: "权限规则",
+      content: "不配置权限时所有人无可见权限",
+      derivation: "代码推断",
+    });
+
+    expect(entry.derivation).toBe("代码推断");
+  });
+
+  it("adds TERM entry", () => {
+    const entry = addEntry({
+      type: "TERM",
+      project: "myapp",
+      title: "脱敏规则",
+      content: "对敏感数据进行掩码处理的配置规则",
+    });
+
+    expect(entry.type).toBe("TERM");
+    expect(entry.id).toMatch(/^TERM-TEMP-\d{3}$/);
+  });
+
+  it("updates new fields", () => {
+    const entry = addEntry({ type: "AP", project: "app", severity: "HIGH", title: "T", content: "C" });
+
+    const updated = updateEntry(entry.id, {
+      product_line: "qiqiao",
+      scope: "全局",
+      first_seen_in: "story-100",
+    });
+
+    expect(updated!.product_line).toBe("qiqiao");
+    expect(updated!.scope).toBe("全局");
+    expect(updated!.first_seen_in).toBe("story-100");
+  });
+});
+
+describe("buildKnowledgePrompt enhanced", () => {
+  it("includes scope and first_seen_in for AP entries", () => {
+    const entries = [
+      { id: "AP-cw-001", type: "AP" as const, project: "app", title: "Dialog 未清理", content: "Don't leak", status: "CONFIRMED" as const, severity: "CRITICAL", scope: "全局弹窗组件", first_seen_in: "story-001100", hit_count: 0, created_at: "", updated_at: "" },
+    ];
+
+    const prompt = buildKnowledgePrompt(entries);
+    expect(prompt).toContain("适用: 全局弹窗组件");
+    expect(prompt).toContain("首次: story-001100");
+  });
+
+  it("includes data_structure and default_value for BN entries", () => {
+    const entries = [
+      { id: "BN-cw-001", type: "BN" as const, project: "app", title: "数据安全配置", content: "Config entity", status: "CONFIRMED" as const, data_structure: "{ dataDisplayMode }", default_value: "dataDisplayMode=0", hit_count: 0, created_at: "", updated_at: "" },
+    ];
+
+    const prompt = buildKnowledgePrompt(entries);
+    expect(prompt).toContain("数据结构: { dataDisplayMode }");
+    expect(prompt).toContain("默认值: dataDisplayMode=0");
+  });
+
+  it("includes derivation for RULE entries", () => {
+    const bn = { id: "BN-cw-001", type: "BN" as const, project: "app", title: "配置", content: "Config", status: "CONFIRMED" as const, hit_count: 0, created_at: "", updated_at: "" };
+    const rule = { id: "RULE-cw-001", type: "RULE" as const, project: "app", title: "权限规则", content: "无权限时不可见", status: "CONFIRMED" as const, parent_id: "BN-cw-001", derivation: "代码推断", hit_count: 0, created_at: "", updated_at: "" };
+
+    const prompt = buildKnowledgePrompt([bn, rule]);
+    expect(prompt).toContain("推导: 代码推断");
+  });
+
+  it("parses structured content for EXP scene/advice", () => {
+    const entries = [
+      { id: "EXP-cw-061", type: "EXP" as const, project: "app", title: "Vue 2 模板可选链兼容性", content: "场景：runtime-web 模板中使用 ?. 语法\n建议：确认 Babel 配置或改用传统判断", status: "CONFIRMED" as const, hit_count: 0, created_at: "", updated_at: "" },
+    ];
+
+    const prompt = buildKnowledgePrompt(entries);
+    expect(prompt).toContain("场景: runtime-web 模板中使用 ?. 语法");
+    expect(prompt).toContain("建议: 确认 Babel 配置或改用传统判断");
+  });
+
+  it("includes TERM section", () => {
+    const entries = [
+      { id: "TERM-001", type: "TERM" as const, project: "app", title: "脱敏规则", content: "对敏感数据进行掩码处理", status: "CONFIRMED" as const, hit_count: 0, created_at: "", updated_at: "" },
+    ];
+
+    const prompt = buildKnowledgePrompt(entries);
+    expect(prompt).toContain("术语");
+    expect(prompt).toContain("脱敏规则");
   });
 });

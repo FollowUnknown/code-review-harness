@@ -7,7 +7,11 @@ import {
   deleteEntry,
   listEntries,
   getKnowledgeStats,
+  addRelation,
+  getRelationsForEntry,
+  deleteRelation,
 } from "../services/knowledge";
+import type { RelationType } from "../services/knowledge";
 import type { EntryType, EntryStatus } from "../services/knowledge";
 
 const router = Router();
@@ -25,15 +29,6 @@ function requireAdmin(req: Request, res: Response): boolean {
   return true;
 }
 
-function checkProjectAccess(req: Request, entryProject: string): boolean {
-  const user = getUser(req);
-  if (!user) return false;
-  if (user.role === "admin") return true;
-  // Members can only operate on their own projects — for now allow all members
-  // since project ownership is not tracked per user
-  return true;
-}
-
 // GET / — List knowledge entries with pagination and filters
 router.get("/", (req: Request, res: Response) => {
   const type = req.query.type as EntryType | undefined;
@@ -42,7 +37,7 @@ router.get("/", (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20));
 
-  const validTypes: EntryType[] = ["AP", "EXP", "CONV", "BN", "RULE"];
+  const validTypes: EntryType[] = ["AP", "EXP", "CONV", "BN", "RULE", "TERM"];
   if (type && !validTypes.includes(type)) {
     res.status(400).json({ error: `Invalid type. Must be one of: ${validTypes.join(", ")}` });
     return;
@@ -83,8 +78,14 @@ router.put("/:id", (req: Request<{ id: string }>, res: Response) => {
     return;
   }
 
-  const { title, pattern, impact, fix_suggestion, content, module, severity, parent_id } = req.body;
-  const updated = updateEntry(req.params.id, { title, pattern, impact, fix_suggestion, content, module, severity, parent_id });
+  const { title, pattern, impact, fix_suggestion, content, module, severity, parent_id,
+          product_line, engineering, source_story, source_type, review_pass,
+          scope, data_structure, default_value, first_seen_in, derivation } = req.body;
+  const updated = updateEntry(req.params.id, {
+    title, pattern, impact, fix_suggestion, content, module, severity, parent_id,
+    product_line, engineering, source_story, source_type, review_pass,
+    scope, data_structure, default_value, first_seen_in, derivation,
+  });
   res.json(updated);
 });
 
@@ -139,6 +140,52 @@ router.delete("/:id", (req: Request<{ id: string }>, res: Response) => {
       return;
     }
     res.status(400).json({ error: "Only TEMP entries can be deleted" });
+    return;
+  }
+  res.json({ success: true });
+});
+
+// GET /:id/relations — Get relations for an entry
+router.get("/:id/relations", (req: Request<{ id: string }>, res: Response) => {
+  const entry = getEntry(req.params.id);
+  if (!entry) {
+    res.status(404).json({ error: "Knowledge entry not found" });
+    return;
+  }
+  res.json(getRelationsForEntry(req.params.id));
+});
+
+// POST /:id/relations — Add a relation (admin only)
+router.post("/:id/relations", (req: Request<{ id: string }>, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  const { toId, relation } = req.body as { toId?: string; relation?: string };
+  if (!toId || !relation) {
+    res.status(400).json({ error: "toId and relation required" });
+    return;
+  }
+
+  const validRelations: RelationType[] = ["related_rule", "related_term", "related_ap", "finding", "reuse"];
+  if (!validRelations.includes(relation as RelationType)) {
+    res.status(400).json({ error: `Invalid relation. Must be one of: ${validRelations.join(", ")}` });
+    return;
+  }
+
+  if (!getEntry(toId)) {
+    res.status(404).json({ error: "Target entry not found" });
+    return;
+  }
+
+  const rel = addRelation(req.params.id, toId, relation as RelationType);
+  res.json(rel);
+});
+
+// DELETE /:id/relations/:relId — Delete a relation (admin only)
+router.delete("/:id/relations/:relId", (req: Request<{ id: string; relId: string }>, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  if (!deleteRelation(req.params.relId)) {
+    res.status(404).json({ error: "Relation not found" });
     return;
   }
   res.json({ success: true });

@@ -3,7 +3,7 @@ import type { IssueDisposition, KnowledgeDisposition, ReviewIssue } from "../../
 
 // ---- Types ----
 
-export type EntryType = "AP" | "EXP" | "BN" | "CONV" | "RULE";
+export type EntryType = "AP" | "EXP" | "BN" | "CONV" | "RULE" | "TERM";
 export type EntrySeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 export type EntryStatus = "TEMP" | "CONFIRMED" | "DEPRECATED";
 
@@ -25,6 +25,16 @@ export interface KnowledgeEntry {
   parent_id?: string;
   hit_count: number;
   last_hit_at?: string;
+  product_line?: string;
+  engineering?: string;
+  source_story?: string;
+  source_type?: string;
+  review_pass?: number;
+  scope?: string;
+  data_structure?: string;
+  default_value?: string;
+  first_seen_in?: string;
+  derivation?: string;
   created_at: string;
   updated_at: string;
 }
@@ -73,6 +83,16 @@ export function addEntry(input: {
   source_mr?: string;
   source_file?: string;
   parent_id?: string;
+  product_line?: string;
+  engineering?: string;
+  source_story?: string;
+  source_type?: string;
+  review_pass?: number;
+  scope?: string;
+  data_structure?: string;
+  default_value?: string;
+  first_seen_in?: string;
+  derivation?: string;
 }): KnowledgeEntry {
   const db = getDb();
   const now = new Date().toISOString();
@@ -82,14 +102,24 @@ export function addEntry(input: {
 
     db.prepare(
       `INSERT INTO knowledge_entries
-       (id, type, project, module, severity, title, pattern, impact, fix_suggestion, content, status, source_review, source_mr, source_file, parent_id, hit_count, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'TEMP', ?, ?, ?, ?, 0, ?, ?)`
+       (id, type, project, module, severity, title, pattern, impact, fix_suggestion, content, status,
+        source_review, source_mr, source_file, parent_id, hit_count,
+        product_line, engineering, source_story, source_type, review_pass,
+        scope, data_structure, default_value, first_seen_in, derivation,
+        created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'TEMP', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id, input.type, input.project, input.module ?? null,
       input.severity ?? null, input.title, input.pattern ?? null,
       input.impact ?? null, input.fix_suggestion ?? null, input.content,
       input.source_review ?? null, input.source_mr ?? null,
       input.source_file ?? null, input.parent_id ?? null,
+      input.product_line ?? null, input.engineering ?? null,
+      input.source_story ?? null, input.source_type ?? null,
+      input.review_pass ?? null,
+      input.scope ?? null, input.data_structure ?? null,
+      input.default_value ?? null, input.first_seen_in ?? null,
+      input.derivation ?? null,
       now, now
     );
 
@@ -104,13 +134,19 @@ export function getEntry(id: string): KnowledgeEntry | undefined {
   return db.prepare("SELECT * FROM knowledge_entries WHERE id = ?").get(id) as KnowledgeEntry | undefined;
 }
 
-export function updateEntry(id: string, updates: Partial<Pick<KnowledgeEntry, "title" | "pattern" | "impact" | "fix_suggestion" | "content" | "module" | "severity" | "parent_id">>): KnowledgeEntry | undefined {
+const ALLOWED_UPDATE_FIELDS: ReadonlySet<string> = new Set([
+  "title", "pattern", "impact", "fix_suggestion", "content", "module", "severity", "parent_id",
+  "product_line", "engineering", "source_story", "source_type", "review_pass",
+  "scope", "data_structure", "default_value", "first_seen_in", "derivation",
+]);
+
+export function updateEntry(id: string, updates: Partial<Pick<KnowledgeEntry, "title" | "pattern" | "impact" | "fix_suggestion" | "content" | "module" | "severity" | "parent_id" | "product_line" | "engineering" | "source_story" | "source_type" | "review_pass" | "scope" | "data_structure" | "default_value" | "first_seen_in" | "derivation">>): KnowledgeEntry | undefined {
   const db = getDb();
   const fields: string[] = [];
   const params: unknown[] = [];
 
   for (const [key, value] of Object.entries(updates)) {
-    if (value !== undefined) {
+    if (value !== undefined && ALLOWED_UPDATE_FIELDS.has(key)) {
       fields.push(`${key} = ?`);
       params.push(value ?? null);
     }
@@ -169,7 +205,7 @@ export interface ListEntriesFilters {
   pageSize?: number;
 }
 
-export function listEntries(filters: ListEntriesFilters = {}): { items: KnowledgeEntry[]; total: number } {
+export function listEntries(filters: ListEntriesFilters = {}): { items: KnowledgeEntry[]; total: number; page: number; pageSize: number; totalPages: number } {
   const db = getDb();
   const clauses: string[] = [];
   const params: unknown[] = [];
@@ -188,7 +224,7 @@ export function listEntries(filters: ListEntriesFilters = {}): { items: Knowledg
     `SELECT * FROM knowledge_entries ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
   ).all(...params, pageSize, offset) as KnowledgeEntry[];
 
-  return { items, total };
+  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
 }
 
 export function getKnowledgeStats(): Array<{ type: EntryType; status: EntryStatus; project: string; count: number }> {
@@ -306,6 +342,7 @@ export function buildKnowledgePrompt(entries: KnowledgeEntry[]): string {
     BN: "业务名词",
     CONV: "约定",
     RULE: "业务规则",
+    TERM: "术语",
   };
 
   // Group by type
@@ -319,23 +356,36 @@ export function buildKnowledgePrompt(entries: KnowledgeEntry[]): string {
   // Anti-patterns section
   const apEntries = [...(grouped.AP ?? [])];
   if (apEntries.length > 0) {
-    const lines = apEntries.map((e) =>
-      `[${e.severity || "HIGH"}] ${e.title} — ${e.pattern || e.content}${e.fix_suggestion ? ` → ${e.fix_suggestion}` : ""}`
-    );
+    const lines = apEntries.map((e) => {
+      let line = `[${e.severity || "HIGH"}] ${e.id}: ${e.title} — ${e.pattern || e.content}${e.fix_suggestion ? ` → ${e.fix_suggestion}` : ""}`;
+      if (e.scope) line += `\n  适用: ${e.scope}`;
+      if (e.first_seen_in) line += ` | 首次: ${e.first_seen_in}`;
+      return line;
+    });
     sections.push(`### 反模式（必须避免）\n${lines.join("\n")}`);
   }
 
   // Conventions section
   const convEntries = grouped.CONV ?? [];
   if (convEntries.length > 0) {
-    const lines = convEntries.map((e) => `${e.title}: ${e.content}`);
+    const lines = convEntries.map((e) => `${e.id}: ${e.title}: ${e.content}`);
     sections.push(`### 项目约定\n${lines.join("\n")}`);
   }
 
   // Experiences section
   const expEntries = grouped.EXP ?? [];
   if (expEntries.length > 0) {
-    const lines = expEntries.map((e) => `${e.title}: ${e.content}`);
+    const lines = expEntries.map((e) => {
+      let line = `${e.id}: ${e.title}`;
+      // Parse structured content for scene/advice
+      const content = e.content;
+      const sceneMatch = content.match(/场景[：:]\s*(.+)/);
+      const adviceMatch = content.match(/建议[：:]\s*(.+)/);
+      if (sceneMatch) line += `\n  场景: ${sceneMatch[1]}`;
+      else line += `\n  ${content}`;
+      if (adviceMatch) line += `\n  建议: ${adviceMatch[1]}`;
+      return line;
+    });
     sections.push(`### 评审经验\n${lines.join("\n")}`);
   }
 
@@ -345,13 +395,33 @@ export function buildKnowledgePrompt(entries: KnowledgeEntry[]): string {
   if (bnEntries.length > 0 || ruleEntries.length > 0) {
     const lines: string[] = [];
     for (const bn of bnEntries) {
-      lines.push(`[${bn.title}] ${bn.content}`);
+      let line = `[${bn.id}] ${bn.title}`;
+      if (bn.data_structure) line += `\n  数据结构: ${bn.data_structure}`;
+      if (bn.default_value) line += `\n  默认值: ${bn.default_value}`;
+      if (!bn.data_structure && !bn.default_value) line += ` — ${bn.content}`;
+      lines.push(line);
       const related = ruleEntries.filter((r) => r.parent_id === bn.id);
       for (const rule of related) {
-        lines.push(`  ↳ ${rule.title}: ${rule.content}`);
+        let ruleLine = `  ↳ ${rule.id}: ${rule.title}: ${rule.content}`;
+        if (rule.derivation) ruleLine += ` (推导: ${rule.derivation})`;
+        lines.push(ruleLine);
       }
     }
+    // Standalone rules (no parent BN)
+    const standaloneRules = ruleEntries.filter((r) => !bnEntries.some((bn) => r.parent_id === bn.id));
+    for (const rule of standaloneRules) {
+      let ruleLine = `${rule.id}: ${rule.title}: ${rule.content}`;
+      if (rule.derivation) ruleLine += ` (推导: ${rule.derivation})`;
+      lines.push(ruleLine);
+    }
     sections.push(`### 业务上下文\n${lines.join("\n")}`);
+  }
+
+  // Terms section
+  const termEntries = grouped.TERM ?? [];
+  if (termEntries.length > 0) {
+    const lines = termEntries.map((e) => `${e.id}: ${e.title} — ${e.content}`);
+    sections.push(`### 术语\n${lines.join("\n")}`);
   }
 
   return `\n\n## 项目知识库\n以下是本项目的已知模式和约定，请在评审时参考：\n\n${sections.join("\n\n")}`;
@@ -410,6 +480,8 @@ export function extractLearnings(
         title: `${score.dimension}得分偏低`,
         content: score.comment,
         source_review: reviewId,
+        source_type: "LLM提取",
+        review_pass: 1,
       }));
     }
   }
@@ -424,10 +496,47 @@ export function extractLearnings(
         title: issue.message.slice(0, 80),
         content: issue.suggestion || issue.message,
         source_review: reviewId,
-        source_file: issue.file,
+        source_file: issue.file ? JSON.stringify([issue.file]) : undefined,
+        source_type: "LLM提取",
+        review_pass: 1,
       }));
     }
   }
 
   return created;
+}
+
+// ---- Knowledge Relations ----
+
+export type RelationType = "related_rule" | "related_term" | "related_ap" | "finding" | "reuse";
+
+export interface KnowledgeRelation {
+  id: string;
+  from_id: string;
+  to_id: string;
+  relation: RelationType;
+  created_at: string;
+}
+
+export function addRelation(fromId: string, toId: string, relation: RelationType): KnowledgeRelation {
+  const db = getDb();
+  const id = `REL-${fromId}-${toId}-${relation}`;
+  const now = new Date().toISOString();
+  db.prepare(
+    "INSERT OR IGNORE INTO knowledge_relations (id, from_id, to_id, relation, created_at) VALUES (?, ?, ?, ?, ?)"
+  ).run(id, fromId, toId, relation, now);
+  return { id, from_id: fromId, to_id: toId, relation, created_at: now };
+}
+
+export function getRelationsForEntry(entryId: string): KnowledgeRelation[] {
+  const db = getDb();
+  return db.prepare(
+    "SELECT * FROM knowledge_relations WHERE from_id = ? OR to_id = ? ORDER BY created_at"
+  ).all(entryId, entryId) as KnowledgeRelation[];
+}
+
+export function deleteRelation(id: string): boolean {
+  const db = getDb();
+  const result = db.prepare("DELETE FROM knowledge_relations WHERE id = ?").run(id);
+  return result.changes > 0;
 }

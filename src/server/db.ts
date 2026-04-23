@@ -64,7 +64,7 @@ function initialize(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS knowledge_entries (
       id              TEXT PRIMARY KEY,
-      type            TEXT NOT NULL CHECK(type IN ('AP', 'EXP', 'CONV', 'BN', 'RULE')),
+      type            TEXT NOT NULL CHECK(type IN ('AP', 'EXP', 'CONV', 'BN', 'RULE', 'TERM')),
       project         TEXT NOT NULL,
       module          TEXT,
       severity        TEXT CHECK(severity IN ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW')),
@@ -107,6 +107,24 @@ function initialize(db: Database.Database): void {
     );
     CREATE INDEX IF NOT EXISTS idx_rds_project ON review_dimension_sets(project);
   `);
+
+  // Knowledge relations
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS knowledge_relations (
+      id         TEXT PRIMARY KEY,
+      from_id    TEXT NOT NULL,
+      to_id      TEXT NOT NULL,
+      relation   TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (from_id) REFERENCES knowledge_entries(id),
+      FOREIGN KEY (to_id) REFERENCES knowledge_entries(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_kr_from ON knowledge_relations(from_id);
+    CREATE INDEX IF NOT EXISTS idx_kr_to ON knowledge_relations(to_id);
+  `);
+
+  // Migrate knowledge_entries table with new columns (safe, idempotent)
+  migrateKnowledgeEntriesTable(db);
 
   // Migrate reviews table to extended schema (safe, idempotent)
   migrateReviewsTable(db);
@@ -172,6 +190,30 @@ function initialize(db: Database.Database): void {
   );
   stmt.run("default-requirement", "requirement", "understanding", "需求理解 prompt", "", '["type","module","features"]');
   stmt.run("default-knowledge", "knowledge", "extraction", "知识提取 prompt", "", '["entries"]');
+}
+
+function migrateKnowledgeEntriesTable(db: Database.Database): void {
+  const columns = db.prepare("PRAGMA table_info(knowledge_entries)").all() as Array<{ name: string }>;
+  const colNames = new Set(columns.map((c) => c.name));
+
+  const newColumns: Array<{ name: string; def: string }> = [
+    { name: "product_line", def: "TEXT" },
+    { name: "engineering", def: "TEXT" },
+    { name: "source_story", def: "TEXT" },
+    { name: "source_type", def: "TEXT" },
+    { name: "review_pass", def: "INTEGER" },
+    { name: "scope", def: "TEXT" },
+    { name: "data_structure", def: "TEXT" },
+    { name: "default_value", def: "TEXT" },
+    { name: "first_seen_in", def: "TEXT" },
+    { name: "derivation", def: "TEXT" },
+  ];
+
+  for (const col of newColumns) {
+    if (!colNames.has(col.name)) {
+      db.exec(`ALTER TABLE knowledge_entries ADD COLUMN ${col.name} ${col.def}`);
+    }
+  }
 }
 
 function migrateReviewsTable(db: Database.Database): void {

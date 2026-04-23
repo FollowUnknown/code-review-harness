@@ -14,7 +14,7 @@ function authHeaders(): Record<string, string> {
 // Local types (mirrors server API shape)
 // ---------------------------------------------------------------------------
 
-type KnowledgeType = "AP" | "EXP" | "CONV" | "BN" | "RULE";
+type KnowledgeType = "AP" | "EXP" | "CONV" | "BN" | "RULE" | "TERM";
 type KnowledgeStatus = "TEMP" | "CONFIRMED" | "DEPRECATED";
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 
@@ -36,6 +36,16 @@ interface KnowledgeItem {
   status: KnowledgeStatus;
   hit_count: number;
   last_hit_at: string | null;
+  product_line: string | null;
+  engineering: string | null;
+  source_story: string | null;
+  source_type: string | null;
+  review_pass: number | null;
+  scope: string | null;
+  data_structure: string | null;
+  default_value: string | null;
+  first_seen_in: string | null;
+  derivation: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -66,6 +76,7 @@ const TYPE_TABS: { label: string; value: KnowledgeType }[] = [
   { label: "CONV", value: "CONV" },
   { label: "BN", value: "BN" },
   { label: "RULE", value: "RULE" },
+  { label: "TERM", value: "TERM" },
 ];
 
 const PAGE_SIZE = 20;
@@ -118,6 +129,10 @@ function DetailDrawer({
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<KnowledgeItem>({ ...item });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Fields that should never be editable in the drawer
+  const READONLY_FIELDS = new Set(["id", "type", "project", "status", "hit_count", "last_hit_at", "created_at", "updated_at", "source_review", "source_mr", "source_file", "parent_id"]);
 
   // Keep form in sync when item changes externally
   useEffect(() => {
@@ -127,6 +142,7 @@ function DetailDrawer({
 
   async function handleSave() {
     setSaving(true);
+    setSaveError(null);
     try {
       const res = await fetch(`${API_BASE}/api/knowledge/${item.id}`, {
         method: "PUT",
@@ -135,18 +151,30 @@ function DetailDrawer({
           title: form.title,
           content: form.content,
           severity: form.severity,
-          project: form.project,
           module: form.module,
           pattern: form.pattern,
           impact: form.impact,
           fix_suggestion: form.fix_suggestion,
+          product_line: form.product_line,
+          engineering: form.engineering,
+          source_story: form.source_story,
+          source_type: form.source_type,
+          review_pass: form.review_pass,
+          scope: form.scope,
+          data_structure: form.data_structure,
+          default_value: form.default_value,
+          first_seen_in: form.first_seen_in,
+          derivation: form.derivation,
         }),
       });
-      if (!res.ok) throw new Error("save failed");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "save failed");
+      }
       setEditing(false);
       onMutated();
-    } catch {
-      // silently fail for now
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
     }
@@ -160,19 +188,56 @@ function DetailDrawer({
   function field(label: string, key: keyof KnowledgeItem, mono = false) {
     const value = editing ? (form[key] as string | number | null) : (item[key] as string | number | null);
     const display = value == null ? "--" : String(value);
+    const isEditable = editing && !READONLY_FIELDS.has(key) && (typeof value === "string" || typeof value === "number");
 
     return (
       <div className="space-y-1">
         <span className="text-[10px] uppercase tracking-wider text-slate-500">{label}</span>
-        {editing && typeof value === "string" ? (
+        {isEditable && typeof value === "number" ? (
+          <input
+            type="number"
+            value={value ?? ""}
+            onChange={(e) => updateField(key, (e.target.value === "" ? null : Number(e.target.value)) as KnowledgeItem[typeof key])}
+            className="w-full px-2 py-1 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-300"
+          />
+        ) : isEditable ? (
           <textarea
             value={value ?? ""}
-            onChange={(e) => updateField(key, e.target.value as never)}
+            onChange={(e) => updateField(key, e.target.value as KnowledgeItem[typeof key])}
             rows={2}
             className={`w-full px-2 py-1 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-300 resize-y ${mono ? "font-mono" : ""}`}
           />
         ) : (
           <p className={`text-xs text-slate-300 break-words ${mono ? "font-mono" : ""}`}>{display}</p>
+        )}
+      </div>
+    );
+  }
+
+  // JSON array field renderer — parses JSON array strings into readable list
+  function jsonArrayField(label: string, key: keyof KnowledgeItem) {
+    const raw = editing ? (form[key] as string | null) : (item[key] as string | null);
+    let items: string[] = [];
+    if (raw) {
+      try { items = JSON.parse(raw); if (!Array.isArray(items)) items = [raw]; } catch { items = [raw]; }
+    }
+    const display = items.length > 0 ? items.join(", ") : "--";
+
+    return (
+      <div className="space-y-1">
+        <span className="text-[10px] uppercase tracking-wider text-slate-500">{label}</span>
+        {editing ? (
+          <textarea
+            value={raw ?? ""}
+            onChange={(e) => updateField(key, e.target.value as KnowledgeItem[typeof key])}
+            rows={2}
+            placeholder="JSON array, e.g. [&quot;file1.vue&quot;, &quot;file2.vue&quot;]"
+            className="w-full px-2 py-1 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-300 font-mono resize-y"
+          />
+        ) : (
+          <div className="text-xs text-slate-300 space-y-0.5">
+            {items.length > 0 ? items.map((it, i) => <p key={i} className="font-mono">{it}</p>) : <p>{display}</p>}
+          </div>
         )}
       </div>
     );
@@ -221,6 +286,8 @@ function DetailDrawer({
             {field("Type", "type")}
             {field("Project", "project")}
             {field("Module", "module")}
+            {field("Product Line", "product_line")}
+            {field("Engineering", "engineering")}
           </div>
 
           {/* Type-specific fields */}
@@ -229,6 +296,35 @@ function DetailDrawer({
               {field("Pattern", "pattern", true)}
               {field("Impact", "impact")}
               {field("Fix Suggestion", "fix_suggestion")}
+              {field("Scope", "scope")}
+              {field("First Seen In", "first_seen_in")}
+            </div>
+          )}
+
+          {item.type === "BN" && (
+            <div className="space-y-4">
+              {field("Data Structure", "data_structure", true)}
+              {field("Default Value", "default_value")}
+            </div>
+          )}
+
+          {item.type === "RULE" && (
+            <div className="space-y-4">
+              {field("Derivation", "derivation")}
+              {field("Parent ID", "parent_id")}
+            </div>
+          )}
+
+          {item.type === "EXP" && (
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase tracking-wider text-slate-500">Content format hint</span>
+              <p className="text-[10px] text-slate-500">Use "场景：..." and "建议：..." lines in content for structured injection into review prompts.</p>
+            </div>
+          )}
+
+          {item.type === "TERM" && (
+            <div className="space-y-4">
+              {field("Scope", "scope")}
             </div>
           )}
 
@@ -252,12 +348,16 @@ function DetailDrawer({
           {/* Source section */}
           <div className="grid grid-cols-3 gap-4">
             {field("Source Review", "source_review")}
-            {field("Source MR", "source_mr")}
-            {field("Source File", "source_file", true)}
+            {jsonArrayField("Source MR", "source_mr")}
+            {jsonArrayField("Source File", "source_file")}
           </div>
 
-          {/* RULE parent */}
-          {item.type === "RULE" && field("Parent ID", "parent_id")}
+          {/* Metadata section */}
+          <div className="grid grid-cols-3 gap-4">
+            {field("Source Story", "source_story")}
+            {field("Source Type", "source_type")}
+            {field("Review Pass", "review_pass")}
+          </div>
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4">
@@ -301,15 +401,20 @@ function DetailDrawer({
             {editing ? "Cancel" : "Edit"}
           </button>
           {editing && (
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              disabled={saving}
-              onClick={handleSave}
-              className="px-3 py-1.5 text-xs rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save"}
-            </motion.button>
+            <>
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                disabled={saving}
+                onClick={handleSave}
+                className="px-3 py-1.5 text-xs rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save"}
+              </motion.button>
+              {saveError && (
+                <span className="text-xs text-red-400">{saveError}</span>
+              )}
+            </>
           )}
         </div>
       </motion.div>
