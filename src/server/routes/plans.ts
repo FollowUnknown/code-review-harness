@@ -25,13 +25,17 @@ function checkOwner(req: Request, createdBy: string): boolean {
   return user?.id === createdBy || user?.role === "admin";
 }
 
+const VALID_STATUSES = ["open", "reviewing", "archived"] as const;
+const MR_URL_PATTERN = /^https?:\/\/[^/]+\/[^/]+\/[^/]+\/-\/merge_requests\/\d+/;
+
 // POST / — Create plan
 router.post("/", (req: Request, res: Response) => {
   const { title, description } = req.body;
-  if (!title) { res.status(400).json({ error: "title is required" }); return; }
+  if (!title || typeof title !== "string" || title.trim().length === 0) { res.status(400).json({ error: "title is required" }); return; }
+  if (title.length > 200) { res.status(400).json({ error: "title too long (max 200 chars)" }); return; }
   const userId = (req as Request & { user?: { id: string } }).user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const plan = createPlan(title, description || null, userId);
+  const plan = createPlan(title.trim(), (typeof description === "string" ? description.trim() : null) || null, userId);
   res.json(plan);
 });
 
@@ -59,7 +63,10 @@ router.put("/:id", (req: Request<{ id: string }>, res: Response) => {
   if (!plan) { res.status(404).json({ error: "Plan not found" }); return; }
   if (!checkOwner(req, plan.created_by)) { res.status(403).json({ error: "Not authorized" }); return; }
   const { title, description, status } = req.body;
-  updatePlan(req.params.id, { title, description, status });
+  if (status && !VALID_STATUSES.includes(status)) { res.status(400).json({ error: "Invalid status" }); return; }
+  if (title !== undefined && (typeof title !== "string" || title.trim().length === 0)) { res.status(400).json({ error: "Invalid title" }); return; }
+  if (title !== undefined && title.length > 200) { res.status(400).json({ error: "title too long (max 200 chars)" }); return; }
+  updatePlan(req.params.id, { title: title?.trim(), description: typeof description === "string" ? description.trim() : description, status });
   res.json(getPlanDetail(req.params.id));
 });
 
@@ -80,6 +87,9 @@ router.post("/:id/items", (req: Request<{ id: string }>, res: Response) => {
   if (plan.status !== "open") { res.status(400).json({ error: "Plan is not open" }); return; }
   const { mrUrls } = req.body;
   if (!Array.isArray(mrUrls) || mrUrls.length === 0) { res.status(400).json({ error: "mrUrls array required" }); return; }
+  if (mrUrls.length > 100) { res.status(400).json({ error: "Too many MRs (max 100)" }); return; }
+  const invalidUrls = mrUrls.filter((u: unknown) => typeof u !== "string" || !MR_URL_PATTERN.test(u));
+  if (invalidUrls.length > 0) { res.status(400).json({ error: `Invalid MR URL format: ${String(invalidUrls[0]).slice(0, 80)}` }); return; }
   const items = addPlanItems(req.params.id, mrUrls);
   res.json(items);
 });
@@ -155,8 +165,11 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
   const sendSSE = (event: Record<string, unknown>) => { res.write(`data: ${JSON.stringify(event)}\n\n`); };
   const userId = (req as Request & { user?: { id: string } }).user?.id || "";
   let step = 0;
+  let aborted = false;
+  req.on("close", () => { aborted = true; });
 
   for (let mi = 0; mi < pendingItems.length; mi++) {
+    if (aborted) { break; }
     const item = pendingItems[mi];
     updatePlanItem(plan.id, item.id, { status: "reviewing" });
     step++;
@@ -182,6 +195,7 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
       const batchReports = [];
 
       for (let i = 0; i < batchDiffs.length; i++) {
+        if (aborted) break;
         const diffText = batchDiffs[i].map((d: { old_path: string; new_path: string; diff: string }) => `--- ${d.old_path}\n+++ ${d.new_path}\n${d.diff}`).join("\n\n");
         const systemPrompt = getReviewPrompt({ dimensions: REVIEW_DIMENSIONS, batchIndex: i, totalBatches: batchDiffs.length, riskLevel: batchLevels[i], requirement: reqPrompt, knowledge: knowledgePrompt });
         const userMessage = `${userPromptPrefix}${diffText}`;
@@ -207,8 +221,12 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
     }
   }
 
-  updatePlan(plan.id, { status: "open" });
-  sendSSE({ step: step + 1, status: "done", label: "COMPLETE" });
+  if (!aborted) {
+    updatePlan(plan.id, { status: "open" });
+    sendSSE({ step: step + 1, status: "done", label: "COMPLETE" });
+  } else {
+    updatePlan(plan.id, { status: "open" });
+  }
   res.end();
 });
 

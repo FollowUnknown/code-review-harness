@@ -45,7 +45,19 @@ export function PlanDetailPage() {
     loadPlan();
   }
 
-  function exportMd() { window.open(`${API_BASE}/api/plans/${id}/export`, "_blank"); }
+  async function exportMd() {
+    try {
+      const res = await fetch(`${API_BASE}/api/plans/${id}/export`, { headers: authHeaders() });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${plan?.title ?? "review-plan"}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* silent */ }
+  }
 
   async function startBatch() {
     setBatchRunning(true);
