@@ -26,7 +26,7 @@ function checkOwner(req: Request, createdBy: string): boolean {
 }
 
 const VALID_STATUSES = ["open", "reviewing", "archived"] as const;
-const MR_URL_PATTERN = /^https?:\/\/[^/]+\/[^/]+\/[^/]+\/-\/merge_requests\/\d+/;
+const MR_URL_PATTERN = /^https?:\/\/[^/]+\/.+\/-\/merge_requests\/\d+/;
 
 // POST / — Create plan
 router.post("/", (req: Request, res: Response) => {
