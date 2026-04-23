@@ -10,7 +10,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ReviewResponse | null>(null);
 
-  async function handleSubmit(mrUrl: string) {
+  async function handleSubmit(mrUrl: string, lanhuUrl?: string) {
     setLoading(true);
     setError(null);
     setResult(null);
@@ -19,7 +19,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/api/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mrUrl }),
+        body: JSON.stringify({ mrUrl, lanhuUrl }),
       });
 
       if (!res.ok) {

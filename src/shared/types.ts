@@ -20,6 +20,35 @@ export interface GitLabDiff {
   diff: string;
 }
 
+// ---- Classification Types ----
+
+export type RiskLevel = "S" | "A" | "B" | "C";
+export type ReviewMode = "standard" | "diff_plus_self" | "diff_only";
+
+export interface ClassifiedFile {
+  path: string;
+  level: RiskLevel;
+  reviewMode: ReviewMode;
+  riskFlags: string[];
+  skipReason?: string;
+}
+
+export interface BatchInfo {
+  batchIndex: number;
+  level: RiskLevel;
+  files: ClassifiedFile[];
+}
+
+export interface ClassificationSummary {
+  stats: {
+    total: number;
+    byLevel: Record<RiskLevel, number>;
+    skipped: number;
+  };
+  batches: BatchInfo[];
+  skipped: ClassifiedFile[];
+}
+
 // ---- Review Types ----
 
 export type SeverityLevel = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
@@ -53,6 +82,7 @@ export interface ReviewRequest {
   mrUrl: string;
   gitlabHost?: string;
   gitlabToken?: string;
+  lanhuUrl?: string;
 }
 
 export interface ReviewProgress {
@@ -61,8 +91,19 @@ export interface ReviewProgress {
   progress?: number;
 }
 
+export interface RequirementSummary {
+  type: string;
+  module: string;
+  features: string[];
+  conflicts: string[];
+  source: "lanhu" | "mr_inference";
+  lanhuSummary?: string;
+}
+
 export interface ReviewResponse {
   mr: GitLabMRMeta;
   diffs: GitLabDiff[];
   report: ReviewReport;
+  classification?: ClassificationSummary;
+  requirement?: RequirementSummary;
 }

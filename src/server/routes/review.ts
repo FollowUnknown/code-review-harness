@@ -1,12 +1,16 @@
 import { Router, Request, Response } from "express";
+import { randomUUID } from "crypto";
 import { parseMRUrl, fetchMRMeta, fetchMRDiffs } from "../services/gitlab";
-import { reviewDiffs } from "../services/reviewer";
+import { reviewBatches } from "../services/reviewer";
+import { classify } from "../services/classifier";
+import { understandRequirement } from "../services/requirement";
+import { getKnowledgeForReview, saveReview, extractLearnings } from "../services/knowledge";
 import { ReviewRequest, ReviewResponse } from "../../shared/types";
 
 const router = Router();
 
 router.post("/review", async (req: Request, res: Response) => {
-  const { mrUrl, gitlabHost, gitlabToken }: ReviewRequest = req.body;
+  const { mrUrl, gitlabHost, gitlabToken, lanhuUrl }: ReviewRequest = req.body;
 
   if (!mrUrl) {
     res.status(400).json({ error: "mrUrl is required" });
@@ -23,7 +27,6 @@ router.post("/review", async (req: Request, res: Response) => {
   }
 
   try {
-    // Parse MR URL
     const parsed = parseMRUrl(mrUrl);
     const host = gitlabHost || parsed.host;
     const token = gitlabToken || process.env.GITLAB_TOKEN;
@@ -33,16 +36,57 @@ router.post("/review", async (req: Request, res: Response) => {
       return;
     }
 
-    // Fetch MR data
     const [mr, diffs] = await Promise.all([
       fetchMRMeta(host, parsed.projectPath, parsed.iid, token),
       fetchMRDiffs(host, parsed.projectPath, parsed.iid, token),
     ]);
 
-    // AI review
-    const report = await reviewDiffs(diffs, { authToken, baseUrl, model });
+    const project = parsed.projectPath.split("/").pop() || parsed.projectPath;
 
-    const response: ReviewResponse = { mr, diffs, report };
+    // Understand requirement (Lanhu or MR inference)
+    const requirement = await understandRequirement(mr, diffs, lanhuUrl);
+
+    // Load knowledge for this project
+    const knowledge = getKnowledgeForReview(project, requirement.module);
+
+    // Classify diffs and create batches
+    const { summary: classification, batchDiffs } = classify(diffs);
+    const batchLevels = classification.batches.map((b) => b.level);
+
+    // Review each batch with requirement context + knowledge
+    const report = await reviewBatches(
+      batchDiffs,
+      batchLevels,
+      { authToken, baseUrl, model },
+      requirement,
+      knowledge
+    );
+
+    // Save review and extract learnings
+    const reviewId = `R-${randomUUID().slice(0, 8)}`;
+    saveReview({
+      id: reviewId,
+      mr_url: mrUrl,
+      project,
+      report: JSON.stringify(report),
+    });
+    extractLearnings(report, project, reviewId);
+
+    // Build response
+    const response: ReviewResponse = {
+      mr,
+      diffs,
+      report,
+      classification,
+      requirement: {
+        type: requirement.type,
+        module: requirement.module,
+        features: requirement.features,
+        conflicts: requirement.conflicts,
+        source: requirement.source,
+        lanhuSummary: requirement.lanhuSummary,
+      },
+    };
     res.json(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
