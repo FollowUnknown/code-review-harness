@@ -78,6 +78,15 @@ export interface ReviewReport {
 
 // ---- API Request/Response ----
 
+export type LLMProvider = "anthropic" | "deepseek";
+
+export interface LLMConfig {
+  provider: LLMProvider;
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+}
+
 export interface ReviewRequest {
   mrUrl: string;
   gitlabHost?: string;

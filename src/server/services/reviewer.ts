@@ -1,15 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { GitLabDiff, ReviewReport, ReviewScore, ReviewIssue, RiskLevel } from "../../shared/types";
 import { REVIEW_DIMENSIONS, PASS_THRESHOLD } from "../../shared/constants";
 import { RequirementUnderstanding, buildRequirementPrompt } from "./requirement";
 import { KnowledgeEntry, buildKnowledgePrompt } from "./knowledge";
-
-function createClient(env: { authToken: string; baseUrl: string }): Anthropic {
-  return new Anthropic({
-    apiKey: env.authToken,
-    baseURL: env.baseUrl,
-  });
-}
+import { LLMConfig } from "./settings";
+import { callLLM } from "./llm";
 
 const BASE_SYSTEM_PROMPT = `你是一个专业的代码评审专家。你需要对提供的代码变更进行评审，并按照指定维度打分。
 
@@ -41,38 +35,13 @@ ${level === "S" ? "这是高风险变更，请特别关注安全、业务逻辑�
 ${level === "A" ? "这是中高风险变更，请重点关注核心逻辑和 API 接口的正确性。" : ""}`;
 }
 
-export async function reviewDiffs(
-  diffs: GitLabDiff[],
-  env: { authToken: string; baseUrl: string; model: string }
-): Promise<ReviewReport> {
-  const client = createClient(env);
-  const diffText = diffs
-    .map((d) => `--- ${d.old_path}\n+++ ${d.new_path}\n${d.diff}`)
-    .join("\n\n");
-
-  const response = await client.messages.create({
-    model: env.model,
-    max_tokens: 4096,
-    system: BASE_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: `请评审以下代码变更：\n\n${diffText}` }],
-  });
-
-  const text = response.content
-    .filter((block): block is Anthropic.TextBlock => block.type === "text")
-    .map((block) => block.text)
-    .join("");
-
-  return parseReviewResponse(text);
-}
-
 export async function reviewBatches(
   batchDiffs: GitLabDiff[][],
   batchLevels: RiskLevel[],
-  env: { authToken: string; baseUrl: string; model: string },
+  llmConfig: LLMConfig,
   requirement?: RequirementUnderstanding,
   knowledgeEntries?: KnowledgeEntry[]
 ): Promise<ReviewReport> {
-  const client = createClient(env);
   const totalBatches = batchDiffs.length;
   const batchReports: ReviewReport[] = [];
 
@@ -90,19 +59,8 @@ export async function reviewBatches(
 
     const systemPrompt = buildBatchPrompt(level, i, totalBatches) + reqPrompt + knowledgePrompt;
 
-    const response = await client.messages.create({
-      model: env.model,
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [{ role: "user", content: `请评审以下代码变更：\n\n${diffText}` }],
-    });
-
-    const text = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("");
-
-    batchReports.push(parseReviewResponse(text));
+    const result = await callLLM(systemPrompt, `请评审以下代码变更：\n\n${diffText}`, llmConfig);
+    batchReports.push(parseReviewResponse(result.text));
   }
 
   return mergeReports(batchReports);

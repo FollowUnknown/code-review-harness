@@ -39,6 +39,12 @@ function initialize(db: Database.Database): void {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE INDEX IF NOT EXISTS idx_entries_type ON entries(type);
     CREATE INDEX IF NOT EXISTS idx_entries_project ON entries(project);
     CREATE INDEX IF NOT EXISTS idx_entries_status ON entries(status);

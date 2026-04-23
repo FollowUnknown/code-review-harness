@@ -5,6 +5,7 @@ import { reviewBatches } from "../services/reviewer";
 import { classify } from "../services/classifier";
 import { understandRequirement } from "../services/requirement";
 import { getKnowledgeForReview, saveReview, extractLearnings } from "../services/knowledge";
+import { getLLMConfig } from "../services/settings";
 import { ReviewRequest, ReviewResponse } from "../../shared/types";
 
 const router = Router();
@@ -17,12 +18,11 @@ router.post("/review", async (req: Request, res: Response) => {
     return;
   }
 
-  const authToken = process.env.ANTHROPIC_AUTH_TOKEN;
-  const baseUrl = process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com";
-  const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
+  // Read LLM config from DB (with env var fallback)
+  const llmConfig = getLLMConfig();
 
-  if (!authToken) {
-    res.status(500).json({ error: "ANTHROPIC_AUTH_TOKEN not configured" });
+  if (!llmConfig.apiKey) {
+    res.status(500).json({ error: "LLM API key not configured. Use Settings to configure." });
     return;
   }
 
@@ -57,7 +57,7 @@ router.post("/review", async (req: Request, res: Response) => {
     const report = await reviewBatches(
       batchDiffs,
       batchLevels,
-      { authToken, baseUrl, model },
+      llmConfig,
       requirement,
       knowledge
     );
