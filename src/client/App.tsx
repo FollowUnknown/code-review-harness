@@ -99,6 +99,14 @@ export default function App() {
             >
               Knowledge
             </Link>
+            {authUser.role === "admin" && (
+              <Link
+                to="/dimensions"
+                className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
+              >
+                Dimensions
+              </Link>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-slate-500">{authUser.displayName || authUser.username}</span>

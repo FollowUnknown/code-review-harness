@@ -319,8 +319,14 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
   }
 }
 
-// POST /:id/knowledge-map — Submit issue disposition mapping
+// POST /:id/knowledge-map — Submit issue disposition mapping (admin only)
 router.post("/:id/knowledge-map", (req: Request<{ id: string }>, res: Response) => {
+  const user = (req as Request & { user?: { role: string } }).user;
+  if (user?.role !== "admin") {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+
   const record = findReviewById(req.params.id);
   if (!record) {
     res.status(404).json({ error: "Review not found" });

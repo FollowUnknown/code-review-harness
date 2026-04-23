@@ -34,6 +34,30 @@ claude-skills 已有成熟的知识体系（5 类知识、编号体系、覆盖�
 
 ---
 
+## 1.1 在 Harness Superpower 路线中的位置
+
+本设计不是独立的 harness 框架设计，而是 `codeReview` 作为业务验证场，对 **Phase 4: Memory Superpower** 的一次落地验证。
+
+它验证的不是"GitLab 评审"本身，而是以下通用问题：
+
+- 知识如何从执行结果中写回
+- 自动提取的知识如何进入状态流（TEMP / CONFIRMED / DEPRECATED）
+- 知识如何按作用域分层召回
+- 知识如何被注入后续任务运行时
+
+边界划分如下：
+
+- `harness` 负责定义 Memory 的通用模型、Recall Policy、Writeback Policy、作用域和状态流
+- `codeReview` 负责提供第一个业务实现：review issue、knowledge entry、project/module 召回策略
+
+关联路线见：
+
+- `docs/superpowers/specs/2026-04-23-harness-superpower-roadmap.md`
+
+因此本设计的输出既服务当前业务，也应反哺 harness 的 Memory Superpower 抽象。
+
+---
+
 ## 2. 知识表结构
 
 ### 2.1 替换现有 `entries` 表

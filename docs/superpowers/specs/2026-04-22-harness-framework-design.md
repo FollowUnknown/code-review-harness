@@ -19,6 +19,29 @@
 
 ---
 
+## 在 Superpower 路线中的位置
+
+本设计文档定义的是 harness 的**编排骨架**，对应 `Harness Superpower` 路线中的 **Phase 2: Orchestration Superpower**。
+
+它解决的问题是：
+
+- 任务如何分阶段推进
+- 三个 Agent 如何通过 Contract 协作
+- 在什么节点必须停下来等用户确认
+
+它**不直接覆盖**以下能力，这些能力由其他 superpower 阶段承担：
+
+- Session Superpower：会话记录、任务恢复、跨天延续
+- Execution Superpower：阶段证据、验证命令、review fail 回环
+- Memory Superpower：知识沉淀、召回、作用域治理
+- Capability Superpower：skill/provider/approval 的装配与治理
+
+后续总路线见：
+
+- `docs/superpowers/specs/2026-04-23-harness-superpower-roadmap.md`
+
+---
+
 ## 核心流程
 
 ```
@@ -200,3 +223,8 @@ project/
 - 具体业务功能的实现（那是 harness 运行后的事）
 - 多代理并行协作（Phase 2）
 - 评审历史数据积累和自动校准（Phase 3）
+
+补充说明：
+
+- 本文档是编排层规范，不是完整的 harness 路线图
+- 与业务验证场的衔接由 `codeReview` 各业务 contract 和 superpower 路线文档承担
