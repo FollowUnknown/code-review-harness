@@ -1,8 +1,9 @@
 # Sprint Contract: V2 平台化升级
 
 > 创建时间: 2026-04-23
-> 状态: draft
+> 状态: in-progress (Phase 1-4 完成, Phase 5 待启动)
 > 预计工期: 4 个迭代周期
+> 最近更新: 2026-04-23 20:15
 
 ---
 
@@ -522,7 +523,8 @@ interface PlanSummary {
 - [x] 计划详情页展示汇总统计
 - [x] 支持导出 Markdown 格式的评审报告
 - [x] 计划可以存档（归档后只读）
-- [x] 无 CRITICAL/HIGH 审查问题
+- [x] 无 CRITICAL/HIGH 审查问题（代码审查 9ceed6b 修复：导出认证绕过、SSE 生命周期、输入验证）
+- [ ] 单元测试覆盖（plan-store 18 个 + exporter 7 个 + 路由集成 13 个，共 38 个待写）
 
 ---
 

@@ -39,6 +39,20 @@ router.get("/:id", (req: Request<{ id: string }>, res: Response) => {
     return;
   }
 
+  // Aggregate token usage from LLM logs
+  const logs = getLogsByReviewId(req.params.id);
+  let tokenUsage: { inputTokens: number; outputTokens: number } | undefined;
+  if (logs.length > 0) {
+    const totals = logs.reduce(
+      (acc, log) => ({
+        inputTokens: acc.inputTokens + (log.input_tokens ?? 0),
+        outputTokens: acc.outputTokens + (log.output_tokens ?? 0),
+      }),
+      { inputTokens: 0, outputTokens: 0 },
+    );
+    tokenUsage = totals;
+  }
+
   const response: ReviewResponse = {
     reviewId: record.id,
     mr: record.mr_meta_json ? JSON.parse(record.mr_meta_json) : {} as ReviewResponse["mr"],
@@ -46,6 +60,7 @@ router.get("/:id", (req: Request<{ id: string }>, res: Response) => {
     report: JSON.parse(record.report_json),
     ...(record.classification_json ? { classification: JSON.parse(record.classification_json) } : {}),
     ...(record.requirement_json ? { requirement: JSON.parse(record.requirement_json) } : {}),
+    ...(tokenUsage ? { tokenUsage } : {}),
   };
 
   res.json({ record, response });

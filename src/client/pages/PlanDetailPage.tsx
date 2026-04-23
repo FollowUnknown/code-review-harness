@@ -64,6 +64,11 @@ export function PlanDetailPage() {
     setSseSteps([]);
     try {
       const res = await fetch(`${API_BASE}/api/plans/${id}/start`, { method: "POST", headers: authHeaders(true), body: JSON.stringify({}) });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        setSseSteps([{ step: 1, status: "error" as const, label: err.error || "Start failed" }]);
+        return;
+      }
       const reader = res.body?.getReader();
       if (!reader) return;
       const decoder = new TextDecoder();

@@ -8,7 +8,9 @@
       "Bash(cat*)",
       "Bash(git push*)",
       "Bash(mkdir*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(node:*)"
     ],
     "deny": [
       "Bash(rm -rf*)",

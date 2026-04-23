@@ -126,17 +126,22 @@ router.get("/:id/export", (req: Request<{ id: string }>, res: Response) => {
   if (!plan) { res.status(404).json({ error: "Plan not found" }); return; }
   if (!checkOwner(req, plan.created_by)) { res.status(403).json({ error: "Not authorized" }); return; }
 
-  const records = new Map<string, ReviewRecord>();
-  for (const item of plan.items) {
-    if (item.review_id) {
-      const record = findReviewById(item.review_id);
-      if (record) records.set(item.review_id, record);
+  try {
+    const records = new Map<string, ReviewRecord>();
+    for (const item of plan.items) {
+      if (item.review_id) {
+        const record = findReviewById(item.review_id);
+        if (record) records.set(item.review_id, record);
+      }
     }
+    const md = exportPlanMarkdown(plan, records);
+    res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${plan.title.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, "_")}.md"`);
+    res.send(md);
+  } catch (err) {
+    console.error("Export error:", err);
+    res.status(500).json({ error: "Export failed" });
   }
-  const md = exportPlanMarkdown(plan, records);
-  res.setHeader("Content-Type", "text/markdown; charset=utf-8");
-  res.setHeader("Content-Disposition", `attachment; filename="${plan.title.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, "_")}.md"`);
-  res.send(md);
 });
 
 // POST /:id/start — Batch review (SSE)
@@ -166,8 +171,9 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
   const userId = (req as Request & { user?: { id: string } }).user?.id || "";
   let step = 0;
   let aborted = false;
-  req.on("close", () => { aborted = true; });
+  res.on("close", () => { aborted = true; });
 
+  try {
   for (let mi = 0; mi < pendingItems.length; mi++) {
     if (aborted) { break; }
     const item = pendingItems[mi];
@@ -177,13 +183,17 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
 
     try {
       const parsed = parseMRUrl(item.mr_url);
+      console.log(`[Plan ${plan.id}] MR ${mi + 1}: parsed host=${parsed.host} project=${parsed.projectPath} iid=${parsed.iid}`);
       const [mr, diffs] = await Promise.all([
         fetchMRMeta(parsed.host, parsed.projectPath, parsed.iid, gitlabToken),
         fetchMRDiffs(parsed.host, parsed.projectPath, parsed.iid, gitlabToken),
       ]);
+      console.log(`[Plan ${plan.id}] MR ${mi + 1}: fetched ${diffs.length} diffs`);
 
       const project = parsed.projectPath.split("/").pop() || parsed.projectPath;
       const { summary: classification, batchDiffs } = classify(diffs);
+      console.log(`[Plan ${plan.id}] MR ${mi + 1}: classified ${classification.stats.total} files, ${batchDiffs.length} batches, aborted=${aborted}`);
+
       const batchLevels = classification.batches.map((b) => b.level);
       const requirement = await understandRequirement(mr, diffs);
       const knowledge = getKnowledgeForReview(project, requirement.module);
@@ -195,7 +205,7 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
       const batchReports = [];
 
       for (let i = 0; i < batchDiffs.length; i++) {
-        if (aborted) break;
+        if (aborted) { console.log(`[Plan ${plan.id}] MR ${mi + 1} batch ${i}: ABORTED, skipping LLM`); break; }
         const diffText = batchDiffs[i].map((d: { old_path: string; new_path: string; diff: string }) => `--- ${d.old_path}\n+++ ${d.new_path}\n${d.diff}`).join("\n\n");
         const systemPrompt = getReviewPrompt({ dimensions: REVIEW_DIMENSIONS, batchIndex: i, totalBatches: batchDiffs.length, riskLevel: batchLevels[i], requirement: reqPrompt, knowledge: knowledgePrompt });
         const userMessage = `${userPromptPrefix}${diffText}`;
@@ -206,14 +216,26 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
         saveLLMLog({ id: `LOG-${randomUUID().slice(0, 8)}`, review_id: reviewId, batch_index: i, risk_level: batchLevels[i], system_prompt: systemPrompt, user_message: userMessage, response_text: result.text, duration_ms: Date.now() - startTime, input_tokens: result.usage?.inputTokens ?? null, output_tokens: result.usage?.outputTokens ?? null, provider: llmConfig.provider, model: llmConfig.model });
       }
 
-      const report = batchDiffs.length > 0 ? mergeReports(batchReports) : { contractTitle: "Code Review", timestamp: new Date().toISOString(), passed: true, scores: [], issues: [], summary: "No files to review" };
-      const stats = computeReviewStats(report);
+      console.log(`[Plan ${plan.id}] MR ${mi + 1}: batchReports=${batchReports.length}, batchDiffs=${batchDiffs.length}, aborted=${aborted}`);
+      const report = batchDiffs.length > 0 && batchReports.length > 0
+        ? mergeReports(batchReports)
+        : null;
 
-      saveReviewRecord({ id: reviewId, mr_url: item.mr_url, project, author: mr.author?.name || null, status: "completed", report_json: JSON.stringify(report), classification_json: JSON.stringify(classification), requirement_json: JSON.stringify({ type: requirement.type, module: requirement.module, features: requirement.features, conflicts: requirement.conflicts, source: requirement.source }), mr_meta_json: JSON.stringify(mr), reviewed_commit_sha: null, passed: report.passed, avg_score: stats.avgScore, issue_count: stats.issueCount, critical_count: stats.criticalCount, created_by: userId });
-      extractLearnings(report, project, reviewId);
-      updatePlanItem(plan.id, item.id, { status: "completed", review_id: reviewId });
+      if (!report) {
+        // No batches reviewed (aborted or empty diff) — skip saving
+        const reason = batchDiffs.length === 0 ? "empty diff" : aborted ? "client disconnected" : "unknown";
+        console.log(`[Plan ${plan.id}] MR ${mi + 1}: no report, reason=${reason}`);
+        updatePlanItem(plan.id, item.id, { status: "failed" });
+        sendSSE({ step, status: "error", label: `MR ${mi + 1} failed: ${reason}` });
+      } else {
+        const stats = computeReviewStats(report);
 
-      sendSSE({ step, status: "done", label: "", detail: `MR ${mi + 1}/${pendingItems.length} completed: ${stats.avgScore?.toFixed(1) ?? "—"} score, ${stats.issueCount} issues`, currentMR: mi + 1, totalMRs: pendingItems.length });
+        saveReviewRecord({ id: reviewId, mr_url: item.mr_url, project, author: mr.author?.name || null, status: "completed", report_json: JSON.stringify(report), classification_json: JSON.stringify(classification), requirement_json: JSON.stringify({ type: requirement.type, module: requirement.module, features: requirement.features, conflicts: requirement.conflicts, source: requirement.source }), mr_meta_json: JSON.stringify(mr), reviewed_commit_sha: null, passed: report.passed, avg_score: stats.avgScore, issue_count: stats.issueCount, critical_count: stats.criticalCount, created_by: userId });
+        extractLearnings(report, project, reviewId);
+        updatePlanItem(plan.id, item.id, { status: "completed", review_id: reviewId });
+
+        sendSSE({ step, status: "done", label: "", detail: `MR ${mi + 1}/${pendingItems.length} completed: ${stats.avgScore?.toFixed(1) ?? "—"} score, ${stats.issueCount} issues`, currentMR: mi + 1, totalMRs: pendingItems.length });
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Review failed";
       updatePlanItem(plan.id, item.id, { status: "failed" });
@@ -222,12 +244,12 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
   }
 
   if (!aborted) {
-    updatePlan(plan.id, { status: "open" });
     sendSSE({ step: step + 1, status: "done", label: "COMPLETE" });
-  } else {
-    updatePlan(plan.id, { status: "open" });
   }
-  res.end();
+  } finally {
+    updatePlan(plan.id, { status: "open" });
+    if (!res.writableEnded) { res.end(); }
+  }
 });
 
 export default router;
