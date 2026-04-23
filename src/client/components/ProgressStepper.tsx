@@ -31,9 +31,13 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
 
     async function startReview() {
       try {
+        const token = localStorage.getItem("auth_token");
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
         const res = await fetch(`${API_BASE}/api/review`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({ mrUrl, lanhuUrl }),
           signal: controller.signal,
         });

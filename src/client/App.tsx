@@ -1,18 +1,52 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ReviewResponse } from "../shared/types";
+import { ReviewResponse, User } from "../shared/types";
 import { ReviewForm } from "./components/ReviewForm";
 import { ReviewResult } from "./components/ReviewResult";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ProgressStepper } from "./components/ProgressStepper";
+import { LoginPage } from "./pages/LoginPage";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
 export default function App() {
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ReviewResponse | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [reviewingUrl, setReviewingUrl] = useState<string | null>(null);
   const [lanhuUrl, setLanhuUrl] = useState<string | undefined>(undefined);
+
+  // Check existing auth on mount
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      setAuthChecked(true);
+      return;
+    }
+    fetch(`${API_BASE}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("invalid");
+        return r.json();
+      })
+      .then((user: User) => setAuthUser(user))
+      .catch(() => localStorage.removeItem("auth_token"))
+      .finally(() => setAuthChecked(true));
+  }, []);
+
+  function handleLogin(token: string, user: User) {
+    localStorage.setItem("auth_token", token);
+    setAuthUser(user);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("auth_token");
+    setAuthUser(null);
+  }
 
   function handleSubmit(mrUrl: string, lanhu?: string) {
     setLoading(true);
@@ -34,6 +68,19 @@ export default function App() {
     setError(message);
   }
 
+  // Auth gate
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!authUser) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <div className="max-w-6xl mx-auto px-6 py-8">
@@ -49,18 +96,32 @@ export default function App() {
             </h1>
             <p className="text-sm text-slate-500 mt-1">AI-powered code review with risk classification</p>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowSettings(!showSettings)}
-            className={`px-4 py-2 text-sm rounded-lg border transition-all ${
-              showSettings
-                ? "bg-slate-700 border-slate-600 text-white"
-                : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600"
-            }`}
-          >
-            Settings
-          </motion.button>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-500">{authUser.displayName || authUser.username}</span>
+            {authUser.role === "admin" && (
+              <span className="text-xs px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded">admin</span>
+            )}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleLogout}
+              className="px-3 py-1.5 text-xs rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
+            >
+              Logout
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowSettings(!showSettings)}
+              className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
+                showSettings
+                  ? "bg-slate-700 border-slate-600 text-white"
+                  : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600"
+              }`}
+            >
+              Settings
+            </motion.button>
+          </div>
         </motion.div>
 
         {/* Settings Panel */}

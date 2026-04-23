@@ -24,6 +24,13 @@ function isMasked(value: string): boolean {
   return value.includes("****");
 }
 
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem("auth_token");
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
 export function SettingsPanel({ onClose }: Props) {
   const [config, setConfig] = useState<LLMConfigDisplay>({
     provider: "anthropic",
@@ -36,7 +43,7 @@ export function SettingsPanel({ onClose }: Props) {
   const [showKey, setShowKey] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/settings/llm`)
+    fetch(`${API_BASE}/api/settings/llm`, { headers: authHeaders() })
       .then((res) => res.json())
       .then((data) => setConfig(data as LLMConfigDisplay))
       .catch(() => setMessage("Failed to load settings"));
@@ -65,7 +72,7 @@ export function SettingsPanel({ onClose }: Props) {
 
       const res = await fetch(`${API_BASE}/api/settings/llm`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify(body),
       });
 

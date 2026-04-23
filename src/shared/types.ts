@@ -116,3 +116,20 @@ export interface ReviewResponse {
   classification?: ClassificationSummary;
   requirement?: RequirementSummary;
 }
+
+// ---- Auth Types ----
+
+export type UserRole = "admin" | "member";
+
+export interface User {
+  id: string;
+  username: string;
+  displayName: string | null;
+  role: UserRole;
+  createdAt: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}

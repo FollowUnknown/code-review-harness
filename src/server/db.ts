@@ -48,6 +48,16 @@ function initialize(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_entries_type ON entries(type);
     CREATE INDEX IF NOT EXISTS idx_entries_project ON entries(project);
     CREATE INDEX IF NOT EXISTS idx_entries_status ON entries(status);
+
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      display_name TEXT,
+      role TEXT NOT NULL DEFAULT 'member' CHECK(role IN ('admin', 'member')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 }
 
