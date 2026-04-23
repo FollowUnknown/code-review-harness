@@ -65,6 +65,7 @@ function RiskBadge({ level }: { level: RiskLevel }) {
 
 export function ReviewResult({ data, onReset }: Props) {
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+  const [showDiffModal, setShowDiffModal] = useState(false);
   const { mr, diffs, report, classification, requirement, tokenUsage, batchDetails } = data;
 
   function toggleFile(path: string) {
@@ -273,68 +274,93 @@ export function ReviewResult({ data, onReset }: Props) {
         )}
       </motion.div>
 
-      {/* Diff Viewer */}
+      {/* Code Changes Button */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
       >
-        <h3 className="text-sm font-semibold text-slate-300 mb-3">Code Changes</h3>
-        <div className="space-y-2">
-          {diffs.map((diff) => {
-            const fileClass = classification?.batches
-              .flatMap((b) => b.files)
-              .find((f) => f.path === diff.new_path);
-            const isExpanded = expandedFiles.has(diff.new_path);
-
-            return (
-              <div key={diff.new_path} className="rounded-lg border border-slate-700/40 overflow-hidden">
-                <button
-                  onClick={() => toggleFile(diff.new_path)}
-                  className="w-full px-4 py-3 text-left bg-slate-800/40 hover:bg-slate-800/60 transition-all flex items-center gap-3"
-                >
-                  <motion.span
-                    animate={{ rotate: isExpanded ? 90 : 0 }}
-                    className="text-slate-600 text-xs"
-                  >
-                    ▶
-                  </motion.span>
-                  <span className="font-mono text-xs text-slate-400">{diff.new_path}</span>
-                  {fileClass && <RiskBadge level={fileClass.level} />}
-                  {diff.new_file && (
-                    <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500/15 text-emerald-400 rounded">NEW</span>
-                  )}
-                  {diff.deleted_file && (
-                    <span className="px-1.5 py-0.5 text-[10px] bg-red-500/15 text-red-400 rounded">DEL</span>
-                  )}
-                </button>
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="bg-slate-900/50 overflow-x-auto">
-                        <ReactDiffViewer
-                          oldValue={""}
-                          newValue={diff.diff}
-                          splitView={false}
-                          useDarkTheme={true}
-                          leftTitle={diff.old_path}
-                          rightTitle={diff.new_path}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
-        </div>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setShowDiffModal(true)}
+          className="px-5 py-2.5 text-sm font-medium border border-slate-700/50 rounded-lg text-slate-400 hover:text-white transition-all"
+        >
+          Code Changes ({diffs.length} files)
+        </motion.button>
       </motion.div>
+
+      {/* Diff Modal */}
+      <AnimatePresence>
+        {showDiffModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setShowDiffModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="w-full max-w-5xl max-h-[85vh] bg-slate-900 border border-slate-700/50 rounded-xl shadow-2xl flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700/50">
+                <h3 className="text-sm font-semibold text-slate-300">Code Changes ({diffs.length} files)</h3>
+                <button onClick={() => setShowDiffModal(false)} className="text-slate-500 hover:text-slate-300 text-lg leading-none">&times;</button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {diffs.map((diff) => {
+                  const fileClass = classification?.batches
+                    .flatMap((b) => b.files)
+                    .find((f) => f.path === diff.new_path);
+                  const isExpanded = expandedFiles.has(diff.new_path);
+
+                  return (
+                    <div key={diff.new_path} className="rounded-lg border border-slate-700/40 overflow-hidden">
+                      <button
+                        onClick={() => toggleFile(diff.new_path)}
+                        className="w-full px-4 py-3 text-left bg-slate-800/40 hover:bg-slate-800/60 transition-all flex items-center gap-3"
+                      >
+                        <motion.span animate={{ rotate: isExpanded ? 90 : 0 }} className="text-slate-600 text-xs">▶</motion.span>
+                        <span className="font-mono text-xs text-slate-400">{diff.new_path}</span>
+                        {fileClass && <RiskBadge level={fileClass.level} />}
+                        {diff.new_file && <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500/15 text-emerald-400 rounded">NEW</span>}
+                        {diff.deleted_file && <span className="px-1.5 py-0.5 text-[10px] bg-red-500/15 text-red-400 rounded">DEL</span>}
+                      </button>
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="bg-slate-900/50 overflow-x-auto">
+                              <ReactDiffViewer
+                                oldValue={""}
+                                newValue={diff.diff}
+                                splitView={false}
+                                useDarkTheme={true}
+                                leftTitle={diff.old_path}
+                                rightTitle={diff.new_path}
+                              />
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
