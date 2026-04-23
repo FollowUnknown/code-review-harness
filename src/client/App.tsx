@@ -5,6 +5,7 @@ import { ReviewForm } from "./components/ReviewForm";
 import { ReviewResult } from "./components/ReviewResult";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ProgressStepper } from "./components/ProgressStepper";
+import { PromptEditor } from "./components/PromptEditor";
 import { LoginPage } from "./pages/LoginPage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
@@ -16,6 +17,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ReviewResponse | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showPrompts, setShowPrompts] = useState(false);
   const [reviewingUrl, setReviewingUrl] = useState<string | null>(null);
   const [lanhuUrl, setLanhuUrl] = useState<string | undefined>(undefined);
 
@@ -109,6 +111,20 @@ export default function App() {
             >
               Logout
             </motion.button>
+            {authUser.role === "admin" && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowPrompts(!showPrompts)}
+                className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
+                  showPrompts
+                    ? "bg-slate-700 border-slate-600 text-white"
+                    : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600"
+                }`}
+              >
+                Prompts
+              </motion.button>
+            )}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -134,6 +150,20 @@ export default function App() {
               className="overflow-hidden mb-6"
             >
               <SettingsPanel onClose={() => setShowSettings(false)} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Prompt Editor (admin only) */}
+        <AnimatePresence>
+          {showPrompts && authUser.role === "admin" && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden mb-6"
+            >
+              <PromptEditor onClose={() => setShowPrompts(false)} />
             </motion.div>
           )}
         </AnimatePresence>

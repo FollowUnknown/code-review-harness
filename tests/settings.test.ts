@@ -3,9 +3,8 @@ import {
   getSetting,
   setSetting,
   getAllSettings,
-  getLLMConfig,
-  saveLLMConfig,
 } from "../src/server/services/settings";
+import { getLLMConfig, saveLLMConfig } from "../src/server/llm/config";
 import { getDb, closeDb } from "../src/server/db";
 
 // Use in-memory database for tests

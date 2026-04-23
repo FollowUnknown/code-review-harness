@@ -1,11 +1,15 @@
 import { Router, Request, Response } from "express";
 import { randomUUID } from "crypto";
 import { parseMRUrl, fetchMRMeta, fetchMRDiffs } from "../services/gitlab";
-import { reviewBatches } from "../services/reviewer";
 import { classify } from "../services/classifier";
 import { understandRequirement } from "../services/requirement";
 import { getKnowledgeForReview, saveReview, extractLearnings } from "../services/knowledge";
-import { getLLMConfig } from "../services/settings";
+import { parseReviewResponse, mergeReports } from "../services/reviewer";
+import { buildRequirementPrompt } from "../services/requirement";
+import { buildKnowledgePrompt } from "../services/knowledge";
+import { callLLM, getLLMConfig } from "../llm";
+import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
+import { REVIEW_DIMENSIONS } from "../../shared/constants";
 import { ReviewRequest, ReviewResponse } from "../../shared/types";
 
 const router = Router();
@@ -114,15 +118,9 @@ router.post("/review", async (req: Request, res: Response) => {
         summary: "All files were classified as low-risk and skipped.",
       };
     } else {
-      // We'll call reviewBatches manually per batch to send progress
-      const { REVIEW_DIMENSIONS, PASS_THRESHOLD } = await import("../../shared/constants");
-      const { parseReviewResponse, mergeReports } = await import("../services/reviewer");
-      const { buildRequirementPrompt } = await import("../services/requirement");
-      const { buildKnowledgePrompt } = await import("../services/knowledge");
-      const { callLLM } = await import("../services/llm");
-
       const reqPrompt = requirement ? buildRequirementPrompt(requirement) : "";
       const knowledgePrompt = knowledge.length > 0 ? buildKnowledgePrompt(knowledge) : "";
+      const userPromptPrefix = getReviewUserPrompt();
 
       const batchReports = [];
 
@@ -137,30 +135,23 @@ router.post("/review", async (req: Request, res: Response) => {
           .map((d: { old_path: string; new_path: string; diff: string }) => `--- ${d.old_path}\n+++ ${d.new_path}\n${d.diff}`)
           .join("\n\n");
 
-        const levelDesc: Record<string, string> = { S: "高风险", A: "中高风险", B: "中低风险", C: "低风险" };
-        const basePrompt = `你是一个专业的代码评审专家。你需要对提供的代码变更进行评审，并按照指定维度打分。
+        const systemPrompt = getReviewPrompt({
+          dimensions: REVIEW_DIMENSIONS,
+          batchIndex: i,
+          totalBatches,
+          riskLevel: level,
+          requirement: reqPrompt,
+          knowledge: knowledgePrompt,
+        });
 
-评分维度（每项 1-5 分）：
-${REVIEW_DIMENSIONS.map((d: string, idx: number) => `${idx + 1}. ${d}`).join("\n")}
-
-请严格按照以下 JSON 格式输出评审结果，不要输出其他内容：
-{
-  "scores": [{"dimension": "维度名", "score": 1-5, "comment": "具体说明"}],
-  "issues": [{"severity": "CRITICAL/HIGH/MEDIUM/LOW", "message": "问题描述", "file": "文件名", "line": 行号, "suggestion": "修复建议"}],
-  "summary": "1-2段总结"
-}
-
-当前评审批次：第 ${i + 1}/${totalBatches} 批，风险等级：${levelDesc[level]}。`;
-
-        const systemPrompt = basePrompt + reqPrompt + knowledgePrompt;
-        const result = await callLLM(systemPrompt, `请评审以下代码变更：\n\n${diffText}`, llmConfig);
+        const result = await callLLM(systemPrompt, `${userPromptPrefix}${diffText}`, llmConfig);
         batchReports.push(parseReviewResponse(result.text));
 
         sendSSE(res, {
           step,
           status: "done",
           label: "",
-          detail: `${batchDiffs[i].length} files reviewed`,
+          detail: `${batchDiffs[i].length} files reviewed${result.usage ? ` (${result.usage.inputTokens}+${result.usage.outputTokens} tokens)` : ""}`,
           progress: Math.round(((i + 1) / totalBatches) * 100),
         });
       }
