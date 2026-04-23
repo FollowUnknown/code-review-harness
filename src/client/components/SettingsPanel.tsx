@@ -43,7 +43,7 @@ export function SettingsPanel({ onClose }: Props) {
   const [showKey, setShowKey] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/settings/llm`, { headers: authHeaders() })
+    fetch(`${API_BASE}/api/llm/settings/llm`, { headers: authHeaders() })
       .then((res) => res.json())
       .then((data) => setConfig(data as LLMConfigDisplay))
       .catch(() => setMessage("Failed to load settings"));
@@ -70,7 +70,7 @@ export function SettingsPanel({ onClose }: Props) {
       if (config.baseUrl) body.baseUrl = config.baseUrl;
       if (config.model) body.model = config.model;
 
-      const res = await fetch(`${API_BASE}/api/settings/llm`, {
+      const res = await fetch(`${API_BASE}/api/llm/settings/llm`, {
         method: "PUT",
         headers: authHeaders(),
         body: JSON.stringify(body),
