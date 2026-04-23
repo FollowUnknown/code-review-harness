@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ReviewPlanDetail, PlanSummary } from "../../shared/types";
 
@@ -43,6 +43,13 @@ export function PlanDetailPage() {
   async function archivePlan() {
     await fetch(`${API_BASE}/api/plans/${id}`, { method: "PUT", headers: authHeaders(true), body: JSON.stringify({ status: "archived" }) });
     loadPlan();
+  }
+
+  const navigate = useNavigate();
+  async function deletePlan() {
+    if (!confirm("Delete this plan and all its items?")) return;
+    await fetch(`${API_BASE}/api/plans/${id}`, { method: "DELETE", headers: authHeaders() });
+    navigate("/plans");
   }
 
   async function exportMd() {
@@ -119,6 +126,7 @@ export function PlanDetailPage() {
           )}
           {completedCount > 0 && <button onClick={exportMd} className="px-3 py-1.5 text-xs border border-slate-700/50 rounded-lg text-slate-400 hover:text-white">Export MD</button>}
           {plan.status === "open" && <button onClick={archivePlan} className="px-3 py-1.5 text-xs border border-slate-700/50 rounded-lg text-slate-400 hover:text-white">Archive</button>}
+          {plan.status !== "reviewing" && <button onClick={deletePlan} className="px-3 py-1.5 text-xs border border-red-800/50 rounded-lg text-red-400/70 hover:text-red-400">Delete</button>}
         </div>
       </div>
 
