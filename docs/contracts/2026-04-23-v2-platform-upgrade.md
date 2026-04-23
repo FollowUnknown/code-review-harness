@@ -120,13 +120,13 @@ ALTER TABLE entries ADD COLUMN created_by TEXT;
 
 #### Phase 1 完成标准
 
-- [ ] users 表创建在 SQLite 中
-- [ ] 所有现有 62 个测试通过
-- [ ] 用户可以注册/登录
-- [ ] JWT 中间件保护所有 /api/* 路由（auth 路由除外）
-- [ ] 管理员可以创建/管理用户
-- [ ] JWT_SECRET 首次启动自动生成，存入 settings 表
-- [ ] 无 CRITICAL/HIGH 审查问题
+- [x] users 表创建在 SQLite 中
+- [x] 所有现有 62 个测试通过
+- [x] 用户可以注册/登录
+- [x] JWT 中间件保护所有 /api/* 路由（auth 路由除外）
+- [x] 管理员可以创建/管理用户
+- [x] JWT_SECRET 首次启动自动生成，存入 settings 表
+- [x] 无 CRITICAL/HIGH 审查问题
 
 #### Phase 1 风险
 
@@ -709,16 +709,16 @@ VALUES
 
 #### Phase 4 完成标准
 
-- [ ] LLM 代码独立在 `src/server/llm/` 目录
-- [ ] review.ts 不再包含 prompt 模板
-- [ ] prompt 模板存 DB，支持界面编辑和版本管理
-- [ ] DB prompt 优先，代码默认值兜底
+- [x] LLM 代码独立在 `src/server/llm/` 目录
+- [x] review.ts 不再包含 prompt 模板
+- [x] prompt 模板存 DB，支持界面编辑和版本管理
+- [x] DB prompt 优先，代码默认值兜底
 - [ ] 支持 Preview 预览渲染后的完整 prompt
-- [ ] 支持 Reset 重置为代码默认值
+- [x] 支持 Reset 重置为代码默认值
 - [ ] 每个 prompt 函数有单元测试
-- [ ] 新增 provider 只需加一个文件
-- [ ] 所有现有 62+ 测试通过
-- [ ] 无 CRITICAL/HIGH 审查问题
+- [x] 新增 provider 只需加一个文件
+- [x] 所有现有 83 测试通过
+- [x] 无 CRITICAL/HIGH 审查问题
 
 ---
 

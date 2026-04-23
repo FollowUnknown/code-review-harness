@@ -106,6 +106,8 @@ router.post("/review", async (req: Request, res: Response) => {
     // Step 6+: Review batches
     const totalBatches = batchDiffs.length;
     let report;
+    let tokenUsage: { inputTokens: number; outputTokens: number } | undefined;
+    let batchDetails: Array<{ files: number; tokens: { inputTokens: number; outputTokens: number } }> | undefined;
 
     if (totalBatches === 0) {
       sendSSE(res, { step: step + 1, status: "done", label: "No files to review", detail: "All files skipped" });
@@ -123,6 +125,9 @@ router.post("/review", async (req: Request, res: Response) => {
       const userPromptPrefix = getReviewUserPrompt();
 
       const batchReports = [];
+      const _batchDetails: Array<{ files: number; tokens: { inputTokens: number; outputTokens: number } }> = [];
+      let totalInput = 0;
+      let totalOutput = 0;
 
       for (let i = 0; i < batchDiffs.length; i++) {
         const level = batchLevels[i];
@@ -147,11 +152,21 @@ router.post("/review", async (req: Request, res: Response) => {
         const result = await callLLM(systemPrompt, `${userPromptPrefix}${diffText}`, llmConfig);
         batchReports.push(parseReviewResponse(result.text));
 
+        if (result.usage) {
+          totalInput += result.usage.inputTokens;
+          totalOutput += result.usage.outputTokens;
+          _batchDetails.push({ files: batchDiffs[i].length, tokens: result.usage });
+        }
+
+        const tokenDetail = result.usage
+          ? `${batchDiffs[i].length} files reviewed (${result.usage.inputTokens}+${result.usage.outputTokens} tokens)`
+          : `${batchDiffs[i].length} files reviewed`;
+
         sendSSE(res, {
           step,
           status: "done",
           label: "",
-          detail: `${batchDiffs[i].length} files reviewed${result.usage ? ` (${result.usage.inputTokens}+${result.usage.outputTokens} tokens)` : ""}`,
+          detail: tokenDetail,
           progress: Math.round(((i + 1) / totalBatches) * 100),
         });
       }
@@ -160,6 +175,11 @@ router.post("/review", async (req: Request, res: Response) => {
       nextStep("Merging results", `${batchReports.length} batches`);
       report = mergeReports(batchReports);
       completeStep();
+
+      if (totalInput > 0) {
+        tokenUsage = { inputTokens: totalInput, outputTokens: totalOutput };
+        batchDetails = _batchDetails;
+      }
     }
 
     // Save review
@@ -181,6 +201,7 @@ router.post("/review", async (req: Request, res: Response) => {
         source: requirement.source,
         lanhuSummary: requirement.lanhuSummary,
       },
+      ...(tokenUsage ? { tokenUsage, batchDetails } : {}),
     };
 
     sendSSE(res, { step: step + 1, status: "done", label: "COMPLETE", detail: JSON.stringify(response) });

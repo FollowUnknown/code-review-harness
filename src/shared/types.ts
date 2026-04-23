@@ -109,12 +109,19 @@ export interface RequirementSummary {
   lanhuSummary?: string;
 }
 
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
 export interface ReviewResponse {
   mr: GitLabMRMeta;
   diffs: GitLabDiff[];
   report: ReviewReport;
   classification?: ClassificationSummary;
   requirement?: RequirementSummary;
+  tokenUsage?: TokenUsage;
+  batchDetails?: Array<{ files: number; tokens: TokenUsage }>;
 }
 
 // ---- Auth Types ----

@@ -110,7 +110,10 @@ export function parseReviewResponse(text: string): ReviewReport {
   });
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return fallbackReport();
+  if (!jsonMatch) {
+    console.log("[parseReviewResponse] No JSON found in:", text.slice(0, 300));
+    return fallbackReport();
+  }
 
   let parsed: Record<string, unknown>;
   try {

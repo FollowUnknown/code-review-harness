@@ -65,7 +65,7 @@ function RiskBadge({ level }: { level: RiskLevel }) {
 
 export function ReviewResult({ data, onReset }: Props) {
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
-  const { mr, diffs, report, classification, requirement } = data;
+  const { mr, diffs, report, classification, requirement, tokenUsage, batchDetails } = data;
 
   function toggleFile(path: string) {
     setExpandedFiles((prev) => {
@@ -82,6 +82,12 @@ export function ReviewResult({ data, onReset }: Props) {
       <div className="flex justify-between items-center">
         <div className="text-sm text-slate-500">
           {mr.author.name} · {mr.source_branch} → {mr.target_branch} · {mr.changes_count} files
+          {tokenUsage && (
+            <span className="ml-3 text-xs text-slate-600">
+              Tokens: {tokenUsage.inputTokens.toLocaleString()} in + {tokenUsage.outputTokens.toLocaleString()} out
+              ({(tokenUsage.inputTokens + tokenUsage.outputTokens).toLocaleString()} total)
+            </span>
+          )}
         </div>
         <motion.button
           whileHover={{ scale: 1.05 }}

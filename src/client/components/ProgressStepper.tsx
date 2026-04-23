@@ -163,7 +163,7 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
                     <span className="text-sm text-slate-200">{step.label}</span>
                   )}
                 </div>
-                {step.detail && step.label !== "COMPLETE" && !step.label.includes("batch") && (
+                {step.detail && step.status === "done" && step.label !== "COMPLETE" && (
                   <span className={`text-xs ${step.status === "done" ? "text-slate-400" : "text-slate-500"}`}>
                     {step.detail}
                   </span>
