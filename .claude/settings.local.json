@@ -10,7 +10,8 @@
       "Bash(mkdir*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [
       "Bash(rm -rf*)",
