@@ -5,7 +5,7 @@ import ReactDiffViewer from "react-diff-viewer-continued";
 
 interface Props {
   data: ReviewResponse;
-  onReset: () => void;
+  onReset?: () => void;
 }
 
 const RISK_STYLES: Record<RiskLevel, { bg: string; text: string; border: string; pulse?: string }> = {
@@ -101,14 +101,16 @@ export function ReviewResult({ data, onReset }: Props) {
               Code Changes ({diffs.length})
             </motion.button>
           )}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onReset}
-            className="px-4 py-2 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition-all"
-          >
-            New Review
-          </motion.button>
+          {onReset && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onReset}
+              className="px-4 py-2 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition-all"
+            >
+              New Review
+            </motion.button>
+          )}
         </div>
       </div>
 

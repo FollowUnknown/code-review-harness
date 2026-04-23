@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ReviewResult } from "../components/ReviewResult";
 import { LLMHistoryDrawer } from "../components/LLMHistoryDrawer";
 import type { ReviewResponse, ReviewRecord, LLMLog } from "../../shared/types";
@@ -75,12 +75,14 @@ export function ReviewDetailPage() {
         </div>
       </div>
 
-      <ReviewResult data={response} onReset={() => navigate("/")} />
+      <ReviewResult data={response} />
 
-      {/* LLM History Drawer */}
-      {showLogs && id && (
-        <LLMHistoryDrawer reviewId={id} onClose={() => setShowLogs(false)} />
-      )}
+      {/* LLM History Drawer — fixed right-side panel */}
+      <AnimatePresence>
+        {showLogs && id && (
+          <LLMHistoryDrawer reviewId={id} onClose={() => setShowLogs(false)} />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

@@ -72,70 +72,83 @@ export function LLMHistoryDrawer({ reviewId, onClose }: Props) {
   const totalDuration = logs.reduce((sum, l) => sum + l.duration_ms, 0);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="mt-6 bg-slate-800/60 backdrop-blur-sm rounded-xl border border-slate-700/50 p-5"
-    >
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-sm font-semibold text-slate-200">LLM Communication History</h3>
-        <button onClick={onClose} className="text-slate-500 hover:text-slate-300 text-xs">Close</button>
-      </div>
-
-      {/* Summary bar */}
-      <div className="flex gap-4 mb-4 text-xs text-slate-500">
-        <span>{logs.length} calls</span>
-        <span>{totalDuration.toLocaleString()}ms total</span>
-        <span>{totalTokens.toLocaleString()} tokens</span>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-6">
-          <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+    <>
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-40 bg-black/40"
+        onClick={onClose}
+      />
+      {/* Drawer */}
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 250 }}
+        className="fixed top-0 right-0 z-50 h-full w-[480px] max-w-[90vw] bg-slate-900 border-l border-slate-700/50 shadow-2xl flex flex-col"
+      >
+        <div className="flex justify-between items-center px-5 py-3 border-b border-slate-700/50 shrink-0">
+          <h3 className="text-sm font-semibold text-slate-200">LLM Communication History</h3>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 text-lg leading-none">&times;</button>
         </div>
-      ) : logs.length === 0 ? (
-        <p className="text-xs text-slate-600 text-center py-4">No LLM logs recorded</p>
-      ) : (
-        <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-          {logs.map((log) => (
-            <div key={log.id} className="space-y-2">
-              <div className="flex items-center gap-3 text-xs">
-                <span className="text-slate-300 font-medium">Batch {log.batch_index + 1}</span>
-                {log.risk_level && (
-                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-700/50 text-slate-400">{log.risk_level}</span>
-                )}
-                <span className="text-slate-600">|</span>
-                <span className="text-slate-500">{log.duration_ms}ms</span>
-                {log.input_tokens != null && log.output_tokens != null && (
-                  <span className="text-slate-500">{log.input_tokens}+{log.output_tokens} tokens</span>
-                )}
-                {log.provider && <span className="text-slate-600">{log.provider}/{log.model}</span>}
+
+        {/* Summary bar */}
+        <div className="flex gap-4 px-5 py-2 text-xs text-slate-500 border-b border-slate-700/30 shrink-0">
+          <span>{logs.length} calls</span>
+          <span>{totalDuration.toLocaleString()}ms total</span>
+          <span>{totalTokens.toLocaleString()} tokens</span>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-6">
+            <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+          </div>
+        ) : logs.length === 0 ? (
+          <p className="text-xs text-slate-600 text-center py-4">No LLM logs recorded</p>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {logs.map((log) => (
+              <div key={log.id} className="space-y-2">
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="text-slate-300 font-medium">Batch {log.batch_index + 1}</span>
+                  {log.risk_level && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-700/50 text-slate-400">{log.risk_level}</span>
+                  )}
+                  <span className="text-slate-600">|</span>
+                  <span className="text-slate-500">{log.duration_ms}ms</span>
+                  {log.input_tokens != null && log.output_tokens != null && (
+                    <span className="text-slate-500">{log.input_tokens}+{log.output_tokens} tokens</span>
+                  )}
+                  {log.provider && <span className="text-slate-600">{log.provider}/{log.model}</span>}
+                </div>
+
+                <CollapsibleSection title="System Prompt" defaultOpen={false}>
+                  <pre className="p-3 text-[11px] font-mono text-slate-400 whitespace-pre-wrap break-words max-h-60 overflow-y-auto">
+                    {log.system_prompt}
+                  </pre>
+                  <div className="px-3 pb-2"><CopyButton text={log.system_prompt} /></div>
+                </CollapsibleSection>
+
+                <CollapsibleSection title="User Message" defaultOpen={false}>
+                  <pre className="p-3 text-[11px] font-mono text-slate-400 whitespace-pre-wrap break-words max-h-60 overflow-y-auto">
+                    {log.user_message}
+                  </pre>
+                  <div className="px-3 pb-2"><CopyButton text={log.user_message} /></div>
+                </CollapsibleSection>
+
+                <CollapsibleSection title="AI Response" defaultOpen={false}>
+                  <pre className="p-3 text-[11px] font-mono text-slate-400 whitespace-pre-wrap break-words max-h-60 overflow-y-auto">
+                    {log.response_text}
+                  </pre>
+                  <div className="px-3 pb-2"><CopyButton text={log.response_text} /></div>
+                </CollapsibleSection>
               </div>
-
-              <CollapsibleSection title="System Prompt" defaultOpen={false}>
-                <pre className="p-3 text-[11px] font-mono text-slate-400 whitespace-pre-wrap break-words max-h-60 overflow-y-auto">
-                  {log.system_prompt}
-                </pre>
-                <div className="px-3 pb-2"><CopyButton text={log.system_prompt} /></div>
-              </CollapsibleSection>
-
-              <CollapsibleSection title="User Message" defaultOpen={false}>
-                <pre className="p-3 text-[11px] font-mono text-slate-400 whitespace-pre-wrap break-words max-h-60 overflow-y-auto">
-                  {log.user_message}
-                </pre>
-                <div className="px-3 pb-2"><CopyButton text={log.user_message} /></div>
-              </CollapsibleSection>
-
-              <CollapsibleSection title="AI Response" defaultOpen={false}>
-                <pre className="p-3 text-[11px] font-mono text-slate-400 whitespace-pre-wrap break-words max-h-60 overflow-y-auto">
-                  {log.response_text}
-                </pre>
-                <div className="px-3 pb-2"><CopyButton text={log.response_text} /></div>
-              </CollapsibleSection>
-            </div>
-          ))}
-        </div>
-      )}
-    </motion.div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    </>
   );
 }
