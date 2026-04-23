@@ -90,14 +90,26 @@ export function ReviewResult({ data, onReset }: Props) {
             </span>
           )}
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={onReset}
-          className="px-4 py-2 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition-all"
-        >
-          New Review
-        </motion.button>
+        <div className="flex gap-2">
+          {diffs.length > 0 && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowDiffModal(true)}
+              className="px-3 py-1.5 text-xs border border-slate-700/50 rounded-lg text-slate-400 hover:text-white transition-all"
+            >
+              Code Changes ({diffs.length})
+            </motion.button>
+          )}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onReset}
+            className="px-4 py-2 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition-all"
+          >
+            New Review
+          </motion.button>
+        </div>
       </div>
 
       {/* Requirement Understanding */}
@@ -272,22 +284,6 @@ export function ReviewResult({ data, onReset }: Props) {
             {report.summary}
           </div>
         )}
-      </motion.div>
-
-      {/* Code Changes Button */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3 }}
-      >
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setShowDiffModal(true)}
-          className="px-5 py-2.5 text-sm font-medium border border-slate-700/50 rounded-lg text-slate-400 hover:text-white transition-all"
-        >
-          Code Changes ({diffs.length} files)
-        </motion.button>
       </motion.div>
 
       {/* Diff Modal */}
