@@ -3,13 +3,13 @@ import { randomUUID } from "crypto";
 import { parseMRUrl, fetchMRMeta, fetchMRDiffs } from "../services/gitlab";
 import { classify } from "../services/classifier";
 import { understandRequirement } from "../services/requirement";
-import { getKnowledgeForReview, extractLearnings } from "../services/knowledge";
+import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnowledgeHits } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
 import { buildRequirementPrompt } from "../services/requirement";
 import { buildKnowledgePrompt } from "../services/knowledge";
 import { callLLM, getLLMConfig } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
-import { REVIEW_DIMENSIONS } from "../../shared/constants";
+import { getDimensionsForProject } from "../services/dimensions";
 import { ReviewRequest, ReviewResponse } from "../../shared/types";
 import { saveReviewRecord, computeReviewStats } from "../services/review-store";
 import { saveLLMLog } from "../services/llm-logger";
@@ -84,6 +84,7 @@ router.post("/review", async (req: Request, res: Response) => {
     completeStep(`${diffs.length} files changed`);
 
     const project = parsed.projectPath.split("/").pop() || parsed.projectPath;
+    const dimensions = getDimensionsForProject(parsed.projectPath);
 
     // Step 3: Classify files
     nextStep("Classifying files", `Analyzing risk levels...`);
@@ -144,7 +145,7 @@ router.post("/review", async (req: Request, res: Response) => {
           .join("\n\n");
 
         const systemPrompt = getReviewPrompt({
-          dimensions: REVIEW_DIMENSIONS,
+          dimensions,
           batchIndex: i,
           totalBatches,
           riskLevel: level,
@@ -230,8 +231,14 @@ router.post("/review", async (req: Request, res: Response) => {
       issue_count: stats.issueCount,
       critical_count: stats.criticalCount,
       created_by: (req as Request & { user?: { id: string } }).user?.id || null,
+      knowledge_dispositions_json: JSON.stringify(suggestDispositions(report.issues)),
     });
     extractLearnings(report, project, reviewId);
+
+    // Track knowledge hits
+    if (knowledge.length > 0) {
+      trackKnowledgeHits(knowledge.map((e) => e.id));
+    }
 
     // Send final result
     const response: ReviewResponse = {

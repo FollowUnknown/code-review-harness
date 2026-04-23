@@ -8,6 +8,8 @@ import reviewRouter from "./routes/review";
 import reviewsRouter from "./routes/reviews";
 import plansRouter from "./routes/plans";
 import usersRouter from "./routes/users";
+import knowledgeRouter from "./routes/knowledge";
+import dimensionsRouter from "./routes/dimensions";
 import llmRouter from "./llm/router";
 
 const app = express();
@@ -28,6 +30,8 @@ app.use("/api", reviewRouter);
 app.use("/api/reviews", reviewsRouter);
 app.use("/api/plans", plansRouter);
 app.use("/api/users", usersRouter);
+app.use("/api/knowledge", knowledgeRouter);
+app.use("/api/dimension-sets", dimensionsRouter);
 app.use("/api/llm", llmRouter);
 
 // SPA fallback for client-side routing (must be last)

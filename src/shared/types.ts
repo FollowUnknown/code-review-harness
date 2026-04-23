@@ -278,3 +278,29 @@ export interface AuthResponse {
   token: string;
   user: User;
 }
+
+// ---- Knowledge Disposition (Coverage Gate) ----
+
+export type IssueDisposition = "AP" | "EXP" | "RULE" | "MERGE" | "SKIP";
+
+export interface KnowledgeDisposition {
+  issueIndex: number;
+  disposition: IssueDisposition;
+  knowledgeId?: string;
+  skipReason?: string;
+  autoSuggested: boolean;
+}
+
+// ---- Dimension Set ----
+
+export interface DimensionSet {
+  id: string;
+  name: string;
+  project: string | null;
+  dimensions: string[];
+  focus_areas: string[] | null;
+  is_default: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}

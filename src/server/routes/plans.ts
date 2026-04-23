@@ -9,13 +9,13 @@ import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { parseMRUrl, fetchMRMeta, fetchMRDiffs } from "../services/gitlab";
 import { classify } from "../services/classifier";
 import { understandRequirement } from "../services/requirement";
-import { getKnowledgeForReview, extractLearnings } from "../services/knowledge";
+import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnowledgeHits } from "../services/knowledge";
 import { buildRequirementPrompt } from "../services/requirement";
 import { buildKnowledgePrompt } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
 import { saveReviewRecord, computeReviewStats } from "../services/review-store";
 import { saveLLMLog } from "../services/llm-logger";
-import { REVIEW_DIMENSIONS } from "../../shared/constants";
+import { getDimensionsForProject } from "../services/dimensions";
 import type { ReviewResponse, PlanFilter, ReviewRecord } from "../../shared/types";
 
 const router = Router();
@@ -191,6 +191,7 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
       console.log(`[Plan ${plan.id}] MR ${mi + 1}: fetched ${diffs.length} diffs`);
 
       const project = parsed.projectPath.split("/").pop() || parsed.projectPath;
+      const dimensions = getDimensionsForProject(parsed.projectPath);
       const { summary: classification, batchDiffs } = classify(diffs);
       console.log(`[Plan ${plan.id}] MR ${mi + 1}: classified ${classification.stats.total} files, ${batchDiffs.length} batches, aborted=${aborted}`);
 
@@ -207,7 +208,7 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
       for (let i = 0; i < batchDiffs.length; i++) {
         if (aborted) { console.log(`[Plan ${plan.id}] MR ${mi + 1} batch ${i}: ABORTED, skipping LLM`); break; }
         const diffText = batchDiffs[i].map((d: { old_path: string; new_path: string; diff: string }) => `--- ${d.old_path}\n+++ ${d.new_path}\n${d.diff}`).join("\n\n");
-        const systemPrompt = getReviewPrompt({ dimensions: REVIEW_DIMENSIONS, batchIndex: i, totalBatches: batchDiffs.length, riskLevel: batchLevels[i], requirement: reqPrompt, knowledge: knowledgePrompt });
+        const systemPrompt = getReviewPrompt({ dimensions, batchIndex: i, totalBatches: batchDiffs.length, riskLevel: batchLevels[i], requirement: reqPrompt, knowledge: knowledgePrompt });
         const userMessage = `${userPromptPrefix}${diffText}`;
         const startTime = Date.now();
         const result = await callLLM(systemPrompt, userMessage, llmConfig);
@@ -230,8 +231,9 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
       } else {
         const stats = computeReviewStats(report);
 
-        saveReviewRecord({ id: reviewId, mr_url: item.mr_url, project, author: mr.author?.name || null, status: "completed", report_json: JSON.stringify(report), classification_json: JSON.stringify(classification), requirement_json: JSON.stringify({ type: requirement.type, module: requirement.module, features: requirement.features, conflicts: requirement.conflicts, source: requirement.source }), mr_meta_json: JSON.stringify(mr), reviewed_commit_sha: null, passed: report.passed, avg_score: stats.avgScore, issue_count: stats.issueCount, critical_count: stats.criticalCount, created_by: userId });
+        saveReviewRecord({ id: reviewId, mr_url: item.mr_url, project, author: mr.author?.name || null, status: "completed", report_json: JSON.stringify(report), classification_json: JSON.stringify(classification), requirement_json: JSON.stringify({ type: requirement.type, module: requirement.module, features: requirement.features, conflicts: requirement.conflicts, source: requirement.source }), mr_meta_json: JSON.stringify(mr), reviewed_commit_sha: null, passed: report.passed, avg_score: stats.avgScore, issue_count: stats.issueCount, critical_count: stats.criticalCount, created_by: userId, knowledge_dispositions_json: JSON.stringify(suggestDispositions(report.issues)) });
         extractLearnings(report, project, reviewId);
+        if (knowledge.length > 0) { trackKnowledgeHits(knowledge.map((e) => e.id)); }
         updatePlanItem(plan.id, item.id, { status: "completed", review_id: reviewId });
 
         sendSSE({ step, status: "done", label: "", detail: `MR ${mi + 1}/${pendingItems.length} completed: ${stats.avgScore?.toFixed(1) ?? "—"} score, ${stats.issueCount} issues`, currentMR: mi + 1, totalMRs: pendingItems.length });

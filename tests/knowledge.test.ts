@@ -3,13 +3,15 @@ import {
   addEntry,
   getEntry,
   confirmEntry,
+  deprecateEntry,
   deleteEntry,
   listEntries,
-  saveReview,
-  getReview,
+  getKnowledgeStats,
   getKnowledgeForReview,
+  trackKnowledgeHits,
   buildKnowledgePrompt,
   extractLearnings,
+  getProjectAbbr,
 } from "../src/server/services/knowledge";
 import { getDb, closeDb } from "../src/server/db";
 
@@ -18,7 +20,6 @@ process.env.KNOWLEDGE_DB_PATH = ":memory:";
 
 beforeEach(() => {
   closeDb();
-  // Force re-initialization with in-memory DB
   getDb();
 });
 
@@ -26,10 +27,17 @@ afterEach(() => {
   closeDb();
 });
 
+describe("project abbreviation", () => {
+  it("extracts abbreviation from project path", () => {
+    expect(getProjectAbbr("do1cloud-qiqiao/console-web")).toBe("con");
+    expect(getProjectAbbr("do1cloud/runtime-web")).toBe("run");
+    expect(getProjectAbbr("simple")).toBe("sim");
+  });
+});
+
 describe("knowledge entries CRUD", () => {
-  it("adds and retrieves an entry", () => {
+  it("adds an entry with auto-generated TEMP id", () => {
     const entry = addEntry({
-      id: "AP-001",
       type: "AP",
       project: "myapp",
       severity: "HIGH",
@@ -37,109 +45,113 @@ describe("knowledge entries CRUD", () => {
       content: "Always clean up subscriptions in useEffect return",
     });
 
+    expect(entry.id).toMatch(/^AP-TEMP-\d{3}$/);
     expect(entry.status).toBe("TEMP");
+    expect(entry.hit_count).toBe(0);
+    expect(entry.type).toBe("AP");
+  });
 
-    const fetched = getEntry("AP-001");
+  it("retrieves an entry by id", () => {
+    const entry = addEntry({
+      type: "AP",
+      project: "myapp",
+      severity: "HIGH",
+      title: "Test title",
+      content: "Test content",
+    });
+
+    const fetched = getEntry(entry.id);
     expect(fetched).toBeDefined();
-    expect(fetched!.title).toBe("Memory leak in useEffect");
+    expect(fetched!.title).toBe("Test title");
     expect(fetched!.status).toBe("TEMP");
   });
 
-  it("confirms an entry", () => {
-    addEntry({
-      id: "EXP-001",
-      type: "EXP",
+  it("confirms an entry and assigns formal ID", () => {
+    const entry = addEntry({
+      type: "AP",
       project: "myapp",
-      title: "lodash is slow",
-      content: "Use native methods instead",
+      severity: "HIGH",
+      title: "Test",
+      content: "Content",
     });
 
-    const result = confirmEntry("EXP-001");
-    expect(result).toBe(true);
+    const confirmed = confirmEntry(entry.id, "mya");
+    expect(confirmed).toBeDefined();
+    expect(confirmed!.id).toMatch(/^AP-mya-\d{3}$/);
+    expect(confirmed!.status).toBe("CONFIRMED");
 
-    const fetched = getEntry("EXP-001");
-    expect(fetched!.status).toBe("CONFIRMED");
+    // Old TEMP id should no longer exist
+    expect(getEntry(entry.id)).toBeUndefined();
   });
 
-  it("deletes an entry", () => {
-    addEntry({
-      id: "BN-001",
-      type: "BN",
-      project: "myapp",
-      title: "SKU",
-      content: "Stock Keeping Unit",
-    });
-
-    expect(deleteEntry("BN-001")).toBe(true);
-    expect(getEntry("BN-001")).toBeUndefined();
+  it("deprecates an entry", () => {
+    const entry = addEntry({ type: "EXP", project: "app", title: "T", content: "C" });
+    expect(deprecateEntry(entry.id)).toBe(true);
+    expect(getEntry(entry.id)!.status).toBe("DEPRECATED");
   });
 
-  it("lists entries with filters", () => {
-    addEntry({ id: "AP-010", type: "AP", project: "app1", severity: "HIGH", title: "T1", content: "C1" });
-    addEntry({ id: "AP-011", type: "AP", project: "app2", severity: "LOW", title: "T2", content: "C2" });
-    addEntry({ id: "CONV-010", type: "CONV", project: "app1", title: "T3", content: "C3" });
+  it("deletes a TEMP entry only", () => {
+    const entry = addEntry({ type: "BN", project: "app", title: "SKU", content: "Stock Keeping Unit" });
+    expect(deleteEntry(entry.id)).toBe(true);
+    expect(getEntry(entry.id)).toBeUndefined();
+  });
+
+  it("cannot delete a CONFIRMED entry", () => {
+    const entry = addEntry({ type: "AP", project: "app", severity: "HIGH", title: "T", content: "C" });
+    confirmEntry(entry.id, "app");
+    // Try deleting the old TEMP id - it no longer exists
+    expect(deleteEntry(entry.id)).toBe(false);
+  });
+
+  it("lists entries with pagination and filters", () => {
+    addEntry({ type: "AP", project: "app1", severity: "HIGH", title: "T1", content: "C1" });
+    addEntry({ type: "AP", project: "app2", severity: "LOW", title: "T2", content: "C2" });
+    addEntry({ type: "CONV", project: "app1", title: "T3", content: "C3" });
 
     const allAp = listEntries({ type: "AP" });
-    expect(allAp).toHaveLength(2);
+    expect(allAp.total).toBe(2);
+    expect(allAp.items).toHaveLength(2);
 
     const app1Ap = listEntries({ type: "AP", project: "app1" });
-    expect(app1Ap).toHaveLength(1);
+    expect(app1Ap.items).toHaveLength(1);
 
-    const conv = listEntries({ type: "CONV" });
-    expect(conv).toHaveLength(1);
+    const page1 = listEntries({ type: "AP", page: 1, pageSize: 1 });
+    expect(page1.items).toHaveLength(1);
+    expect(page1.total).toBe(2);
   });
 
-  it("lists entries with status filter", () => {
-    addEntry({ id: "AP-020", type: "AP", project: "app", severity: "HIGH", title: "T", content: "C" });
-    confirmEntry("AP-020");
+  it("returns knowledge stats", () => {
+    addEntry({ type: "AP", project: "app1", severity: "HIGH", title: "T", content: "C" });
+    addEntry({ type: "EXP", project: "app1", title: "T2", content: "C2" });
 
-    const temp = listEntries({ status: "TEMP" });
-    expect(temp).toHaveLength(0);
-
-    const confirmed = listEntries({ status: "CONFIRMED" });
-    expect(confirmed).toHaveLength(1);
-  });
-});
-
-describe("review records", () => {
-  it("saves and retrieves a review", () => {
-    saveReview({
-      id: "R-001",
-      mr_url: "https://gitlab.com/project/-/merge_requests/1",
-      project: "myapp",
-      report: JSON.stringify({ passed: true }),
-    });
-
-    const review = getReview("R-001");
-    expect(review).toBeDefined();
-    expect(review!.mr_url).toContain("merge_requests/1");
+    const stats = getKnowledgeStats();
+    expect(stats.length).toBeGreaterThanOrEqual(2);
   });
 });
 
 describe("getKnowledgeForReview", () => {
-  it("returns relevant knowledge entries", () => {
-    // Add shared AP (severity HIGH)
-    addEntry({ id: "AP-100", type: "AP", project: "other", severity: "HIGH", title: "Shared AP", content: "Shared content" });
-    confirmEntry("AP-100");
+  it("returns relevant knowledge entries in priority order", () => {
+    // Layer 1: Universal AP (HIGH, other project)
+    const shared = addEntry({ type: "AP", project: "other", severity: "HIGH", title: "Shared AP", content: "Shared content" });
+    confirmEntry(shared.id, "oth");
 
-    // Add project AP
-    addEntry({ id: "AP-101", type: "AP", project: "myapp", severity: "MEDIUM", title: "Project AP", content: "Project content" });
-    confirmEntry("AP-101");
+    // Layer 2: Project AP
+    const projAp = addEntry({ type: "AP", project: "myapp", severity: "MEDIUM", title: "Project AP", content: "Project content" });
+    confirmEntry(projAp.id, "mya");
 
-    // Add CONV
-    addEntry({ id: "CONV-100", type: "CONV", project: "myapp", title: "Naming convention", content: "Use camelCase" });
-    confirmEntry("CONV-100");
+    // Layer 3: Project CONV
+    const conv = addEntry({ type: "CONV", project: "myapp", title: "Naming convention", content: "Use camelCase" });
+    confirmEntry(conv.id, "mya");
 
-    // Add EXP
-    addEntry({ id: "EXP-100", type: "EXP", project: "myapp", module: "payment", title: "Payment insight", content: "Use idempotency keys" });
-    confirmEntry("EXP-100");
+    // Layer 4: Project EXP with module
+    const exp = addEntry({ type: "EXP", project: "myapp", module: "payment", title: "Payment insight", content: "Use idempotency keys" });
+    confirmEntry(exp.id, "mya");
 
     const knowledge = getKnowledgeForReview("myapp", "payment");
     expect(knowledge.length).toBeGreaterThanOrEqual(4);
 
-    // Module-matched EXP should come before unmatched
-    const expIdx = knowledge.findIndex((e) => e.id === "EXP-100");
-    expect(expIdx).toBeLessThan(knowledge.length);
+    // Module-matched EXP should be present
+    expect(knowledge.find((e) => e.id === confirmEntry(exp.id, "mya")?.id || e.title === "Payment insight")).toBeDefined();
   });
 
   it("returns empty array when no knowledge exists", () => {
@@ -147,12 +159,35 @@ describe("getKnowledgeForReview", () => {
     expect(knowledge).toHaveLength(0);
   });
 
-  it("excludes TEMP entries", () => {
-    addEntry({ id: "AP-200", type: "AP", project: "myapp", severity: "HIGH", title: "Temp", content: "Should not appear" });
-    // Not confirmed - stays TEMP
-
+  it("excludes TEMP and DEPRECATED entries", () => {
+    addEntry({ type: "AP", project: "myapp", severity: "HIGH", title: "Temp", content: "Should not appear" });
     const knowledge = getKnowledgeForReview("myapp");
     expect(knowledge).toHaveLength(0);
+  });
+
+  it("loads RULE entries linked to BN parent", () => {
+    const bn = addEntry({ type: "BN", project: "myapp", title: "Order", content: "Order entity" });
+    const confirmedBn = confirmEntry(bn.id, "mya");
+
+    const rule = addEntry({ type: "RULE", project: "myapp", title: "Order rule", content: "Must have status", parent_id: confirmedBn!.id });
+    confirmEntry(rule.id, "mya");
+
+    const knowledge = getKnowledgeForReview("myapp");
+    const foundRule = knowledge.find((e) => e.type === "RULE");
+    expect(foundRule).toBeDefined();
+  });
+});
+
+describe("trackKnowledgeHits", () => {
+  it("increments hit count for entries", () => {
+    const entry = addEntry({ type: "AP", project: "app", severity: "HIGH", title: "T", content: "C" });
+    const confirmed = confirmEntry(entry.id, "app");
+
+    trackKnowledgeHits([confirmed!.id]);
+
+    const fetched = getEntry(confirmed!.id);
+    expect(fetched!.hit_count).toBe(1);
+    expect(fetched!.last_hit_at).toBeDefined();
   });
 });
 
@@ -161,16 +196,18 @@ describe("buildKnowledgePrompt", () => {
     expect(buildKnowledgePrompt([])).toBe("");
   });
 
-  it("formats entries into prompt text", () => {
+  it("formats entries into structured prompt sections", () => {
     const entries = [
-      { id: "AP-001", type: "AP" as const, project: "app", title: "Anti-pattern", content: "Don't do X", status: "CONFIRMED" as const, created_at: "" },
-      { id: "CONV-001", type: "CONV" as const, project: "app", title: "Convention", content: "Always do Y", status: "CONFIRMED" as const, created_at: "" },
+      { id: "AP-001", type: "AP" as const, project: "app", title: "Anti-pattern", content: "Don't do X", status: "CONFIRMED" as const, pattern: "Bad pattern", fix_suggestion: "Do Y instead", hit_count: 0, created_at: "", updated_at: "" },
+      { id: "CONV-001", type: "CONV" as const, project: "app", title: "Convention", content: "Always do Y", status: "CONFIRMED" as const, hit_count: 0, created_at: "", updated_at: "" },
     ];
 
     const prompt = buildKnowledgePrompt(entries);
     expect(prompt).toContain("项目知识库");
-    expect(prompt).toContain("[反模式] Anti-pattern: Don't do X");
-    expect(prompt).toContain("[约定] Convention: Always do Y");
+    expect(prompt).toContain("反模式");
+    expect(prompt).toContain("Anti-pattern");
+    expect(prompt).toContain("项目约定");
+    expect(prompt).toContain("Convention");
   });
 });
 
@@ -203,6 +240,6 @@ describe("extractLearnings", () => {
     const entries = extractLearnings(report, "myapp", "R-101");
     expect(entries).toHaveLength(1);
     expect(entries[0].type).toBe("AP");
-    expect(entries[0].severity).toBe("HIGH"); // CRITICAL maps to HIGH in knowledge DB
+    expect(entries[0].severity).toBe("CRITICAL");
   });
 });

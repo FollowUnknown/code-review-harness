@@ -1,20 +1,20 @@
 import { getDb } from "../db";
 import type { ReviewRecord, ReviewListItem, ReviewFilter, PaginatedResult, ReviewReport } from "../../shared/types";
 
-export function saveReviewRecord(record: Omit<ReviewRecord, "created_at" | "updated_at">): string {
+export function saveReviewRecord(record: Omit<ReviewRecord, "created_at" | "updated_at"> & { knowledge_dispositions_json?: string }): string {
   const db = getDb();
   db.prepare(`
     INSERT INTO reviews (
       id, mr_url, project, author, status,
       report_json, classification_json, requirement_json, mr_meta_json,
       reviewed_commit_sha, passed, avg_score, issue_count, critical_count,
-      created_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      created_by, knowledge_dispositions_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     record.id, record.mr_url, record.project, record.author, record.status,
     record.report_json, record.classification_json, record.requirement_json, record.mr_meta_json,
     record.reviewed_commit_sha, record.passed ? 1 : 0, record.avg_score, record.issue_count,
-    record.critical_count, record.created_by
+    record.critical_count, record.created_by, record.knowledge_dispositions_json ?? null
   );
   return record.id;
 }

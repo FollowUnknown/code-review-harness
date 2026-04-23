@@ -20,19 +20,6 @@ export function getDb(): Database.Database {
 
 function initialize(db: Database.Database): void {
   db.exec(`
-    CREATE TABLE IF NOT EXISTS entries (
-      id TEXT PRIMARY KEY,
-      type TEXT NOT NULL CHECK(type IN ('AP', 'EXP', 'BN', 'CONV')),
-      project TEXT NOT NULL,
-      module TEXT,
-      severity TEXT CHECK(severity IN ('HIGH', 'MEDIUM', 'LOW')),
-      title TEXT NOT NULL,
-      content TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'TEMP' CHECK(status IN ('TEMP', 'CONFIRMED')),
-      source_review TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
     CREATE TABLE IF NOT EXISTS reviews (
       id TEXT PRIMARY KEY,
       mr_url TEXT NOT NULL,
@@ -46,10 +33,6 @@ function initialize(db: Database.Database): void {
       value TEXT NOT NULL,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
-
-    CREATE INDEX IF NOT EXISTS idx_entries_type ON entries(type);
-    CREATE INDEX IF NOT EXISTS idx_entries_project ON entries(project);
-    CREATE INDEX IF NOT EXISTS idx_entries_status ON entries(status);
 
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -77,8 +60,59 @@ function initialize(db: Database.Database): void {
     );
   `);
 
+  // Knowledge entries (replacing legacy `entries` table)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS knowledge_entries (
+      id              TEXT PRIMARY KEY,
+      type            TEXT NOT NULL CHECK(type IN ('AP', 'EXP', 'CONV', 'BN', 'RULE')),
+      project         TEXT NOT NULL,
+      module          TEXT,
+      severity        TEXT CHECK(severity IN ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW')),
+      title           TEXT NOT NULL,
+      pattern         TEXT,
+      impact          TEXT,
+      fix_suggestion  TEXT,
+      content         TEXT NOT NULL,
+      status          TEXT NOT NULL DEFAULT 'TEMP' CHECK(status IN ('TEMP', 'CONFIRMED', 'DEPRECATED')),
+      source_review   TEXT,
+      source_mr       TEXT,
+      source_file     TEXT,
+      parent_id       TEXT,
+      hit_count       INTEGER NOT NULL DEFAULT 0,
+      last_hit_at     TEXT,
+      created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (parent_id) REFERENCES knowledge_entries(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_ke_type ON knowledge_entries(type);
+    CREATE INDEX IF NOT EXISTS idx_ke_project ON knowledge_entries(project);
+    CREATE INDEX IF NOT EXISTS idx_ke_status ON knowledge_entries(status);
+    CREATE INDEX IF NOT EXISTS idx_ke_type_project ON knowledge_entries(type, project);
+    CREATE INDEX IF NOT EXISTS idx_ke_type_project_status ON knowledge_entries(type, project, status);
+  `);
+
+  // Review dimension sets (project-level review dimensions)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS review_dimension_sets (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL UNIQUE,
+      project     TEXT,
+      dimensions  TEXT NOT NULL,
+      focus_areas TEXT,
+      is_default  INTEGER NOT NULL DEFAULT 0,
+      created_by  TEXT NOT NULL,
+      created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_rds_project ON review_dimension_sets(project);
+  `);
+
   // Migrate reviews table to extended schema (safe, idempotent)
   migrateReviewsTable(db);
+
+  // Seed default dimension set (idempotent)
+  seedDefaultDimensionSet(db);
 
   // LLM communication logs
   db.exec(`
@@ -144,6 +178,12 @@ function migrateReviewsTable(db: Database.Database): void {
   const columns = db.prepare("PRAGMA table_info(reviews)").all() as Array<{ name: string }>;
   const hasReportJson = columns.some((c) => c.name === "report_json");
 
+  // Add knowledge_dispositions_json column if missing
+  const hasDisposition = columns.some((c) => c.name === "knowledge_dispositions_json");
+  if (!hasDisposition && hasReportJson) {
+    db.exec("ALTER TABLE reviews ADD COLUMN knowledge_dispositions_json TEXT");
+  }
+
   if (hasReportJson) return; // Already migrated
 
   const migrate = db.transaction(() => {
@@ -166,6 +206,7 @@ function migrateReviewsTable(db: Database.Database): void {
         issue_count INTEGER,
         critical_count INTEGER DEFAULT 0,
         created_by TEXT,
+        knowledge_dispositions_json TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
@@ -184,6 +225,20 @@ function migrateReviewsTable(db: Database.Database): void {
   });
 
   migrate();
+}
+
+function seedDefaultDimensionSet(db: Database.Database): void {
+  const existing = db.prepare("SELECT COUNT(*) as cnt FROM review_dimension_sets WHERE is_default = 1").get() as { cnt: number };
+  if (existing.cnt > 0) return;
+
+  db.prepare(
+    `INSERT INTO review_dimension_sets (id, name, project, dimensions, focus_areas, is_default, created_by)
+     VALUES (?, ?, NULL, ?, NULL, 1, 'system')`
+  ).run(
+    "default",
+    "默认维度集",
+    JSON.stringify([...REVIEW_DIMENSIONS])
+  );
 }
 
 export function closeDb(): void {

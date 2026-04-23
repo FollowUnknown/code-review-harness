@@ -8,13 +8,14 @@ import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { parseMRUrl, fetchMRMeta, fetchMRDiffs, fetchMRHeadSha, fetchCompareDiffs } from "../services/gitlab";
 import { classify } from "../services/classifier";
 import { understandRequirement } from "../services/requirement";
-import { getKnowledgeForReview, extractLearnings } from "../services/knowledge";
+import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnowledgeHits } from "../services/knowledge";
 import { buildRequirementPrompt } from "../services/requirement";
 import { buildKnowledgePrompt } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
 import { saveLLMLog } from "../services/llm-logger";
-import { REVIEW_DIMENSIONS } from "../../shared/constants";
-import type { ReviewResponse, ReviewFilter, ContinueReviewRequest } from "../../shared/types";
+import { getDimensionsForProject } from "../services/dimensions";
+import { getDb } from "../db";
+import type { ReviewResponse, ReviewFilter, ContinueReviewRequest, KnowledgeDisposition } from "../../shared/types";
 
 const router = Router();
 
@@ -210,6 +211,7 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
 
   try {
     const project = ctx.parsed.projectPath.split("/").pop() || ctx.parsed.projectPath;
+    const dimensions = getDimensionsForProject(ctx.parsed.projectPath);
     const { summary: classification, batchDiffs } = classify(ctx.diffs);
     const batchLevels = classification.batches.map((b) => b.level);
     const requirement = await understandRequirement(
@@ -233,7 +235,7 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
         .join("\n\n");
 
       const systemPrompt = getReviewPrompt({
-        dimensions: REVIEW_DIMENSIONS,
+        dimensions,
         batchIndex: i,
         totalBatches: batchDiffs.length,
         riskLevel: level,
@@ -288,8 +290,13 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
       issue_count: stats.issueCount,
       critical_count: stats.criticalCount,
       created_by: (ctx.req as Request & { user?: { id: string } }).user?.id || null,
+      knowledge_dispositions_json: JSON.stringify(suggestDispositions(report.issues)),
     });
     extractLearnings(report, project, newReviewId);
+
+    if (knowledge.length > 0) {
+      trackKnowledgeHits(knowledge.map((e) => e.id));
+    }
 
     // Update old record status
     updateReview(ctx.existing.id, { status: "draft" });
@@ -311,5 +318,57 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
     res.end();
   }
 }
+
+// POST /:id/knowledge-map — Submit issue disposition mapping
+router.post("/:id/knowledge-map", (req: Request<{ id: string }>, res: Response) => {
+  const record = findReviewById(req.params.id);
+  if (!record) {
+    res.status(404).json({ error: "Review not found" });
+    return;
+  }
+
+  const { dispositions } = req.body as { dispositions: KnowledgeDisposition[] };
+  if (!Array.isArray(dispositions)) {
+    res.status(400).json({ error: "dispositions array required" });
+    return;
+  }
+
+  // Validate: CRITICAL/HIGH issues cannot be SKIP without a reason
+  let report: { issues: Array<{ severity: string }> } | null = null;
+  try {
+    report = JSON.parse(record.report_json);
+  } catch { /* ignore parse error */ }
+
+  if (report?.issues) {
+    for (const disp of dispositions) {
+      const issue = report.issues[disp.issueIndex];
+      if (!issue) continue;
+      if ((issue.severity === "CRITICAL" || issue.severity === "HIGH") && disp.disposition === "SKIP" && !disp.skipReason) {
+        res.status(400).json({ error: `Issue ${disp.issueIndex} (${issue.severity}) cannot be SKIP without a reason` });
+        return;
+      }
+    }
+  }
+
+  const db = getDb();
+  db.prepare("UPDATE reviews SET knowledge_dispositions_json = ? WHERE id = ?").run(
+    JSON.stringify(dispositions), req.params.id
+  );
+  res.json({ success: true });
+});
+
+// GET /:id/knowledge-map — Get disposition mapping
+router.get("/:id/knowledge-map", (req: Request<{ id: string }>, res: Response) => {
+  const record = findReviewById(req.params.id);
+  if (!record) {
+    res.status(404).json({ error: "Review not found" });
+    return;
+  }
+
+  const db = getDb();
+  const row = db.prepare("SELECT knowledge_dispositions_json FROM reviews WHERE id = ?").get(req.params.id) as { knowledge_dispositions_json: string | null };
+  const dispositions = row.knowledge_dispositions_json ? JSON.parse(row.knowledge_dispositions_json) : null;
+  res.json({ dispositions });
+});
 
 export default router;

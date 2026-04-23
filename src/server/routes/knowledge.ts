@@ -1,0 +1,147 @@
+import { Router, Request, Response } from "express";
+import {
+  getEntry,
+  updateEntry,
+  confirmEntry,
+  deprecateEntry,
+  deleteEntry,
+  listEntries,
+  getKnowledgeStats,
+} from "../services/knowledge";
+import type { EntryType, EntryStatus } from "../services/knowledge";
+
+const router = Router();
+
+function getUser(req: Request): { id: string; role: string } | undefined {
+  return (req as Request & { user?: { id: string; role: string } }).user;
+}
+
+function requireAdmin(req: Request, res: Response): boolean {
+  const user = getUser(req);
+  if (user?.role !== "admin") {
+    res.status(403).json({ error: "Admin access required" });
+    return false;
+  }
+  return true;
+}
+
+function checkProjectAccess(req: Request, entryProject: string): boolean {
+  const user = getUser(req);
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  // Members can only operate on their own projects — for now allow all members
+  // since project ownership is not tracked per user
+  return true;
+}
+
+// GET / — List knowledge entries with pagination and filters
+router.get("/", (req: Request, res: Response) => {
+  const type = req.query.type as EntryType | undefined;
+  const project = req.query.project as string | undefined;
+  const status = req.query.status as EntryStatus | undefined;
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20));
+
+  const validTypes: EntryType[] = ["AP", "EXP", "CONV", "BN", "RULE"];
+  if (type && !validTypes.includes(type)) {
+    res.status(400).json({ error: `Invalid type. Must be one of: ${validTypes.join(", ")}` });
+    return;
+  }
+
+  const validStatuses: EntryStatus[] = ["TEMP", "CONFIRMED", "DEPRECATED"];
+  if (status && !validStatuses.includes(status)) {
+    res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` });
+    return;
+  }
+
+  const result = listEntries({ type, project, status, page, pageSize });
+  res.json(result);
+});
+
+// GET /stats — Knowledge statistics
+router.get("/stats", (_req: Request, res: Response) => {
+  res.json(getKnowledgeStats());
+});
+
+// GET /:id — Knowledge entry detail
+router.get("/:id", (req: Request<{ id: string }>, res: Response) => {
+  const entry = getEntry(req.params.id);
+  if (!entry) {
+    res.status(404).json({ error: "Knowledge entry not found" });
+    return;
+  }
+  res.json(entry);
+});
+
+// PUT /:id — Edit knowledge entry
+router.put("/:id", (req: Request<{ id: string }>, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  const entry = getEntry(req.params.id);
+  if (!entry) {
+    res.status(404).json({ error: "Knowledge entry not found" });
+    return;
+  }
+
+  const { title, pattern, impact, fix_suggestion, content, module, severity, parent_id } = req.body;
+  const updated = updateEntry(req.params.id, { title, pattern, impact, fix_suggestion, content, module, severity, parent_id });
+  res.json(updated);
+});
+
+// PUT /:id/confirm — Confirm entry (TEMP → CONFIRMED with formal ID, admin only)
+router.put("/:id/confirm", (req: Request<{ id: string }>, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  const entry = getEntry(req.params.id);
+  if (!entry) {
+    res.status(404).json({ error: "Knowledge entry not found" });
+    return;
+  }
+  if (entry.status !== "TEMP") {
+    res.status(400).json({ error: "Only TEMP entries can be confirmed" });
+    return;
+  }
+
+  const { projectAbbr } = req.body as { projectAbbr?: string };
+  const confirmed = confirmEntry(req.params.id, projectAbbr);
+  if (!confirmed) {
+    res.status(500).json({ error: "Failed to confirm entry" });
+    return;
+  }
+  res.json(confirmed);
+});
+
+// PUT /:id/deprecate — Deprecate entry (admin only)
+router.put("/:id/deprecate", (req: Request<{ id: string }>, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  const entry = getEntry(req.params.id);
+  if (!entry) {
+    res.status(404).json({ error: "Knowledge entry not found" });
+    return;
+  }
+
+  if (!deprecateEntry(req.params.id)) {
+    res.status(400).json({ error: "Failed to deprecate entry" });
+    return;
+  }
+  res.json({ success: true });
+});
+
+// DELETE /:id — Delete entry (TEMP only, admin only)
+router.delete("/:id", (req: Request<{ id: string }>, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  if (!deleteEntry(req.params.id)) {
+    const entry = getEntry(req.params.id);
+    if (!entry) {
+      res.status(404).json({ error: "Knowledge entry not found" });
+      return;
+    }
+    res.status(400).json({ error: "Only TEMP entries can be deleted" });
+    return;
+  }
+  res.json({ success: true });
+});
+
+export default router;
