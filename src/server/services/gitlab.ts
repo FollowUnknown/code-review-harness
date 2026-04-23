@@ -80,3 +80,33 @@ export async function fetchMRDiffs(
   );
   return data.changes || [];
 }
+
+export async function fetchMRHeadSha(
+  host: string,
+  projectPath: string,
+  iid: number,
+  token: string
+): Promise<string | null> {
+  const encoded = encodeURIComponent(projectPath);
+  const data = await fetchJSON<Record<string, unknown>>(
+    `${host}/api/v4/projects/${encoded}/merge_requests/${iid}`,
+    token
+  );
+  const diffRefs = data.diff_refs as Record<string, unknown> | undefined;
+  return (diffRefs?.head_sha as string) || null;
+}
+
+export async function fetchCompareDiffs(
+  host: string,
+  projectPath: string,
+  fromSha: string,
+  toSha: string,
+  token: string
+): Promise<GitLabDiff[]> {
+  const encoded = encodeURIComponent(projectPath);
+  const data = await fetchJSON<{ diffs: GitLabDiff[] }>(
+    `${host}/api/v4/projects/${encoded}/repository/compare?from=${fromSha}&to=${toSha}`,
+    token
+  );
+  return data.diffs || [];
+}

@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { parseMRUrl, fetchMRMeta, fetchMRDiffs } from "../services/gitlab";
 import { classify } from "../services/classifier";
 import { understandRequirement } from "../services/requirement";
-import { getKnowledgeForReview, saveReview, extractLearnings } from "../services/knowledge";
+import { getKnowledgeForReview, extractLearnings } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
 import { buildRequirementPrompt } from "../services/requirement";
 import { buildKnowledgePrompt } from "../services/knowledge";
@@ -11,6 +11,8 @@ import { callLLM, getLLMConfig } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { REVIEW_DIMENSIONS } from "../../shared/constants";
 import { ReviewRequest, ReviewResponse } from "../../shared/types";
+import { saveReviewRecord, computeReviewStats } from "../services/review-store";
+import { saveLLMLog } from "../services/llm-logger";
 
 const router = Router();
 
@@ -105,6 +107,7 @@ router.post("/review", async (req: Request, res: Response) => {
 
     // Step 6+: Review batches
     const totalBatches = batchDiffs.length;
+    const reviewId = `R-${randomUUID().slice(0, 8)}`;
     let report;
     let tokenUsage: { inputTokens: number; outputTokens: number } | undefined;
     let batchDetails: Array<{ files: number; tokens: { inputTokens: number; outputTokens: number } }> | undefined;
@@ -149,8 +152,28 @@ router.post("/review", async (req: Request, res: Response) => {
           knowledge: knowledgePrompt,
         });
 
-        const result = await callLLM(systemPrompt, `${userPromptPrefix}${diffText}`, llmConfig);
+        const userMessage = `${userPromptPrefix}${diffText}`;
+        const startTime = Date.now();
+        const result = await callLLM(systemPrompt, userMessage, llmConfig);
+        const durationMs = Date.now() - startTime;
+
         batchReports.push(parseReviewResponse(result.text));
+
+        // Log LLM interaction
+        saveLLMLog({
+          id: `LOG-${randomUUID().slice(0, 8)}`,
+          review_id: reviewId,
+          batch_index: i,
+          risk_level: level,
+          system_prompt: systemPrompt,
+          user_message: userMessage,
+          response_text: result.text,
+          duration_ms: durationMs,
+          input_tokens: result.usage?.inputTokens ?? null,
+          output_tokens: result.usage?.outputTokens ?? null,
+          provider: llmConfig.provider,
+          model: llmConfig.model,
+        });
 
         if (result.usage) {
           totalInput += result.usage.inputTokens;
@@ -182,13 +205,37 @@ router.post("/review", async (req: Request, res: Response) => {
       }
     }
 
-    // Save review
-    const reviewId = `R-${randomUUID().slice(0, 8)}`;
-    saveReview({ id: reviewId, mr_url: mrUrl, project, report: JSON.stringify(report) });
+    // Save review record
+    const stats = computeReviewStats(report);
+
+    // Extract head_sha from MR meta if available
+    const mrAny = mr as unknown as Record<string, unknown>;
+    const headSha = mrAny.diff_refs
+      ? (mrAny.diff_refs as Record<string, unknown>)?.head_sha as string | undefined
+      : undefined;
+
+    saveReviewRecord({
+      id: reviewId,
+      mr_url: mrUrl,
+      project,
+      author: mr.author?.name || null,
+      status: "completed",
+      report_json: JSON.stringify(report),
+      classification_json: classification ? JSON.stringify(classification) : null,
+      requirement_json: JSON.stringify({ type: requirement.type, module: requirement.module, features: requirement.features, conflicts: requirement.conflicts, source: requirement.source, lanhuSummary: requirement.lanhuSummary }),
+      mr_meta_json: JSON.stringify(mr),
+      reviewed_commit_sha: headSha || null,
+      passed: report.passed,
+      avg_score: stats.avgScore,
+      issue_count: stats.issueCount,
+      critical_count: stats.criticalCount,
+      created_by: (req as Request & { user?: { id: string } }).user?.id || null,
+    });
     extractLearnings(report, project, reviewId);
 
     // Send final result
     const response: ReviewResponse = {
+      reviewId,
       mr,
       diffs,
       report,

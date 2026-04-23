@@ -27,6 +27,14 @@ export interface ReviewRecord {
   created_at: string;
 }
 
+// Deprecated: use saveReviewRecord from review-store.ts for full records
+export function saveReview(record: Omit<ReviewRecord, "created_at">): void {
+  const db = getDb();
+  db.prepare(
+    "INSERT INTO reviews (id, mr_url, project, report_json) VALUES (?, ?, ?, ?)"
+  ).run(record.id, record.mr_url, record.project ?? null, record.report);
+}
+
 // ---- Knowledge Entry CRUD ----
 
 export function addEntry(entry: Omit<KnowledgeEntry, "status" | "created_at">): KnowledgeEntry {
@@ -81,18 +89,12 @@ export function listEntries(filters: {
   ) as KnowledgeEntry[];
 }
 
-// ---- Review Records ----
-
-export function saveReview(record: Omit<ReviewRecord, "created_at">): void {
-  const db = getDb();
-  db.prepare(
-    "INSERT INTO reviews (id, mr_url, project, report) VALUES (?, ?, ?, ?)"
-  ).run(record.id, record.mr_url, record.project ?? null, record.report);
-}
+// ---- Review Records (legacy, see review-store.ts for full records) ----
 
 export function getReview(id: string): ReviewRecord | undefined {
   const db = getDb();
-  return db.prepare("SELECT * FROM reviews WHERE id = ?").get(id) as ReviewRecord | undefined;
+  const row = db.prepare("SELECT id, mr_url, project, report_json as report, created_at FROM reviews WHERE id = ?").get(id) as ReviewRecord | undefined;
+  return row;
 }
 
 // ---- Knowledge Query for Review ----

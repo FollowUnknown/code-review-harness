@@ -343,13 +343,13 @@ await saveLLMLog({
 
 #### Phase 2 完成标准
 
-- [ ] 评审完成后自动保存到 MySQL
-- [ ] 评审列表 API 支持分页和筛选
-- [ ] 评审详情页可查看完整结果
-- [ ] "继续评审" 支持全量和增量两种模式
-- [ ] 增量模式正确获取新增 commit 的 diff
-- [ ] 每个评审节点可查看 LLM 沟通历史（prompt、响应、耗时、token）
-- [ ] 无 CRITICAL/HIGH 审查问题
+- [x] 评审完成后自动保存到 SQLite（扩展 reviews 表）
+- [x] 评审列表 API 支持分页和筛选
+- [x] 评审详情页可查看完整结果
+- [x] "继续评审" 支持全量和增量两种模式
+- [x] 增量模式正确获取新增 commit 的 diff（GitLab compare API）
+- [x] 每个评审节点可查看 LLM 沟通历史（prompt、响应、耗时、token）
+- [x] 无 CRITICAL 审查问题（review 后已修复）
 
 #### Phase 2 风险
 

@@ -28,6 +28,7 @@
     "react": "^19.1.0",
     "react-diff-viewer-continued": "^4.0.5",
     "react-dom": "^19.1.0",
+    "react-router-dom": "^7.14.2",
     "tailwindcss": "^4.2.4"
   },
   "devDependencies": {

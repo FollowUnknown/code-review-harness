@@ -9,6 +9,7 @@ export interface GitLabMRMeta {
   target_branch: string;
   created_at: string;
   changes_count: string;
+  head_sha?: string;
 }
 
 export interface GitLabDiff {
@@ -76,6 +77,78 @@ export interface ReviewReport {
   summary: string;
 }
 
+// ---- Review Record (DB storage) ----
+
+export type ReviewStatus = "completed" | "draft";
+
+export interface ReviewRecord {
+  id: string;
+  mr_url: string;
+  project: string | null;
+  author: string | null;
+  status: ReviewStatus;
+  report_json: string;
+  classification_json: string | null;
+  requirement_json: string | null;
+  mr_meta_json: string | null;
+  reviewed_commit_sha: string | null;
+  passed: boolean | null;
+  avg_score: number | null;
+  issue_count: number | null;
+  critical_count: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReviewListItem {
+  id: string;
+  mr_url: string;
+  project: string | null;
+  author: string | null;
+  status: ReviewStatus;
+  passed: boolean | null;
+  avg_score: number | null;
+  issue_count: number | null;
+  critical_count: number;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface ReviewFilter {
+  project?: string;
+  createdBy?: string;
+  status?: ReviewStatus;
+  page: number;
+  pageSize: number;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+// ---- LLM Log ----
+
+export interface LLMLog {
+  id: string;
+  review_id: string;
+  batch_index: number;
+  risk_level: RiskLevel | null;
+  system_prompt: string;
+  user_message: string;
+  response_text: string;
+  duration_ms: number;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  provider: string | null;
+  model: string | null;
+  created_at: string;
+}
+
 // ---- API Request/Response ----
 
 export type LLMProvider = "anthropic" | "deepseek";
@@ -92,6 +165,10 @@ export interface ReviewRequest {
   gitlabHost?: string;
   gitlabToken?: string;
   lanhuUrl?: string;
+}
+
+export interface ContinueReviewRequest {
+  mode: "full" | "incremental";
 }
 
 export interface ReviewProgress {
@@ -115,6 +192,7 @@ export interface TokenUsage {
 }
 
 export interface ReviewResponse {
+  reviewId?: string;
   mr: GitLabMRMeta;
   diffs: GitLabDiff[];
   report: ReviewReport;

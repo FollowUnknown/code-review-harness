@@ -77,6 +77,29 @@ function initialize(db: Database.Database): void {
     );
   `);
 
+  // Migrate reviews table to extended schema (safe, idempotent)
+  migrateReviewsTable(db);
+
+  // LLM communication logs
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS llm_logs (
+      id TEXT PRIMARY KEY,
+      review_id TEXT NOT NULL,
+      batch_index INTEGER NOT NULL,
+      risk_level TEXT CHECK(risk_level IN ('S','A','B','C')),
+      system_prompt TEXT NOT NULL,
+      user_message TEXT NOT NULL,
+      response_text TEXT NOT NULL,
+      duration_ms INTEGER NOT NULL,
+      input_tokens INTEGER,
+      output_tokens INTEGER,
+      provider TEXT,
+      model TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_llm_logs_review_id ON llm_logs(review_id);
+  `);
+
   // Seed default prompt templates (idempotent via INSERT OR IGNORE)
   const dimensionsText = REVIEW_DIMENSIONS.map((d: string, i: number) => `${i + 1}. ${d}`).join("\n");
   const stmt = db.prepare(
@@ -88,6 +111,52 @@ function initialize(db: Database.Database): void {
   );
   stmt.run("default-requirement", "requirement", "understanding", "需求理解 prompt", "", '["type","module","features"]');
   stmt.run("default-knowledge", "knowledge", "extraction", "知识提取 prompt", "", '["entries"]');
+}
+
+function migrateReviewsTable(db: Database.Database): void {
+  const columns = db.prepare("PRAGMA table_info(reviews)").all() as Array<{ name: string }>;
+  const hasReportJson = columns.some((c) => c.name === "report_json");
+
+  if (hasReportJson) return; // Already migrated
+
+  const migrate = db.transaction(() => {
+    db.exec("ALTER TABLE reviews RENAME TO reviews_old");
+
+    db.exec(`
+      CREATE TABLE reviews (
+        id TEXT PRIMARY KEY,
+        mr_url TEXT NOT NULL,
+        project TEXT,
+        author TEXT,
+        status TEXT NOT NULL DEFAULT 'completed' CHECK(status IN ('completed', 'draft')),
+        report_json TEXT NOT NULL,
+        classification_json TEXT,
+        requirement_json TEXT,
+        mr_meta_json TEXT,
+        reviewed_commit_sha TEXT,
+        passed INTEGER,
+        avg_score REAL,
+        issue_count INTEGER,
+        critical_count INTEGER DEFAULT 0,
+        created_by TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    db.exec(`
+      INSERT INTO reviews (id, mr_url, project, report_json, created_at)
+      SELECT id, mr_url, project, report, created_at FROM reviews_old
+    `);
+
+    db.exec("DROP TABLE reviews_old");
+
+    db.exec("CREATE INDEX IF NOT EXISTS idx_reviews_project ON reviews(project)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_reviews_created_by ON reviews(created_by)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)");
+  });
+
+  migrate();
 }
 
 export function closeDb(): void {
