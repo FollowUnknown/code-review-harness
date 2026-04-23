@@ -96,6 +96,7 @@ export interface ReviewRecord {
   avg_score: number | null;
   issue_count: number | null;
   critical_count: number;
+  knowledge_dispositions_json: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -200,6 +201,18 @@ export interface ReviewResponse {
   requirement?: RequirementSummary;
   tokenUsage?: TokenUsage;
   batchDetails?: Array<{ files: number; tokens: TokenUsage }>;
+  knowledgeUsed?: KnowledgeEntrySummary[];
+  knowledgeProduced?: KnowledgeEntrySummary[];
+  knowledgeDispositions?: KnowledgeDisposition[];
+}
+
+export interface KnowledgeEntrySummary {
+  id: string;
+  type: string;
+  title: string;
+  severity: string | null;
+  status: string;
+  project: string;
 }
 
 // ---- Review Plan Types ----

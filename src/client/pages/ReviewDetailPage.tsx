@@ -75,7 +75,7 @@ export function ReviewDetailPage() {
         </div>
       </div>
 
-      <ReviewResult data={response} />
+      <ReviewResult data={response} project={record.project} />
 
       {/* LLM History Drawer — fixed right-side panel */}
       <AnimatePresence>

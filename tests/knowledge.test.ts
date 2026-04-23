@@ -13,6 +13,8 @@ import {
   buildKnowledgePrompt,
   extractLearnings,
   getProjectAbbr,
+  getKnowledgeUsedByReview,
+  getKnowledgeProducedByReview,
 } from "../src/server/services/knowledge";
 import { getDb, closeDb } from "../src/server/db";
 
@@ -189,6 +191,33 @@ describe("trackKnowledgeHits", () => {
     const fetched = getEntry(confirmed!.id);
     expect(fetched!.hit_count).toBe(1);
     expect(fetched!.last_hit_at).toBeDefined();
+  });
+
+  it("records review-knowledge usage when reviewId provided", () => {
+    const entry = addEntry({ type: "AP", project: "app", severity: "HIGH", title: "T", content: "C" });
+    const confirmed = confirmEntry(entry.id, "app");
+
+    trackKnowledgeHits([confirmed!.id], "R-test001");
+
+    const used = getKnowledgeUsedByReview("R-test001");
+    expect(used).toHaveLength(1);
+    expect(used[0].id).toBe(confirmed!.id);
+  });
+});
+
+describe("review-knowledge queries", () => {
+  it("getKnowledgeUsedByReview returns empty for unknown review", () => {
+    expect(getKnowledgeUsedByReview("R-nonexistent")).toHaveLength(0);
+  });
+
+  it("getKnowledgeProducedByReview returns entries with matching source_review", () => {
+    addEntry({ type: "AP", project: "app", severity: "CRITICAL", title: "Produced AP", content: "C", source_review: "R-prod001" });
+    addEntry({ type: "EXP", project: "app", title: "Produced EXP", content: "C", source_review: "R-prod001" });
+    addEntry({ type: "AP", project: "app", severity: "HIGH", title: "Other", content: "C", source_review: "R-prod002" });
+
+    const produced = getKnowledgeProducedByReview("R-prod001");
+    expect(produced).toHaveLength(2);
+    expect(produced.every((e) => e.source_review === "R-prod001")).toBe(true);
   });
 });
 

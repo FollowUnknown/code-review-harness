@@ -321,7 +321,7 @@ export function getKnowledgeForReview(project: string, module?: string): Knowled
 
 // ---- Hit Tracking ----
 
-export function trackKnowledgeHits(ids: string[]): void {
+export function trackKnowledgeHits(ids: string[], reviewId?: string): void {
   if (ids.length === 0) return;
   const db = getDb();
   const now = new Date().toISOString();
@@ -329,6 +329,16 @@ export function trackKnowledgeHits(ids: string[]): void {
   db.prepare(
     `UPDATE knowledge_entries SET hit_count = hit_count + 1, last_hit_at = ? WHERE id IN (${placeholders})`
   ).run(now, ...ids);
+
+  // Record review <-> knowledge usage
+  if (reviewId) {
+    const insertUsage = db.prepare(
+      "INSERT OR IGNORE INTO review_knowledge_usage (review_id, knowledge_id, created_at) VALUES (?, ?, ?)"
+    );
+    for (const kid of ids) {
+      insertUsage.run(reviewId, kid, now);
+    }
+  }
 }
 
 // ---- Build Knowledge Prompt ----
@@ -539,4 +549,23 @@ export function deleteRelation(id: string): boolean {
   const db = getDb();
   const result = db.prepare("DELETE FROM knowledge_relations WHERE id = ?").run(id);
   return result.changes > 0;
+}
+
+// ---- Review <-> Knowledge Queries ----
+
+export function getKnowledgeUsedByReview(reviewId: string): KnowledgeEntry[] {
+  const db = getDb();
+  return db.prepare(
+    `SELECT ke.* FROM knowledge_entries ke
+     INNER JOIN review_knowledge_usage rku ON ke.id = rku.knowledge_id
+     WHERE rku.review_id = ?
+     ORDER BY ke.type, ke.created_at`
+  ).all(reviewId) as KnowledgeEntry[];
+}
+
+export function getKnowledgeProducedByReview(reviewId: string): KnowledgeEntry[] {
+  const db = getDb();
+  return db.prepare(
+    `SELECT * FROM knowledge_entries WHERE source_review = ? ORDER BY type, created_at`
+  ).all(reviewId) as KnowledgeEntry[];
 }

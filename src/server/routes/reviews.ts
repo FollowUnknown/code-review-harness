@@ -8,7 +8,7 @@ import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { parseMRUrl, fetchMRMeta, fetchMRDiffs, fetchMRHeadSha, fetchCompareDiffs } from "../services/gitlab";
 import { classify } from "../services/classifier";
 import { understandRequirement } from "../services/requirement";
-import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnowledgeHits } from "../services/knowledge";
+import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnowledgeHits, getKnowledgeUsedByReview, getKnowledgeProducedByReview } from "../services/knowledge";
 import { buildRequirementPrompt } from "../services/requirement";
 import { buildKnowledgePrompt } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
@@ -63,6 +63,27 @@ router.get("/:id", (req: Request<{ id: string }>, res: Response) => {
     ...(record.requirement_json ? { requirement: JSON.parse(record.requirement_json) } : {}),
     ...(tokenUsage ? { tokenUsage } : {}),
   };
+
+  // Knowledge data
+  const knowledgeUsed = getKnowledgeUsedByReview(req.params.id);
+  const knowledgeProduced = getKnowledgeProducedByReview(req.params.id);
+  const knowledgeDispositions = record.knowledge_dispositions_json
+    ? JSON.parse(record.knowledge_dispositions_json) as KnowledgeDisposition[]
+    : undefined;
+
+  if (knowledgeUsed.length > 0) {
+    response.knowledgeUsed = knowledgeUsed.map((e) => ({
+      id: e.id, type: e.type, title: e.title, severity: e.severity ?? null, status: e.status, project: e.project,
+    }));
+  }
+  if (knowledgeProduced.length > 0) {
+    response.knowledgeProduced = knowledgeProduced.map((e) => ({
+      id: e.id, type: e.type, title: e.title, severity: e.severity ?? null, status: e.status, project: e.project,
+    }));
+  }
+  if (knowledgeDispositions) {
+    response.knowledgeDispositions = knowledgeDispositions;
+  }
 
   res.json({ record, response });
 });
@@ -295,7 +316,7 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
     extractLearnings(report, project, newReviewId);
 
     if (knowledge.length > 0) {
-      trackKnowledgeHits(knowledge.map((e) => e.id));
+      trackKnowledgeHits(knowledge.map((e) => e.id), newReviewId);
     }
 
     // Update old record status

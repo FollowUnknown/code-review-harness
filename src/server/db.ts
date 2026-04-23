@@ -132,6 +132,18 @@ function initialize(db: Database.Database): void {
   // Seed default dimension set (idempotent)
   seedDefaultDimensionSet(db);
 
+  // Review <-> Knowledge usage tracking (after reviews table migration)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS review_knowledge_usage (
+      review_id    TEXT NOT NULL,
+      knowledge_id TEXT NOT NULL,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (review_id, knowledge_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_rku_review ON review_knowledge_usage(review_id);
+    CREATE INDEX IF NOT EXISTS idx_rku_knowledge ON review_knowledge_usage(knowledge_id);
+  `);
+
   // LLM communication logs
   db.exec(`
     CREATE TABLE IF NOT EXISTS llm_logs (

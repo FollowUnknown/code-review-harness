@@ -1,10 +1,29 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ReviewResponse, SeverityLevel, RiskLevel } from "../../shared/types";
+import { ReviewResponse, SeverityLevel, RiskLevel, KnowledgeDisposition, KnowledgeEntrySummary } from "../../shared/types";
 import ReactDiffViewer from "react-diff-viewer-continued";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem("auth_token");
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
+const TYPE_STYLES: Record<string, { bg: string; text: string }> = {
+  AP: { bg: "bg-red-500/15", text: "text-red-400" },
+  EXP: { bg: "bg-blue-500/15", text: "text-blue-400" },
+  CONV: { bg: "bg-purple-500/15", text: "text-purple-400" },
+  BN: { bg: "bg-cyan-500/15", text: "text-cyan-400" },
+  RULE: { bg: "bg-amber-500/15", text: "text-amber-400" },
+  TERM: { bg: "bg-teal-500/15", text: "text-teal-400" },
+};
 
 interface Props {
   data: ReviewResponse;
+  project?: string | null;
   onReset?: () => void;
 }
 
@@ -63,7 +82,7 @@ function RiskBadge({ level }: { level: RiskLevel }) {
   );
 }
 
-export function ReviewResult({ data, onReset }: Props) {
+export function ReviewResult({ data, project, onReset }: Props) {
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [showDiffModal, setShowDiffModal] = useState(false);
   const { mr, diffs, report, classification, requirement, tokenUsage, batchDetails } = data;
@@ -288,6 +307,97 @@ export function ReviewResult({ data, onReset }: Props) {
         )}
       </motion.div>
 
+      {/* Knowledge Section */}
+      {(data.knowledgeUsed?.length || data.knowledgeProduced?.length || data.knowledgeDispositions?.length) && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="p-5 bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/40"
+        >
+          <h3 className="text-sm font-semibold text-slate-300 mb-4">Knowledge</h3>
+
+          {/* A. Injected Knowledge */}
+          {data.knowledgeUsed && data.knowledgeUsed.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-xs text-slate-500 uppercase tracking-wider mb-2">Injected into prompt ({data.knowledgeUsed.length})</h4>
+              <div className="flex flex-wrap gap-1.5">
+                {data.knowledgeUsed.map((entry) => {
+                  const style = TYPE_STYLES[entry.type] || { bg: "bg-slate-700/30", text: "text-slate-400" };
+                  return (
+                    <a
+                      key={entry.id}
+                      href={`/knowledge`}
+                      className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-lg border border-slate-700/30 hover:border-slate-600 transition-all ${style.bg} ${style.text}`}
+                    >
+                      <span className="font-semibold">{entry.type}</span>
+                      <span className="text-slate-500">{entry.id}</span>
+                      <span className="text-slate-400 truncate max-w-32">{entry.title}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* B. Produced Knowledge */}
+          {data.knowledgeProduced && data.knowledgeProduced.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-xs text-slate-500 uppercase tracking-wider mb-2">Extracted from review ({data.knowledgeProduced.length})</h4>
+              <div className="flex flex-wrap gap-1.5">
+                {data.knowledgeProduced.map((entry) => {
+                  const style = TYPE_STYLES[entry.type] || { bg: "bg-slate-700/30", text: "text-slate-400" };
+                  return (
+                    <a
+                      key={entry.id}
+                      href={`/knowledge`}
+                      className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-lg border border-dashed border-slate-600/50 hover:border-slate-500 transition-all ${style.bg} ${style.text}`}
+                    >
+                      <span className="font-semibold">{entry.type}</span>
+                      <span className="text-slate-500">{entry.id}</span>
+                      <span className="text-slate-400 truncate max-w-32">{entry.title}</span>
+                      {entry.status === "TEMP" && <span className="text-[10px] text-yellow-500">TEMP</span>}
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* C. Issue Dispositions + Create BN/RULE */}
+          {data.knowledgeDispositions && data.knowledgeDispositions.length > 0 && (
+            <div>
+              <h4 className="text-xs text-slate-500 uppercase tracking-wider mb-2">Issue disposition mapping</h4>
+              <div className="space-y-1.5">
+                {data.knowledgeDispositions.map((disp, i) => {
+                  const issue = report.issues[disp.issueIndex];
+                  if (!issue) return null;
+                  const sev = SEVERITY_STYLES[issue.severity];
+                  return (
+                    <div key={i} className="flex items-center gap-2 px-3 py-2 bg-slate-800/30 rounded-lg text-xs">
+                      <span className={`px-1.5 py-0.5 rounded font-semibold ${sev.bg} ${sev.text}`}>{issue.severity}</span>
+                      <span className="text-slate-400 truncate flex-1 max-w-64">{issue.message}</span>
+                      <span className={`px-1.5 py-0.5 rounded font-semibold ${
+                        disp.disposition === "AP" ? "bg-red-500/10 text-red-400" :
+                        disp.disposition === "MERGE" ? "bg-blue-500/10 text-blue-400" :
+                        disp.disposition === "RULE" ? "bg-amber-500/10 text-amber-400" :
+                        "bg-slate-700/30 text-slate-500"
+                      }`}>
+                        {disp.disposition}
+                      </span>
+                      {disp.knowledgeId && <span className="text-slate-600">{disp.knowledgeId}</span>}
+                      {(issue.severity === "CRITICAL" || issue.severity === "HIGH" || issue.severity === "MEDIUM") && (
+                        <CreateKnowledgeButton issue={issue} reviewId={data.reviewId} project={project || undefined} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* Diff Modal */}
       <AnimatePresence>
         {showDiffModal && (
@@ -360,5 +470,98 @@ export function ReviewResult({ data, onReset }: Props) {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+// ---- Create Knowledge from Issue ----
+
+function CreateKnowledgeButton({ issue, reviewId, project }: {
+  issue: { severity: string; message: string; suggestion?: string; file?: string };
+  reviewId?: string;
+  project?: string;
+}) {
+  const [showModal, setShowModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  function handleCreate(type: "BN" | "RULE") {
+    setCreating(true);
+    fetch(`${API_BASE}/api/knowledge`, {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type,
+        project: project || "unknown",
+        title: issue.message.slice(0, 80),
+        content: issue.suggestion || issue.message,
+        source_review: reviewId,
+        source_type: "交叉评审",
+        source_file: issue.file ? JSON.stringify([issue.file]) : undefined,
+        severity: issue.severity === "CRITICAL" ? "CRITICAL" : "HIGH",
+      }),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("create failed");
+        return r.json();
+      })
+      .then(() => {
+        setShowModal(false);
+        setCreating(false);
+      })
+      .catch(() => setCreating(false));
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setShowModal(true)}
+        className="px-1.5 py-0.5 text-[10px] bg-slate-700/30 text-slate-500 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-all"
+      >
+        + Knowledge
+      </button>
+      <AnimatePresence>
+        {showModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setShowModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-slate-900 border border-slate-700/50 rounded-xl shadow-2xl p-5 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h4 className="text-sm font-semibold text-slate-200">Create Knowledge from Issue</h4>
+              <p className="text-xs text-slate-400 bg-slate-800/40 rounded p-2">{issue.message}</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleCreate("BN")}
+                  disabled={creating}
+                  className="flex-1 px-3 py-2 text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/20 transition-all disabled:opacity-50"
+                >
+                  Business Noun (BN)
+                </button>
+                <button
+                  onClick={() => handleCreate("RULE")}
+                  disabled={creating}
+                  className="flex-1 px-3 py-2 text-xs bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-lg hover:bg-amber-500/20 transition-all disabled:opacity-50"
+                >
+                  Business Rule (RULE)
+                </button>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                className="w-full px-3 py-1.5 text-xs text-slate-500 hover:text-slate-300 transition-all"
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

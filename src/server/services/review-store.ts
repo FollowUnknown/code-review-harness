@@ -83,7 +83,7 @@ export function updateReview(id: string, patch: Partial<Pick<ReviewRecord, "stat
 
 export function deleteReview(id: string): boolean {
   const db = getDb();
-  // Delete associated LLM logs first
+  db.prepare("DELETE FROM review_knowledge_usage WHERE review_id = ?").run(id);
   db.prepare("DELETE FROM llm_logs WHERE review_id = ?").run(id);
   const result = db.prepare("DELETE FROM reviews WHERE id = ?").run(id);
   return result.changes > 0;
@@ -116,6 +116,7 @@ function mapRowToRecord(row: Record<string, unknown>): ReviewRecord {
     avg_score: row.avg_score as number | null,
     issue_count: row.issue_count as number | null,
     critical_count: row.critical_count as number,
+    knowledge_dispositions_json: (row.knowledge_dispositions_json as string) || null,
     created_by: row.created_by as string | null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,

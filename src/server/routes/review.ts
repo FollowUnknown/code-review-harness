@@ -237,7 +237,7 @@ router.post("/review", async (req: Request, res: Response) => {
 
     // Track knowledge hits
     if (knowledge.length > 0) {
-      trackKnowledgeHits(knowledge.map((e) => e.id));
+      trackKnowledgeHits(knowledge.map((e) => e.id), reviewId);
     }
 
     // Send final result

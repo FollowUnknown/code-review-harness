@@ -7,6 +7,7 @@ import {
   deleteEntry,
   listEntries,
   getKnowledgeStats,
+  addEntry,
   addRelation,
   getRelationsForEntry,
   deleteRelation,
@@ -28,6 +29,36 @@ function requireAdmin(req: Request, res: Response): boolean {
   }
   return true;
 }
+
+// POST / — Create knowledge entry (admin only)
+router.post("/", (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  const { type, project, module, severity, title, pattern, impact, fix_suggestion, content,
+          source_review, source_mr, source_file, parent_id,
+          product_line, engineering, source_story, source_type, review_pass,
+          scope, data_structure, default_value, first_seen_in, derivation } = req.body;
+
+  if (!type || !project || !title || !content) {
+    res.status(400).json({ error: "type, project, title, and content are required" });
+    return;
+  }
+
+  const validTypes: EntryType[] = ["AP", "EXP", "CONV", "BN", "RULE", "TERM"];
+  if (!validTypes.includes(type)) {
+    res.status(400).json({ error: `Invalid type. Must be one of: ${validTypes.join(", ")}` });
+    return;
+  }
+
+  const entry = addEntry({
+    type, project, module, severity, title, pattern, impact, fix_suggestion, content,
+    source_review, source_mr, source_file, parent_id,
+    product_line, engineering, source_story, source_type, review_pass,
+    scope, data_structure, default_value, first_seen_in, derivation,
+  });
+
+  res.json(entry);
+});
 
 // GET / — List knowledge entries with pagination and filters
 router.get("/", (req: Request, res: Response) => {

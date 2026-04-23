@@ -233,7 +233,7 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
 
         saveReviewRecord({ id: reviewId, mr_url: item.mr_url, project, author: mr.author?.name || null, status: "completed", report_json: JSON.stringify(report), classification_json: JSON.stringify(classification), requirement_json: JSON.stringify({ type: requirement.type, module: requirement.module, features: requirement.features, conflicts: requirement.conflicts, source: requirement.source }), mr_meta_json: JSON.stringify(mr), reviewed_commit_sha: null, passed: report.passed, avg_score: stats.avgScore, issue_count: stats.issueCount, critical_count: stats.criticalCount, created_by: userId, knowledge_dispositions_json: JSON.stringify(suggestDispositions(report.issues)) });
         extractLearnings(report, project, reviewId);
-        if (knowledge.length > 0) { trackKnowledgeHits(knowledge.map((e) => e.id)); }
+        if (knowledge.length > 0) { trackKnowledgeHits(knowledge.map((e) => e.id), reviewId); }
         updatePlanItem(plan.id, item.id, { status: "completed", review_id: reviewId });
 
         sendSSE({ step, status: "done", label: "", detail: `MR ${mi + 1}/${pendingItems.length} completed: ${stats.avgScore?.toFixed(1) ?? "—"} score, ${stats.issueCount} issues`, currentMR: mi + 1, totalMRs: pendingItems.length });
