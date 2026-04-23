@@ -29,7 +29,7 @@ app.use("/api/users", usersRouter);
 app.use("/api/llm", llmRouter);
 
 // SPA fallback for client-side routing (must be last)
-app.get("*", (_req, res) => {
+app.get("/{*splat}", (_req, res) => {
   res.sendFile(path.join(process.cwd(), "dist/client/index.html"));
 });
 

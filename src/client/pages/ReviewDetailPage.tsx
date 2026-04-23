@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ReviewResult } from "../components/ReviewResult";
 import { LLMHistoryDrawer } from "../components/LLMHistoryDrawer";
@@ -20,6 +20,7 @@ export function ReviewDetailPage() {
   const [response, setResponse] = useState<ReviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [showLogs, setShowLogs] = useState(false);
 
   useEffect(() => {
@@ -74,7 +75,7 @@ export function ReviewDetailPage() {
         </div>
       </div>
 
-      <ReviewResult data={response} onReset={() => {}} />
+      <ReviewResult data={response} onReset={() => navigate("/")} />
 
       {/* LLM History Drawer */}
       {showLogs && id && (
