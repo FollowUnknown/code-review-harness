@@ -10,6 +10,9 @@ import { PromptEditor } from "./components/PromptEditor";
 import { LoginPage } from "./pages/LoginPage";
 import { ReviewListPage } from "./pages/ReviewListPage";
 import { ReviewDetailPage } from "./pages/ReviewDetailPage";
+import { PlanListPage } from "./pages/PlanListPage";
+import { PlanDetailPage } from "./pages/PlanDetailPage";
+import { PlanNewPage } from "./pages/PlanNewPage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
@@ -81,6 +84,12 @@ export default function App() {
               className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
             >
               History
+            </Link>
+            <Link
+              to="/plans"
+              className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
+            >
+              Plans
             </Link>
           </div>
           <div className="flex items-center gap-3">
@@ -158,6 +167,9 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/reviews" element={<ReviewListPage />} />
           <Route path="/reviews/:id" element={<ReviewDetailPage />} />
+          <Route path="/plans" element={<PlanListPage />} />
+          <Route path="/plans/new" element={<PlanNewPage />} />
+          <Route path="/plans/:id" element={<PlanDetailPage />} />
         </Routes>
       </div>
     </div>

@@ -100,6 +100,33 @@ function initialize(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_llm_logs_review_id ON llm_logs(review_id);
   `);
 
+  // Review plans
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS review_plans (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'reviewing', 'archived')),
+      created_by TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_plans_created_by ON review_plans(created_by);
+    CREATE INDEX IF NOT EXISTS idx_plans_status ON review_plans(status);
+
+    CREATE TABLE IF NOT EXISTS review_plan_items (
+      id TEXT PRIMARY KEY,
+      plan_id TEXT NOT NULL,
+      mr_url TEXT NOT NULL,
+      review_id TEXT,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'reviewing', 'completed', 'failed')),
+      position INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (plan_id) REFERENCES review_plans(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_plan_items_plan_id ON review_plan_items(plan_id);
+  `);
+
   // Seed default prompt templates (idempotent via INSERT OR IGNORE)
   const dimensionsText = REVIEW_DIMENSIONS.map((d: string, i: number) => `${i + 1}. ${d}`).join("\n");
   const stmt = db.prepare(

@@ -202,6 +202,66 @@ export interface ReviewResponse {
   batchDetails?: Array<{ files: number; tokens: TokenUsage }>;
 }
 
+// ---- Review Plan Types ----
+
+export type PlanStatus = "open" | "reviewing" | "archived";
+export type PlanItemStatus = "pending" | "reviewing" | "completed" | "failed";
+
+export interface ReviewPlan {
+  id: string;
+  title: string;
+  description: string | null;
+  status: PlanStatus;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReviewPlanItem {
+  id: string;
+  plan_id: string;
+  mr_url: string;
+  review_id: string | null;
+  status: PlanItemStatus;
+  position: number;
+  created_at: string;
+}
+
+export interface ReviewPlanDetail extends ReviewPlan {
+  items: ReviewPlanItem[];
+}
+
+export interface PlanListItem {
+  id: string;
+  title: string;
+  status: PlanStatus;
+  item_count: number;
+  created_by: string;
+  created_at: string;
+}
+
+export interface PlanSummary {
+  totalMRs: number;
+  completedMRs: number;
+  passedMRs: number;
+  failedMRs: number;
+  avgScore: number | null;
+  totalIssues: number;
+  issuesBySeverity: Record<SeverityLevel, number>;
+  items: Array<{
+    mrUrl: string;
+    score: number | null;
+    passed: boolean | null;
+    issueCount: number;
+  }>;
+}
+
+export interface PlanFilter {
+  status?: PlanStatus;
+  page: number;
+  pageSize: number;
+}
+
 // ---- Auth Types ----
 
 export type UserRole = "admin" | "member";

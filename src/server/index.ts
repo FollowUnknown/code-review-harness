@@ -6,6 +6,7 @@ import { authRequired } from "./middleware/auth";
 import authRouter from "./routes/auth";
 import reviewRouter from "./routes/review";
 import reviewsRouter from "./routes/reviews";
+import plansRouter from "./routes/plans";
 import usersRouter from "./routes/users";
 import llmRouter from "./llm/router";
 
@@ -25,6 +26,7 @@ app.use("/api/auth", authRouter);
 app.use(authRequired);
 app.use("/api", reviewRouter);
 app.use("/api/reviews", reviewsRouter);
+app.use("/api/plans", plansRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/llm", llmRouter);
 
