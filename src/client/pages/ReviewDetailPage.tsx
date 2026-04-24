@@ -22,6 +22,7 @@ export function ReviewDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const [showLogs, setShowLogs] = useState(false);
+  const [selectedKnowledge, setSelectedKnowledge] = useState<KnowledgeEntrySummary | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -75,7 +76,18 @@ export function ReviewDetailPage() {
         </div>
       </div>
 
-      <ReviewResult data={response} project={record.project} />
+      <ReviewResult
+        data={response}
+        project={record.project}
+        onKnowledgeClick={setSelectedKnowledge}
+      />
+
+      {selectedKnowledge && (
+        <KnowledgeDetailDrawer
+          entry={selectedKnowledge}
+          onClose={() => setSelectedKnowledge(null)}
+        />
+      )}
 
       {/* LLM History Drawer — fixed right-side panel */}
       <AnimatePresence>

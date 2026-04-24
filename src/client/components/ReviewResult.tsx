@@ -25,6 +25,7 @@ interface Props {
   data: ReviewResponse;
   project?: string | null;
   onReset?: () => void;
+  onKnowledgeClick?: (entry: KnowledgeEntrySummary) => void;
 }
 
 const RISK_STYLES: Record<RiskLevel, { bg: string; text: string; border: string; pulse?: string }> = {
@@ -82,7 +83,7 @@ function RiskBadge({ level }: { level: RiskLevel }) {
   );
 }
 
-export function ReviewResult({ data, project, onReset }: Props) {
+export function ReviewResult({ data, project, onReset, onKnowledgeClick }: Props) {
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [showDiffModal, setShowDiffModal] = useState(false);
   const { mr, diffs, report, classification, requirement, tokenUsage, batchDetails } = data;
@@ -325,9 +326,9 @@ export function ReviewResult({ data, project, onReset }: Props) {
                 {data.knowledgeUsed.map((entry) => {
                   const style = TYPE_STYLES[entry.type] || { bg: "bg-slate-700/30", text: "text-slate-400" };
                   return (
-                    <a
+                    <button
                       key={entry.id}
-                      href={`/knowledge`}
+                      onClick={() => onKnowledgeClick?.(entry)}
                       className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-lg border border-slate-700/30 hover:border-slate-600 transition-all ${style.bg} ${style.text}`}
                     >
                       <span className="font-semibold">{entry.type}</span>
@@ -348,16 +349,16 @@ export function ReviewResult({ data, project, onReset }: Props) {
                 {data.knowledgeProduced.map((entry) => {
                   const style = TYPE_STYLES[entry.type] || { bg: "bg-slate-700/30", text: "text-slate-400" };
                   return (
-                    <a
+                    <button
                       key={entry.id}
-                      href={`/knowledge`}
+                      onClick={() => onKnowledgeClick?.(entry)}
                       className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-lg border border-dashed border-slate-600/50 hover:border-slate-500 transition-all ${style.bg} ${style.text}`}
                     >
                       <span className="font-semibold">{entry.type}</span>
                       <span className="text-slate-500">{entry.id}</span>
                       <span className="text-slate-400 truncate max-w-32">{entry.title}</span>
                       {entry.status === "TEMP" && <span className="text-[10px] text-yellow-500">TEMP</span>}
-                    </a>
+                    </button>
                   );
                 })}
               </div>
