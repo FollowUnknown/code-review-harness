@@ -23,6 +23,7 @@ export function ReviewDetailPage() {
   const navigate = useNavigate();
   const [showLogs, setShowLogs] = useState(false);
   const [selectedKnowledge, setSelectedKnowledge] = useState<KnowledgeEntrySummary | null>(null);
+  const [selectedKnowledge, setSelectedKnowledge] = useState<KnowledgeEntrySummary | null>(null);
 
   useEffect(() => {
     if (!id) return;

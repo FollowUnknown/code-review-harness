@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { KnowledgeEntrySummary } from "../shared/types";
+import type { KnowledgeEntrySummary } from "../../shared/types";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 

@@ -334,7 +334,7 @@ export function ReviewResult({ data, project, onReset, onKnowledgeClick }: Props
                       <span className="font-semibold">{entry.type}</span>
                       <span className="text-slate-500">{entry.id}</span>
                       <span className="text-slate-400 truncate max-w-32">{entry.title}</span>
-                    </a>
+                    </button>
                   );
                 })}
               </div>
