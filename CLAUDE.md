@@ -88,42 +88,125 @@ AI 每次对话自动遵循以下规则，记录会话内容和任务清单。
 
 ## Harness 编排
 
-当用户提出业务需求时，按以下四阶段流程执行。每个阶段完成后**主动暂停**，等用户说"继续"。
+所有中大型任务先走 `Contract`，再进入对应编排流。每个阶段完成后**主动暂停**，等用户说"继续"。
 
-### 阶段 1: Planning（Planner Agent）
+### 任务分流
+
+先判断任务类型，再选择流程：
+
+- **Business Task**：功能开发、bugfix、局部改造、测试补充
+- **Platform Task**：架构设计、知识平台、运行时升级、编排规则、会话机制、能力治理
+
+判断优先级：
+
+1. 涉及 `session / contract / orchestration / runtime / framework / policy / superpower` 的，优先视为 Platform Task
+2. 涉及 `review / gitlab / knowledge / prompt / plan / users` 的，优先视为 Business Task
+3. 同时命中两类时，按 Platform Task 处理，先做边界和架构确认
+
+### Contract 状态机
+
+所有任务共享以下状态：
+
+- `draft`：刚创建，待用户确认
+- `confirmed`：范围已确认，可进入开发
+- `in_progress`：正在开发或补设计
+- `review_pending`：开发完成，待评审或待用户确认
+- `completed`：评审通过，任务结束
+
+状态流转规则：
+
+- `draft -> confirmed`
+- `confirmed -> in_progress`
+- `in_progress -> review_pending`
+- `review_pending -> in_progress`（评审不通过，回到修复）
+- `review_pending -> completed`
+
+### Business Task 流程
+
+#### 阶段 1: Planning（Planner Agent）
 
 1. 切换到 Planner 角色（参考 `.claude/agents/planner.md`）
 2. 理解需求，创建 Sprint Contract → `docs/contracts/YYYY-MM-DD-<task>.md`
-3. 展示 Contract 给用户，等待确认
-4. 用户确认后，Contract 状态改为 confirmed
+3. 明确范围、Grading Criteria、文件影响范围
+4. 展示 Contract 给用户，等待确认
+5. 用户确认后，Contract 状态改为 `confirmed`
 
-### 阶段 2: Development（Generator Agent）
+#### 阶段 2: Development（Generator Agent）
 
 1. 切换到 Generator 角色（参考 `.claude/agents/generator.md`）
-2. 读取 confirmed 的 Contract，按 TDD 流程开发
-3. RED → GREEN → IMPROVE 循环
-4. 测试全部通过 + 覆盖率 ≥ 80% 后展示代码，等待确认
+2. 读取 `confirmed` Contract，状态改为 `in_progress`
+3. 按 TDD 流程开发：RED → GREEN → IMPROVE
+4. 测试全部通过后展示代码与验证结果，等待确认
+5. 进入评审前，Contract 状态改为 `review_pending`
 
-### 阶段 3: Review（Evaluator Agent）
+#### 阶段 3: Review（Evaluator Agent）
 
 1. 切换到 Evaluator 角色（参考 `.claude/agents/evaluator.md`）
 2. 对照 Contract 的 Grading Criteria 逐项评分
 3. 输出评审报告（通过/不通过）
-4. 不通过时回到阶段 2 修复，最多循环 2 次
+4. 不通过时回到阶段 2 修复，Contract 状态回退为 `in_progress`
 5. 通过后展示报告，等待确认
 
-### 阶段 4: Commit
+#### 阶段 4: Commit
 
 1. 确认无 CRITICAL/HIGH 问题
 2. git commit（conventional commits 格式）
-3. Contract 状态改为 completed
+3. Contract 状态改为 `completed`
 4. 更新当天会话记录
+
+### Platform Task 流程
+
+#### 阶段 1: Contract（Planner Agent）
+
+1. 创建平台级 Contract，明确背景、范围、边界、不做内容
+2. 标记影响文档、影响模块、验证场
+3. 展示 Contract 给用户，等待确认
+4. 确认后，Contract 状态改为 `confirmed`
+
+#### 阶段 2: Architecture
+
+1. 先补架构与对象模型，再进入实现
+2. 至少明确：对象、状态流、作用域、接口边界、文档影响范围
+3. 需要时更新：
+   - `docs/architecture/`
+   - `docs/superpowers/specs/`
+   - 对应 contract
+4. 架构确认后进入开发，Contract 状态改为 `in_progress`
+
+#### 阶段 3: Development（Generator Agent）
+
+1. 基于已确认的 Contract + Architecture 落地
+2. 优先实现协议、规则、最小验证场
+3. 完成后展示改动与验证结果
+4. 进入评审前，Contract 状态改为 `review_pending`
+
+#### 阶段 4: Evaluation（Evaluator Agent）
+
+1. 对照 Contract 检查边界、规则一致性、文档同步情况
+2. 对照实现检查是否可被业务项目复用
+3. 不通过时回到 Development 修复，Contract 状态回退为 `in_progress`
+4. 通过后等待用户确认
+
+#### 阶段 5: Knowledge Sync
+
+1. 将通用结论回写到 `docs/superpowers/specs/` 或相关 architecture 文档
+2. 更新会话记录、活跃任务和相关计划
+3. 如需提交代码或文档，最后将 Contract 状态改为 `completed`
+
+### 停点规则
+
+以下节点必须主动暂停：
+
+1. Contract 创建完成后
+2. Platform Task 的 Architecture 完成后
+3. Development 完成后
+4. Review / Evaluation 完成后
 
 ### Agent 规范
 
-- Planner: `.claude/agents/planner.md`
-- Generator: `.claude/agents/generator.md`
-- Evaluator: `.claude/agents/evaluator.md`
+- Planner：`.claude/agents/planner.md`
+- Generator：`.claude/agents/generator.md`
+- Evaluator：`.claude/agents/evaluator.md`
 
 ---
 

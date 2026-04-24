@@ -23,3 +23,4 @@
 - [x] TASK-Phase0-2: 评审标准具体化 .claude/agents/evaluator.md (来源: 2026-04-22)
 - [x] TASK-Phase0-3: Sprint Contract 模板 docs/contracts/ (来源: 2026-04-22)
 - [x] TASK-Story-001: Story Code Review 可视化评审 Web 应用 (来源: 2026-04-22)
+- [x] TASK-005: Harness Phase 2 编排升级（双轨编排 + Contract 状态机） (来源: 2026-04-23)

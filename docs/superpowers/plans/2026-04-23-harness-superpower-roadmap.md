@@ -6,6 +6,18 @@
 
 ---
 
+## 当前状态
+
+| Phase | 状态 | 已完成 |
+|------|------|--------|
+| Phase 1 | 进行中 | 已有 session 文件、active-tasks、stop hook 基础 |
+| Phase 2 | 已完成 | 已落地双轨编排、任务分流、Contract 状态机、`CLAUDE.md` 编排入口升级 |
+| Phase 3 | 待开始 | 未落地执行证据和 repair loop |
+| Phase 4 | 进行中 | `knowledge-platform` 正在作为验证场推进 |
+| Phase 5 | 待开始 | capability registry 尚未启动 |
+
+---
+
 ## 概览
 
 本计划的目标是让 `harness` 从"写在项目规则里的工作方式"升级为"可独立演进的框架能力"。推进策略分为五个阶段：
@@ -79,6 +91,8 @@
 
 **目标**: 把现有四阶段 harness 升级为可分流、可停点、可扩展的编排协议。
 
+**状态**: 已完成
+
 ### 步骤
 
 1. **引入任务分流规则**
@@ -107,6 +121,14 @@
 5. **更新 framework spec**
    - 在 `harness-framework-design.md` 中补双轨流程和状态流转
    - 明确其作为 Orchestration Superpower 基础规范的定位
+
+### 本次落地结果
+
+- `CLAUDE.md` 已从单轨四阶段升级为双轨编排规则
+- 已增加 `Business Task / Platform Task` 任务分流
+- 已增加 `draft -> confirmed -> in_progress -> review_pending -> completed` 状态机
+- 已明确 Platform Task 的 `Architecture` 与 `Knowledge Sync` 阶段
+- `harness-framework-design.md` 已同步双轨流程和 Contract 扩展状态
 
 ### 涉及文件
 

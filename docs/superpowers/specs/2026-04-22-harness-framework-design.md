@@ -1,7 +1,7 @@
 # Vibecoding Harness 框架设计
 
 > 日期：2026-04-22
-> 状态：已批准
+> 状态：已批准（Phase 2 已按双轨编排落地）
 
 ---
 
@@ -47,25 +47,19 @@
 ```
 用户描述业务需求
     ↓
-[阶段 1: Planning] ─ planner agent
-    输入：用户需求描述（自然语言）
-    输出：Sprint Contract
-    → 停下，用户确认契约
+任务分流（Business Task / Platform Task）
     ↓
-[阶段 2: Development] ─ generator agent（TDD）
-    输入：已确认的 Sprint Contract
-    流程：RED → GREEN → IMPROVE
-    输出：代码 + 测试（覆盖率 ≥ 80%）
-    → 停下，用户确认代码
+创建 Contract（draft）
     ↓
-[阶段 3: Review] ─ evaluator agent
-    输入：代码 + 测试 + Sprint Contract
-    输出：评审报告（评分 + 问题清单 + 通过/不通过）
-    → 停下，用户确认评审结果
+用户确认 Contract（confirmed）
     ↓
-[阶段 4: Commit] ─ 自动提交
-    条件：评审通过（无 CRITICAL/HIGH 问题）
-    输出：git commit + 会话记录更新
+按任务类型进入对应流程
+
+Business Task:
+    Planning -> Development -> Review -> Commit
+
+Platform Task:
+    Contract -> Architecture -> Development -> Evaluation -> Knowledge Sync
 ```
 
 每个阶段完成后 AI 主动停下来等用户确认。用户回复"继续"才进入下一阶段。
@@ -113,7 +107,66 @@
 - 修改: path/to/existing
 ```
 
-Contract 状态流转：draft → confirmed → completed。是三个 Agent 之间的唯一通信协议。
+Contract 状态流转：
+
+`draft -> confirmed -> in_progress -> review_pending -> completed`
+
+回退路径：
+
+- `review_pending -> in_progress`：评审或架构检查不通过，回到修复
+
+Contract 是各阶段之间的唯一协议，负责传递：
+
+- 范围
+- 验收标准
+- 文件影响范围
+- 当前阶段状态
+- 需要同步的文档资产
+
+---
+
+## 双轨编排
+
+### Business Task
+
+适用于：
+
+- 功能开发
+- bugfix
+- 测试补充
+- 局部模块改造
+
+流程：
+
+1. Planning
+2. Development
+3. Review
+4. Commit
+
+### Platform Task
+
+适用于：
+
+- 架构设计
+- 知识平台
+- 运行时升级
+- 编排规则
+- 会话机制
+- 能力治理
+
+流程：
+
+1. Contract
+2. Architecture
+3. Development
+4. Evaluation
+5. Knowledge Sync
+
+补充规则：
+
+- 同时具有业务和框架属性的任务，默认按 Platform Task 处理
+- Platform Task 必须先确认边界和对象模型，再进入实现
+- 平台级结论必须同步回 `docs/superpowers/specs/` 或相关架构文档
 
 ---
 

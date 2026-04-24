@@ -6,6 +6,18 @@
 
 ---
 
+## 0. 当前进展
+
+| Phase | 状态 | 说明 |
+|------|------|------|
+| Phase 1: Session | 部分完成 | 已有 `sessions/` 机制与 `active-tasks.md`，仍需继续收口 |
+| Phase 2: Orchestration | 已落地 | `CLAUDE.md` 已升级为双轨编排 + Contract 状态机 |
+| Phase 3: Execution | 未开始 | 待补阶段证据、artifact 和 repair loop |
+| Phase 4: Memory | 进行中 | 由 `knowledge-platform` 业务设计反向抽象 |
+| Phase 5: Capability | 未开始 | 待 provider / capability registry 设计 |
+
+---
+
 ## 1. 定位
 
 当前项目需要同时推进两条主线：
