@@ -213,6 +213,8 @@ export interface KnowledgeEntrySummary {
   severity: string | null;
   status: string;
   project: string;
+  content?: string;
+  hit_count?: number;
 }
 
 // ---- Review Plan Types ----

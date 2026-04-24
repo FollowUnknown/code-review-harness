@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ReviewResult } from "../components/ReviewResult";
 import { LLMHistoryDrawer } from "../components/LLMHistoryDrawer";
-import type { ReviewResponse, ReviewRecord, LLMLog } from "../../shared/types";
+import { KnowledgeDetailDrawer } from "../components/KnowledgeDetailDrawer";
+import type { ReviewResponse, ReviewRecord, LLMLog, KnowledgeEntrySummary } from "../../shared/types";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
@@ -22,7 +23,6 @@ export function ReviewDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const [showLogs, setShowLogs] = useState(false);
-  const [selectedKnowledge, setSelectedKnowledge] = useState<KnowledgeEntrySummary | null>(null);
   const [selectedKnowledge, setSelectedKnowledge] = useState<KnowledgeEntrySummary | null>(null);
 
   useEffect(() => {
