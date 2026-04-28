@@ -24,6 +24,11 @@ fi
 
 AUDIT_LOG="${CWD}/sessions/execution/audit.log"
 
+# 如果目标文件就是 audit.log 自身，跳过记录（避免 Hook 写入正在被 Hook 监控的文件）
+if [ "$REL_PATH" = "sessions/execution/audit.log" ]; then
+  exit 0
+fi
+
 # 记录审计日志（只写相对路径）
 mkdir -p "$(dirname "$AUDIT_LOG")" 2>/dev/null
 echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] ${TOOL_NAME} ${REL_PATH} session=${SESSION_ID}" >> "$AUDIT_LOG"
