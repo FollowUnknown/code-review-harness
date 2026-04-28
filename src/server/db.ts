@@ -219,6 +219,11 @@ function migrateKnowledgeEntriesTable(db: Database.Database): void {
     { name: "default_value", def: "TEXT" },
     { name: "first_seen_in", def: "TEXT" },
     { name: "derivation", def: "TEXT" },
+    // v1.1.5: Knowledge review workflow
+    { name: "suggested_by", def: "TEXT" },
+    { name: "reviewed_by", def: "TEXT" },
+    { name: "review_status", def: "TEXT NOT NULL DEFAULT 'approved' CHECK(review_status IN ('pending', 'approved', 'rejected'))" },
+    { name: "review_comment", def: "TEXT" },
   ];
 
   for (const col of newColumns) {

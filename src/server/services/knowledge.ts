@@ -6,6 +6,7 @@ import type { IssueDisposition, KnowledgeDisposition, ReviewIssue } from "../../
 export type EntryType = "AP" | "EXP" | "BN" | "CONV" | "RULE" | "TERM";
 export type EntrySeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 export type EntryStatus = "TEMP" | "CONFIRMED" | "DEPRECATED";
+export type ReviewStatus = "pending" | "approved" | "rejected";
 
 export interface KnowledgeEntry {
   id: string;
@@ -35,6 +36,10 @@ export interface KnowledgeEntry {
   default_value?: string;
   first_seen_in?: string;
   derivation?: string;
+  suggested_by?: string;
+  reviewed_by?: string;
+  review_status: ReviewStatus;
+  review_comment?: string;
   created_at: string;
   updated_at: string;
 }
@@ -93,9 +98,12 @@ export function addEntry(input: {
   default_value?: string;
   first_seen_in?: string;
   derivation?: string;
+  suggested_by?: string;
+  review_status?: ReviewStatus;
 }): KnowledgeEntry {
   const db = getDb();
   const now = new Date().toISOString();
+  const reviewStatus = input.review_status ?? "approved";
 
   const result = db.transaction(() => {
     const id = getNextTempId(input.type);
@@ -106,8 +114,9 @@ export function addEntry(input: {
         source_review, source_mr, source_file, parent_id, hit_count,
         product_line, engineering, source_story, source_type, review_pass,
         scope, data_structure, default_value, first_seen_in, derivation,
+        suggested_by, review_status,
         created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'TEMP', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'TEMP', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id, input.type, input.project, input.module ?? null,
       input.severity ?? null, input.title, input.pattern ?? null,
@@ -120,10 +129,11 @@ export function addEntry(input: {
       input.scope ?? null, input.data_structure ?? null,
       input.default_value ?? null, input.first_seen_in ?? null,
       input.derivation ?? null,
+      input.suggested_by ?? null, reviewStatus,
       now, now
     );
 
-    return { ...input, id, status: "TEMP" as EntryStatus, hit_count: 0, created_at: now, updated_at: now } as KnowledgeEntry;
+    return { ...input, id, status: "TEMP" as EntryStatus, hit_count: 0, review_status: reviewStatus, created_at: now, updated_at: now } as KnowledgeEntry;
   })();
 
   return result;
@@ -201,6 +211,8 @@ export interface ListEntriesFilters {
   type?: EntryType;
   project?: string;
   status?: EntryStatus;
+  review_status?: ReviewStatus;
+  suggested_by?: string;
   page?: number;
   pageSize?: number;
 }
@@ -213,6 +225,8 @@ export function listEntries(filters: ListEntriesFilters = {}): { items: Knowledg
   if (filters.type) { clauses.push("type = ?"); params.push(filters.type); }
   if (filters.project) { clauses.push("project = ?"); params.push(filters.project); }
   if (filters.status) { clauses.push("status = ?"); params.push(filters.status); }
+  if (filters.review_status) { clauses.push("review_status = ?"); params.push(filters.review_status); }
+  if (filters.suggested_by) { clauses.push("suggested_by = ?"); params.push(filters.suggested_by); }
 
   const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
   const page = filters.page ?? 1;
@@ -225,6 +239,24 @@ export function listEntries(filters: ListEntriesFilters = {}): { items: Knowledg
   ).all(...params, pageSize, offset) as KnowledgeEntry[];
 
   return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+}
+
+export function listPendingEntries(page = 1, pageSize = 20): { items: KnowledgeEntry[]; total: number; page: number; pageSize: number; totalPages: number } {
+  return listEntries({ review_status: "pending", page, pageSize });
+}
+
+export function reviewEntry(id: string, action: "approved" | "rejected", reviewedBy: string, comment?: string): KnowledgeEntry | undefined {
+  const db = getDb();
+  const entry = getEntry(id);
+  if (!entry) return undefined;
+  if (entry.review_status !== "pending") return undefined;
+
+  const now = new Date().toISOString();
+  db.prepare(
+    `UPDATE knowledge_entries SET review_status = ?, reviewed_by = ?, review_comment = ?, updated_at = ? WHERE id = ?`
+  ).run(action, reviewedBy, comment ?? null, now, id);
+
+  return getEntry(id);
 }
 
 export function getKnowledgeStats(): Array<{ type: EntryType; status: EntryStatus; project: string; count: number }> {

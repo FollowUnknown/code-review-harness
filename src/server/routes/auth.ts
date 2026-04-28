@@ -4,6 +4,7 @@ import {
   authenticateUser,
   createUser,
   generateToken,
+  verifyToken,
   getUserById,
   getUserCount,
 } from "../services/auth";
@@ -65,6 +66,22 @@ router.get("/me", authRequired, (req: Request, res: Response) => {
 // GET /api/auth/status — Check if setup is needed (no auth)
 router.get("/status", (_req: Request, res: Response) => {
   res.json({ needsSetup: getUserCount() === 0 });
+});
+
+// POST /api/auth/refresh — Refresh JWT token (requires valid auth)
+router.post("/refresh", authRequired, (req: Request, res: Response) => {
+  const user = getUserById(req.user!.id);
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  const token = generateToken(user);
+  res.json({ token, user });
+});
+
+// POST /api/auth/logout — Logout (client clears token, server acknowledges)
+router.post("/logout", (_req: Request, res: Response) => {
+  res.json({ success: true });
 });
 
 export default router;

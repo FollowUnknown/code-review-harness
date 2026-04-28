@@ -16,6 +16,7 @@ function authHeaders(): Record<string, string> {
 
 type KnowledgeType = "AP" | "EXP" | "CONV" | "BN" | "RULE" | "TERM";
 type KnowledgeStatus = "TEMP" | "CONFIRMED" | "DEPRECATED";
+type ReviewStatus = "pending" | "approved" | "rejected";
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 
 interface KnowledgeItem {
@@ -46,6 +47,10 @@ interface KnowledgeItem {
   default_value: string | null;
   first_seen_in: string | null;
   derivation: string | null;
+  suggested_by: string | null;
+  reviewed_by: string | null;
+  review_status: ReviewStatus;
+  review_comment: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -109,6 +114,19 @@ function statusBadge(status: KnowledgeStatus) {
   return (
     <span className={`px-1.5 py-0.5 text-[10px] rounded ${map[status]}`}>
       {status}
+    </span>
+  );
+}
+
+function reviewStatusBadge(reviewStatus: ReviewStatus | null) {
+  if (!reviewStatus || reviewStatus === "approved") return null;
+  const map: Record<string, string> = {
+    pending: "bg-amber-500/15 text-amber-400",
+    rejected: "bg-red-500/15 text-red-400",
+  };
+  return (
+    <span className={`px-1.5 py-0.5 text-[10px] rounded ${map[reviewStatus] || "bg-slate-500/15 text-slate-400"}`}>
+      {reviewStatus}
     </span>
   );
 }
@@ -435,6 +453,39 @@ export function KnowledgePage() {
   const [statusFilter, setStatusFilter] = useState<KnowledgeStatus | "">("");
   const [projectFilter, setProjectFilter] = useState("");
   const [selected, setSelected] = useState<KnowledgeItem | null>(null);
+  const [viewTab, setViewTab] = useState<"browse" | "review" | "suggest">("browse");
+
+  // Review tab state
+  const [pendingData, setPendingData] = useState<PaginatedResult<KnowledgeItem> | null>(null);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingPage, setPendingPage] = useState(1);
+
+  // Suggest form state
+  const [suggestForm, setSuggestForm] = useState({
+    type: "EXP" as KnowledgeType,
+    project: "",
+    title: "",
+    content: "",
+    severity: "" as Severity | "",
+  });
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [suggestSuccess, setSuggestSuccess] = useState(false);
+
+  // Check if current user is admin
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+    fetch(`${API_BASE}/api/auth/me`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((u) => {
+        setIsAdmin(u.role === "admin");
+        setCurrentUserId(u.id);
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -464,6 +515,21 @@ export function KnowledgePage() {
       .then((d) => setStats(d))
       .catch(() => setStats(null));
   }, []);
+
+  // Fetch pending entries (admin only)
+  const fetchPending = useCallback(() => {
+    if (!isAdmin) return;
+    setPendingLoading(true);
+    fetch(`${API_BASE}/api/knowledge/pending?page=${pendingPage}&pageSize=${PAGE_SIZE}`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setPendingData(d))
+      .catch(() => setPendingData(null))
+      .finally(() => setPendingLoading(false));
+  }, [isAdmin, pendingPage]);
+
+  useEffect(() => {
+    if (viewTab === "review") fetchPending();
+  }, [viewTab, fetchPending]);
 
   function switchType(nextType: KnowledgeType) {
     setType(nextType);
@@ -526,6 +592,56 @@ export function KnowledgePage() {
     }
   }
 
+  // Review actions (admin)
+  async function reviewItem(id: string, action: "approved" | "rejected", comment?: string) {
+    try {
+      const res = await fetch(`${API_BASE}/api/knowledge/${id}/review`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ action, comment }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "review failed");
+      }
+      fetchPending();
+      fetchData();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to review");
+    }
+  }
+
+  // Submit suggestion
+  async function handleSuggest(e: React.FormEvent) {
+    e.preventDefault();
+    setSuggesting(true);
+    setSuggestError(null);
+    setSuggestSuccess(false);
+    try {
+      const res = await fetch(`${API_BASE}/api/knowledge/`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: suggestForm.type,
+          project: suggestForm.project,
+          title: suggestForm.title,
+          content: suggestForm.content,
+          severity: suggestForm.severity || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "submit failed");
+      }
+      setSuggestSuccess(true);
+      setSuggestForm({ type: "EXP", project: "", title: "", content: "", severity: "" });
+    } catch (e) {
+      setSuggestError(e instanceof Error ? e.message : "Failed to submit");
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
@@ -543,55 +659,254 @@ export function KnowledgePage() {
           )}
         </div>
 
-        {/* Type tabs */}
+        {/* View tabs */}
         <div className="flex gap-1">
-          {TYPE_TABS.map((tab) => (
+          <button
+            onClick={() => setViewTab("browse")}
+            className={`px-3 py-1 text-xs rounded border transition-all ${
+              viewTab === "browse"
+                ? "bg-slate-700 border-slate-600 text-white"
+                : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600"
+            }`}
+          >
+            Browse
+          </button>
+          <button
+            onClick={() => setViewTab("suggest")}
+            className={`px-3 py-1 text-xs rounded border transition-all ${
+              viewTab === "suggest"
+                ? "bg-slate-700 border-slate-600 text-white"
+                : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600"
+            }`}
+          >
+            Suggest
+          </button>
+          {isAdmin && (
             <button
-              key={tab.value}
-              onClick={() => switchType(tab.value)}
+              onClick={() => setViewTab("review")}
               className={`px-3 py-1 text-xs rounded border transition-all ${
-                type === tab.value
+                viewTab === "review"
                   ? "bg-slate-700 border-slate-600 text-white"
                   : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600"
               }`}
             >
-              {tab.label}
-              {stats && (() => {
-                const count = stats.filter((s) => s.type === tab.value).reduce((sum, s) => sum + s.count, 0);
-                return count > 0 ? <span className="ml-1 text-[10px] text-slate-500">{count}</span> : null;
-              })()}
+              Review
+              {pendingData && pendingData.total > 0 && (
+                <span className="ml-1 text-[10px] text-amber-400">{pendingData.total}</span>
+              )}
             </button>
-          ))}
+          )}
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-3 mb-4">
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value as KnowledgeStatus | "");
-            setPage(1);
-          }}
-          className="px-2 py-1 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-400"
-        >
-          <option value="">All status</option>
-          <option value="TEMP">TEMP</option>
-          <option value="CONFIRMED">CONFIRMED</option>
-          <option value="DEPRECATED">DEPRECATED</option>
-        </select>
+      {/* Suggest tab */}
+      {viewTab === "suggest" && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-lg">
+          <h3 className="text-sm font-medium text-slate-300 mb-3">Submit a Knowledge Suggestion</h3>
+          <p className="text-xs text-slate-500 mb-4">Your suggestion will be reviewed by an admin before being added to the knowledge base.</p>
 
-        <input
-          type="text"
-          placeholder="Filter by project..."
-          value={projectFilter}
-          onChange={(e) => {
-            setProjectFilter(e.target.value);
-            setPage(1);
-          }}
-          className="px-2 py-1 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-300 placeholder-slate-600 w-48"
-        />
-      </div>
+          {suggestSuccess && (
+            <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400 text-xs">
+              Suggestion submitted successfully! It will be reviewed by an admin.
+            </div>
+          )}
+
+          <form onSubmit={handleSuggest} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <select
+                value={suggestForm.type}
+                onChange={(e) => setSuggestForm((p) => ({ ...p, type: e.target.value as KnowledgeType }))}
+                className="px-3 py-2 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-400"
+              >
+                {TYPE_TABS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+              <select
+                value={suggestForm.severity}
+                onChange={(e) => setSuggestForm((p) => ({ ...p, severity: e.target.value as Severity | "" }))}
+                className="px-3 py-2 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-400"
+              >
+                <option value="">No severity</option>
+                <option value="CRITICAL">CRITICAL</option>
+                <option value="HIGH">HIGH</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="LOW">LOW</option>
+              </select>
+            </div>
+            <input
+              type="text"
+              placeholder="Project *"
+              value={suggestForm.project}
+              onChange={(e) => setSuggestForm((p) => ({ ...p, project: e.target.value }))}
+              className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-300 placeholder-slate-600 focus:outline-none focus:border-blue-500/50"
+              required
+            />
+            <input
+              type="text"
+              placeholder="Title *"
+              value={suggestForm.title}
+              onChange={(e) => setSuggestForm((p) => ({ ...p, title: e.target.value }))}
+              className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-300 placeholder-slate-600 focus:outline-none focus:border-blue-500/50"
+              required
+            />
+            <textarea
+              placeholder="Content *"
+              value={suggestForm.content}
+              onChange={(e) => setSuggestForm((p) => ({ ...p, content: e.target.value }))}
+              rows={6}
+              className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-300 placeholder-slate-600 font-mono resize-y focus:outline-none focus:border-blue-500/50"
+              required
+            />
+            {suggestError && (
+              <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{suggestError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={suggesting || !suggestForm.project.trim() || !suggestForm.title.trim() || !suggestForm.content.trim()}
+              className="px-4 py-2 text-xs font-medium bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg disabled:opacity-50 transition-all"
+            >
+              {suggesting ? "Submitting..." : "Submit Suggestion"}
+            </button>
+          </form>
+        </motion.div>
+      )}
+
+      {/* Review tab (admin only) */}
+      {viewTab === "review" && isAdmin && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <h3 className="text-sm font-medium text-slate-300 mb-3">Pending Review</h3>
+          {pendingLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+            </div>
+          ) : !pendingData || pendingData.items.length === 0 ? (
+            <p className="text-sm text-slate-600 py-8 text-center">No pending suggestions</p>
+          ) : (
+            <>
+              <div className="rounded-lg border border-slate-700/40 overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-slate-800/50 text-slate-500">
+                      <th className="px-3 py-2 text-left">Type</th>
+                      <th className="px-3 py-2 text-left">Title</th>
+                      <th className="px-3 py-2 text-left">Project</th>
+                      <th className="px-3 py-2 text-left">Content</th>
+                      <th className="px-3 py-2 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingData.items.map((item) => (
+                      <tr key={item.id} className="border-t border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                        <td className="px-3 py-2.5">
+                          <span className="px-1.5 py-0.5 text-[10px] rounded bg-cyan-500/15 text-cyan-400">{item.type}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-slate-300 max-w-[200px] truncate">{item.title}</td>
+                        <td className="px-3 py-2.5 text-slate-400">{item.project}</td>
+                        <td className="px-3 py-2.5 text-slate-500 max-w-[200px] truncate">{item.content.slice(0, 80)}</td>
+                        <td className="px-3 py-2.5 text-right space-x-1">
+                          <button
+                            onClick={() => reviewItem(item.id, "approved")}
+                            className="px-2 py-0.5 text-[10px] rounded border border-emerald-700/50 text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => {
+                              const comment = prompt("Rejection reason (optional):");
+                              if (comment !== null) reviewItem(item.id, "rejected", comment || undefined);
+                            }}
+                            className="px-2 py-0.5 text-[10px] rounded border border-red-700/50 text-red-400 hover:bg-red-500/10 transition-colors"
+                          >
+                            Reject
+                          </button>
+                          <button
+                            onClick={() => openDetail(item.id)}
+                            className="px-2 py-0.5 text-[10px] rounded border border-slate-700/50 text-slate-400 hover:bg-slate-500/10 transition-colors"
+                          >
+                            Detail
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {pendingData.totalPages > 1 && (
+                <div className="flex justify-center gap-2 mt-4">
+                  <button
+                    disabled={pendingPage <= 1}
+                    onClick={() => setPendingPage(pendingPage - 1)}
+                    className="px-3 py-1 text-xs rounded border border-slate-700/50 text-slate-400 disabled:opacity-30 hover:text-white transition-colors"
+                  >
+                    Prev
+                  </button>
+                  <span className="px-3 py-1 text-xs text-slate-500">
+                    {pendingPage} / {pendingData.totalPages}
+                  </span>
+                  <button
+                    disabled={pendingPage >= pendingData.totalPages}
+                    onClick={() => setPendingPage(pendingPage + 1)}
+                    className="px-3 py-1 text-xs rounded border border-slate-700/50 text-slate-400 disabled:opacity-30 hover:text-white transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </motion.div>
+      )}
+
+      {/* Browse tab */}
+      {viewTab === "browse" && (
+        <>
+          {/* Type tabs */}
+          <div className="flex gap-1 mb-4">
+            {TYPE_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => switchType(tab.value)}
+                className={`px-3 py-1 text-xs rounded border transition-all ${
+                  type === tab.value
+                    ? "bg-slate-700 border-slate-600 text-white"
+                    : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600"
+                }`}
+              >
+                {tab.label}
+                {stats && (() => {
+                  const count = stats.filter((s) => s.type === tab.value).reduce((sum, s) => sum + s.count, 0);
+                  return count > 0 ? <span className="ml-1 text-[10px] text-slate-500">{count}</span> : null;
+                })()}
+              </button>
+            ))}
+          </div>
+
+          {/* Filters */}
+          <div className="flex items-center gap-3 mb-4">
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as KnowledgeStatus | "");
+                setPage(1);
+              }}
+              className="px-2 py-1 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-400"
+            >
+              <option value="">All status</option>
+              <option value="TEMP">TEMP</option>
+              <option value="CONFIRMED">CONFIRMED</option>
+              <option value="DEPRECATED">DEPRECATED</option>
+            </select>
+
+            <input
+              type="text"
+              placeholder="Filter by project..."
+              value={projectFilter}
+              onChange={(e) => {
+                setProjectFilter(e.target.value);
+                setPage(1);
+              }}
+              className="px-2 py-1 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-300 placeholder-slate-600 w-48"
+            />
+          </div>
 
       {/* Content */}
       {loading ? (
@@ -630,7 +945,12 @@ export function KnowledgePage() {
                     <td className="px-3 py-2.5 text-center">{severityBadge(item.severity)}</td>
                     <td className="px-3 py-2.5 text-slate-400">{item.project || "--"}</td>
                     <td className="px-3 py-2.5 text-center text-slate-400">{item.hit_count}</td>
-                    <td className="px-3 py-2.5 text-center">{statusBadge(item.status)}</td>
+                    <td className="px-3 py-2.5 text-center">
+                        <span className="flex items-center justify-center gap-1">
+                          {statusBadge(item.status)}
+                          {reviewStatusBadge(item.review_status)}
+                        </span>
+                      </td>
                     <td
                       className="px-3 py-2.5 text-right space-x-1"
                       onClick={(e) => e.stopPropagation()}
@@ -689,6 +1009,8 @@ export function KnowledgePage() {
             </div>
           )}
         </>
+      )}
+      </>
       )}
 
       {/* Detail Drawer */}

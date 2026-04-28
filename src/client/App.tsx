@@ -15,6 +15,7 @@ import { PlanDetailPage } from "./pages/PlanDetailPage";
 import { PlanNewPage } from "./pages/PlanNewPage";
 import { KnowledgePage } from "./pages/KnowledgePage";
 import { DimensionSetPage } from "./pages/DimensionSetPage";
+import { UserManagementPage } from "./pages/UserManagementPage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
@@ -43,14 +44,46 @@ export default function App() {
       .finally(() => setAuthChecked(true));
   }, []);
 
+  // Auto-refresh token periodically (every 6 days, token expires in 7)
+  useEffect(() => {
+    if (!authUser) return;
+    const interval = setInterval(() => {
+      const token = localStorage.getItem("auth_token");
+      if (!token) return;
+      fetch(`${API_BASE}/api/auth/refresh`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error("refresh failed");
+          return r.json();
+        })
+        .then((data) => {
+          if (data.token) localStorage.setItem("auth_token", data.token);
+        })
+        .catch(() => {
+          // Silent fail — next API call will 401 if token expired
+        });
+    }, 6 * 24 * 60 * 60 * 1000); // 6 days
+    return () => clearInterval(interval);
+  }, [authUser]);
+
   function handleLogin(token: string, user: User) {
     localStorage.setItem("auth_token", token);
     setAuthUser(user);
   }
 
   function handleLogout() {
+    const token = localStorage.getItem("auth_token");
     localStorage.removeItem("auth_token");
     setAuthUser(null);
+    // Notify server (fire-and-forget)
+    if (token) {
+      fetch(`${API_BASE}/api/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
   }
 
   // Auth gate
@@ -105,6 +138,14 @@ export default function App() {
                 className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
               >
                 Dimensions
+              </Link>
+            )}
+            {authUser.role === "admin" && (
+              <Link
+                to="/users"
+                className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
+              >
+                Users
               </Link>
             )}
           </div>
@@ -188,6 +229,7 @@ export default function App() {
           <Route path="/plans/:id" element={<PlanDetailPage />} />
           <Route path="/knowledge" element={<KnowledgePage />} />
           <Route path="/dimensions" element={<DimensionSetPage />} />
+          <Route path="/users" element={<UserManagementPage currentUser={authUser} />} />
         </Routes>
       </div>
     </div>

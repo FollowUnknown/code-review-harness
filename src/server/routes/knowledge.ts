@@ -6,6 +6,8 @@ import {
   deprecateEntry,
   deleteEntry,
   listEntries,
+  listPendingEntries,
+  reviewEntry,
   getKnowledgeStats,
   addEntry,
   addRelation,
@@ -13,7 +15,7 @@ import {
   deleteRelation,
 } from "../services/knowledge";
 import type { RelationType } from "../services/knowledge";
-import type { EntryType, EntryStatus } from "../services/knowledge";
+import type { EntryType, EntryStatus, ReviewStatus } from "../services/knowledge";
 
 const router = Router();
 
@@ -30,9 +32,13 @@ function requireAdmin(req: Request, res: Response): boolean {
   return true;
 }
 
-// POST / — Create knowledge entry (admin only)
+// POST / — Create knowledge entry (admin: auto-approved, member: pending review)
 router.post("/", (req: Request, res: Response) => {
-  if (!requireAdmin(req, res)) return;
+  const user = getUser(req);
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
 
   const { type, project, module, severity, title, pattern, impact, fix_suggestion, content,
           source_review, source_mr, source_file, parent_id,
@@ -50,11 +56,14 @@ router.post("/", (req: Request, res: Response) => {
     return;
   }
 
+  const isAdmin = user.role === "admin";
   const entry = addEntry({
     type, project, module, severity, title, pattern, impact, fix_suggestion, content,
     source_review, source_mr, source_file, parent_id,
     product_line, engineering, source_story, source_type, review_pass,
     scope, data_structure, default_value, first_seen_in, derivation,
+    suggested_by: user.id,
+    review_status: isAdmin ? "approved" : "pending",
   });
 
   res.json(entry);
@@ -65,6 +74,8 @@ router.get("/", (req: Request, res: Response) => {
   const type = req.query.type as EntryType | undefined;
   const project = req.query.project as string | undefined;
   const status = req.query.status as EntryStatus | undefined;
+  const review_status = req.query.review_status as ReviewStatus | undefined;
+  const suggested_by = req.query.suggested_by as string | undefined;
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20));
 
@@ -80,13 +91,59 @@ router.get("/", (req: Request, res: Response) => {
     return;
   }
 
-  const result = listEntries({ type, project, status, page, pageSize });
+  const validReviewStatuses: ReviewStatus[] = ["pending", "approved", "rejected"];
+  if (review_status && !validReviewStatuses.includes(review_status)) {
+    res.status(400).json({ error: `Invalid review_status. Must be one of: ${validReviewStatuses.join(", ")}` });
+    return;
+  }
+
+  const result = listEntries({ type, project, status, review_status, suggested_by, page, pageSize });
   res.json(result);
 });
 
 // GET /stats — Knowledge statistics
 router.get("/stats", (_req: Request, res: Response) => {
   res.json(getKnowledgeStats());
+});
+
+// GET /pending — List pending review entries (admin only)
+router.get("/pending", (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20));
+  const result = listPendingEntries(page, pageSize);
+  res.json(result);
+});
+
+// POST /:id/review — Review a pending entry (admin only)
+router.post("/:id/review", (req: Request<{ id: string }>, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  const user = getUser(req)!;
+  const entry = getEntry(req.params.id);
+  if (!entry) {
+    res.status(404).json({ error: "Knowledge entry not found" });
+    return;
+  }
+
+  if (entry.review_status !== "pending") {
+    res.status(400).json({ error: "Only pending entries can be reviewed" });
+    return;
+  }
+
+  const { action, comment } = req.body as { action?: string; comment?: string };
+  if (action !== "approved" && action !== "rejected") {
+    res.status(400).json({ error: "action must be 'approved' or 'rejected'" });
+    return;
+  }
+
+  const reviewed = reviewEntry(req.params.id, action, user.id, comment);
+  if (!reviewed) {
+    res.status(500).json({ error: "Failed to review entry" });
+    return;
+  }
+  res.json(reviewed);
 });
 
 // GET /:id — Knowledge entry detail

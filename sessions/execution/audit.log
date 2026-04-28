@@ -28,3 +28,81 @@
 [2026-04-28T03:32:51Z] Write sessions/execution/audit.log session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
 [2026-04-28T03:35:18Z] Write sessions/execution/audit.log session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
 [2026-04-28T03:43:53Z] Edit scripts/check-contract-before-write.sh session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T04:14:16Z] Write docs/versions/v1.1.5/tasks.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T04:17:13Z] Edit src/server/db.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/db.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T04:26:40Z] Edit src/server/services/knowledge.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T04:26:50Z] Edit src/server/services/knowledge.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T04:27:08Z] Edit src/server/services/knowledge.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T04:27:28Z] Edit src/server/services/knowledge.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T04:27:46Z] Edit src/server/services/knowledge.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T04:28:01Z] Edit src/server/services/knowledge.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T04:28:22Z] Edit src/server/services/knowledge.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T04:28:48Z] Edit src/server/routes/knowledge.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/routes/knowledge.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T04:29:13Z] Edit src/server/routes/knowledge.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/routes/knowledge.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T04:29:42Z] Edit src/server/routes/knowledge.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/routes/knowledge.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T04:30:05Z] Edit src/server/routes/knowledge.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/routes/knowledge.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T04:32:37Z] Edit src/server/routes/auth.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/routes/auth.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T04:32:55Z] Edit src/server/routes/auth.ts session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/server/routes/auth.ts - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T05:51:01Z] Edit .gitignore session=087536a9-6a63-44c2-9a28-a0b9f04be03d
+[AUDIT] Edit on .gitignore - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:03:19Z] Write docs/archive/development-journey.md session=087536a9-6a63-44c2-9a28-a0b9f04be03d
+[2026-04-28T06:12:34Z] Write src/client/pages/UserManagementPage.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Write on src/client/pages/UserManagementPage.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:13:03Z] Edit src/client/App.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/App.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:13:33Z] Edit src/client/App.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/App.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:13:47Z] Write docs/retrospectives/README.md session=087536a9-6a63-44c2-9a28-a0b9f04be03d
+[2026-04-28T06:13:55Z] Edit src/client/App.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/App.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:14:25Z] Edit src/client/App.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/App.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:15:02Z] Edit src/client/App.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/App.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:15:42Z] Edit src/client/pages/KnowledgePage.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:16:20Z] Edit src/client/pages/KnowledgePage.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:17:00Z] Edit src/client/pages/KnowledgePage.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:17:38Z] Edit src/client/pages/KnowledgePage.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:18:18Z] Edit src/client/pages/KnowledgePage.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:20:11Z] Edit src/client/pages/KnowledgePage.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:22:15Z] Edit src/client/pages/KnowledgePage.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:28:10Z] Edit src/client/pages/KnowledgePage.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:28:52Z] Edit src/client/pages/KnowledgePage.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:31:10Z] Edit src/client/pages/KnowledgePage.tsx session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T06:34:10Z] Edit docs/versions/v1.1.5/tasks.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T06:34:41Z] Edit docs/versions/v1.1.5/tasks.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T06:35:32Z] Edit docs/versions/v1.1.5/tasks.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T06:36:07Z] Edit docs/versions/v1.1.5/tasks.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T06:36:44Z] Edit docs/versions/v1.1.5/tasks.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T06:37:19Z] Edit docs/versions/v1.1.5/tasks.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T06:37:57Z] Edit docs/versions/v1.1.5/tasks.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T06:41:25Z] Edit docs/versions/v1.1.5/tasks.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T08:21:50Z] Write docs/versions/v1.2.0/README.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T08:23:50Z] Write docs/versions/v1.2.0/tasks.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T08:26:06Z] Write docs/versions/v1.2.5/README.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T08:28:04Z] Write docs/versions/v1.2.5/tasks.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
+[2026-04-28T08:30:00Z] Write docs/versions/README.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
