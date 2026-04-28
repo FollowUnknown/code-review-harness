@@ -51,6 +51,42 @@ AI 每次对话自动遵循以下规则，记录会话内容和任务清单。
 
 **上下文控制：只读当天 session + active-tasks.md。历史文件按需 grep。**
 
+### Execution 记录规则（Phase 3）
+
+AI 在以下场景**自动**写入 `sessions/execution/` 记录：
+
+**触发 1：Contract 状态变更 → 写入 Checkpoint**
+- 每次 Contract 状态流转（draft→confirmed→in_progress→review_pending→completed）
+- 写入 `sessions/execution/checkpoints/checkpoint-{YYYYMMDD}-{NNN}.json`
+- 包含 `memoryLayer` 字段（为 Phase 4 Memory 预埋）
+
+**触发 2：写了/改了代码 → 写入 Run 阶段记录**
+- 按当前阶段写入对应文件：
+  - Planning 阶段 → `runs/{run-id}/plan.json`
+  - Implementation 阶段 → `runs/{run-id}/implementation.json`
+  - Review 阶段 → `runs/{run-id}/review.json`
+- 包含 `extractedForMemory` 字段（为 Phase 4 Memory 预埋）
+
+**触发 3：评审失败后修复 → 写入 Repair 记录**
+- 评审不通过 → 创建 `repairs/{repair-id}/original-review.json`
+- 制定修复计划 → 写入 `repairs/{repair-id}/fix-plan.json`
+- 修复后验证 → 写入 `repairs/{repair-id}/verification.json`
+- 重试结果 → 写入 `repairs/{repair-id}/retry-result.json`
+- 包含 `extractedForKnowledge` 字段（为 Phase 4 Memory 预埋）
+
+**触发 4：Agent 切换 → 更新 Run 阶段**
+- Planner → Generator → Evaluator 切换时
+- 自动关联到当前 Run，写入对应阶段记录
+
+**命名规范**：
+- run-id: `run-{YYYYMMDD}-{NNN}`
+- repair-id: `repair-{YYYYMMDD}-{NNN}`
+- checkpoint-id: `checkpoint-{YYYYMMDD}-{NNN}`
+- Schema 定义：`sessions/execution/{runs|repairs|checkpoints}/schemas/`
+
+**任务关联**：
+- active-tasks.md 中的任务可通过 `executionRunId`、`executionRepairId` 关联到 Execution 记录
+
 ### 会话文件模板
 
 ```markdown
@@ -215,7 +251,12 @@ AI 每次对话自动遵循以下规则，记录会话内容和任务清单。
 ```
 sessions/                       # 会话机制（运营日志，与 docs/ 分离）
 ├── active-tasks.md          # 跨天活跃任务汇总
-└── YYYY-MM-DD.md            # 每日会话记录
+├── YYYY-MM-DD.md            # 每日会话记录
+└── execution/               # Phase 3 Execution 证据
+    ├── runs/                # Run 执行记录（plan/implementation/review）
+    ├── repairs/             # 修复回环记录
+    ├── checkpoints/         # 阶段检查点
+    └── README.md            # 目录说明
 
 docs/                            # 项目知识（参考型）
 ├── contracts/

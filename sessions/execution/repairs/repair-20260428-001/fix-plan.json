@@ -1,0 +1,16 @@
+{
+  "repairId": "repair-20260428-001",
+  "runId": "run-20260428-001",
+  "fixes": [
+    {
+      "issueType": "missing-validation",
+      "approach": "创建 scripts/validate-execution-records.sh，使用 ajv 或 python jsonschema 验证 execution/ 下所有 JSON 记录是否符合对应 Schema",
+      "files": [
+        "scripts/validate-execution-records.sh"
+      ],
+      "before": "无验证脚本",
+      "after": "执行 validate-execution-records.sh 可验证所有记录格式"
+    }
+  ],
+  "timestamp": 1745825400000
+}

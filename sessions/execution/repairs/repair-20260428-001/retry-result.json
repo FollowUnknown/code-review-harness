@@ -1,0 +1,9 @@
+{
+  "repairId": "repair-20260428-001",
+  "runId": "run-20260428-001",
+  "timestamp": 1745826600000,
+  "result": "passed",
+  "retryCount": 1,
+  "remainingIssues": [],
+  "resolvedIssues": ["missing-validation"]
+}

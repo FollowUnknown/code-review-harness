@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "execution-checkpoint",
+  "title": "ExecutionCheckpoint",
+  "description": "Stage checkpoint for tracking state transitions",
+  "type": "object",
+  "required": ["checkpointId", "type", "timestamp", "context", "memoryLayer"],
+  "properties": {
+    "checkpointId": {
+      "type": "string",
+      "pattern": "^checkpoint-\\d{8}-\\d{3}$"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "contract-state-change",
+        "agent-switch",
+        "phase-transition"
+      ],
+      "description": "Type of checkpoint"
+    },
+    "fromState": {
+      "type": "string",
+      "description": "Previous state (for contract-state-change and phase-transition)"
+    },
+    "toState": {
+      "type": "string",
+      "description": "New state"
+    },
+    "timestamp": {
+      "type": "number"
+    },
+    "context": {
+      "type": "object",
+      "required": ["contractId"],
+      "properties": {
+        "contractId": { "type": "string" },
+        "confirmedBy": { "type": "string", "description": "Who confirmed the change" },
+        "scope": { "type": "string", "description": "What scope this checkpoint covers" },
+        "fromAgent": { "type": "string", "description": "For agent-switch: source agent" },
+        "toAgent": { "type": "string", "description": "For agent-switch: target agent" },
+        "runId": { "type": "string", "description": "Associated run if any" }
+      }
+    },
+    "memoryLayer": {
+      "type": "string",
+      "enum": ["session", "task", "project"],
+      "default": "task",
+      "description": "Phase 4 pre-embedding: which memory layer this checkpoint belongs to"
+    }
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "execution-run-implementation",
+  "title": "ExecutionRunImplementation",
+  "description": "GREEN phase evidence - Implementation stage of an Execution Run",
+  "type": "object",
+  "required": ["runId", "contractId", "phase", "agentType", "timestamp", "content", "extractedForMemory"],
+  "properties": {
+    "runId": {
+      "type": "string",
+      "pattern": "^run-\\d{8}-\\d{3}$"
+    },
+    "contractId": {
+      "type": "string"
+    },
+    "phase": {
+      "type": "string",
+      "const": "implementation"
+    },
+    "agentType": {
+      "type": "string",
+      "enum": ["generator"]
+    },
+    "timestamp": {
+      "type": "number"
+    },
+    "content": {
+      "type": "object",
+      "required": ["changes"],
+      "properties": {
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["file", "type"],
+            "properties": {
+              "file": { "type": "string", "description": "File path" },
+              "type": {
+                "type": "string",
+                "enum": ["created", "modified", "deleted"],
+                "description": "Type of change"
+              },
+              "description": { "type": "string" },
+              "linesAdded": { "type": "number" },
+              "linesRemoved": { "type": "number" }
+            }
+          },
+          "description": "List of file changes made"
+        },
+        "testResults": {
+          "type": "object",
+          "properties": {
+            "passed": { "type": "number" },
+            "failed": { "type": "number" },
+            "coverage": { "type": "number", "description": "Coverage percentage 0-100" },
+            "command": { "type": "string", "description": "Test command used" }
+          }
+        },
+        "buildResult": {
+          "type": "object",
+          "properties": {
+            "success": { "type": "boolean" },
+            "errors": { "type": "array", "items": { "type": "string" } },
+            "warnings": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "extractedForMemory": {
+      "type": "boolean",
+      "default": false,
+      "description": "Phase 4 pre-embedding: whether this record has been extracted for task memory"
+    }
+  }
+}

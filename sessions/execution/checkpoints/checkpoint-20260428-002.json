@@ -1,0 +1,13 @@
+{
+  "checkpointId": "checkpoint-20260428-002",
+  "type": "phase-transition",
+  "fromState": "plan",
+  "toState": "implementation",
+  "timestamp": 1745821200000,
+  "context": {
+    "contractId": "2026-04-28-v110-execution-layer",
+    "runId": "run-20260428-001",
+    "scope": "开始实现 Execution 目录结构和 Schema 定义"
+  },
+  "memoryLayer": "task"
+}

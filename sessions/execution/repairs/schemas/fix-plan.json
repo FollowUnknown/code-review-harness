@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "execution-repair-fix-plan",
+  "title": "ExecutionRepairFixPlan",
+  "description": "Fix plan for addressing review issues",
+  "type": "object",
+  "required": ["repairId", "runId", "fixes", "timestamp"],
+  "properties": {
+    "repairId": {
+      "type": "string",
+      "pattern": "^repair-\\d{8}-\\d{3}$"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "fixes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["issueType", "approach", "files"],
+        "properties": {
+          "issueType": { "type": "string", "description": "Maps to original review issue type" },
+          "approach": { "type": "string", "description": "How to fix this issue" },
+          "files": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Files that need to be modified"
+          },
+          "before": { "type": "string", "description": "Code before fix (for pattern tracking)" },
+          "after": { "type": "string", "description": "Code after fix (for pattern tracking)" }
+        }
+      }
+    },
+    "timestamp": {
+      "type": "number"
+    }
+  }
+}

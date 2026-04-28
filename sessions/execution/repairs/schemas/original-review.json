@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "execution-repair-original-review",
+  "title": "ExecutionRepairOriginalReview",
+  "description": "Original review result that triggered a repair cycle",
+  "type": "object",
+  "required": ["repairId", "runId", "originalReview", "timestamp", "extractedForKnowledge"],
+  "properties": {
+    "repairId": {
+      "type": "string",
+      "pattern": "^repair-\\d{8}-\\d{3}$"
+    },
+    "runId": {
+      "type": "string",
+      "description": "Associated run ID that failed review"
+    },
+    "originalReview": {
+      "type": "object",
+      "required": ["result", "issues"],
+      "properties": {
+        "result": {
+          "type": "string",
+          "const": "failed"
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["level", "type", "message"],
+            "properties": {
+              "level": {
+                "type": "string",
+                "enum": ["critical", "high", "medium", "low"]
+              },
+              "type": { "type": "string", "description": "Issue category (e.g. sql-injection, xss, unmaintainable)" },
+              "pattern": { "type": "string", "description": "Code pattern that triggered this issue" },
+              "message": { "type": "string" },
+              "file": { "type": "string" },
+              "line": { "type": "number" },
+              "suggestion": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "timestamp": {
+      "type": "number"
+    },
+    "extractedForKnowledge": {
+      "type": "boolean",
+      "default": false,
+      "description": "Phase 4 pre-embedding: whether this record has been extracted for validated knowledge"
+    }
+  }
+}

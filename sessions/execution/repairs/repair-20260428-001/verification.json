@@ -1,0 +1,15 @@
+{
+  "repairId": "repair-20260428-001",
+  "runId": "run-20260428-001",
+  "timestamp": 1745826000000,
+  "verificationResults": [
+    {
+      "issueType": "missing-validation",
+      "verified": true,
+      "method": "manual",
+      "details": "验证脚本已创建，手动执行确认可验证 JSON 记录格式"
+    }
+  ],
+  "buildPassed": true,
+  "testsPassed": true
+}

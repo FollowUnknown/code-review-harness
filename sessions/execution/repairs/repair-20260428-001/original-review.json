@@ -1,0 +1,18 @@
+{
+  "repairId": "repair-20260428-001",
+  "runId": "run-20260428-001",
+  "originalReview": {
+    "result": "failed",
+    "issues": [
+      {
+        "level": "high",
+        "type": "missing-validation",
+        "pattern": "no-schema-validation-script",
+        "message": "Execution 记录无验证脚本，JSON Schema 定义了但无工具验证实际记录是否符合",
+        "suggestion": "添加 scripts/validate-execution-records.sh"
+      }
+    ]
+  },
+  "timestamp": 1745824800000,
+  "extractedForKnowledge": false
+}

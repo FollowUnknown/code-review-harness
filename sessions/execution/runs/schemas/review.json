@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "execution-run-review",
+  "title": "ExecutionRunReview",
+  "description": "IMPROVE phase evidence - Review stage of an Execution Run",
+  "type": "object",
+  "required": ["runId", "contractId", "phase", "agentType", "timestamp", "content", "result", "extractedForMemory"],
+  "properties": {
+    "runId": {
+      "type": "string",
+      "pattern": "^run-\\d{8}-\\d{3}$"
+    },
+    "contractId": {
+      "type": "string"
+    },
+    "phase": {
+      "type": "string",
+      "const": "review"
+    },
+    "agentType": {
+      "type": "string",
+      "enum": ["evaluator", "code-reviewer", "security-reviewer"]
+    },
+    "timestamp": {
+      "type": "number"
+    },
+    "content": {
+      "type": "object",
+      "required": ["issues"],
+      "properties": {
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["level", "message"],
+            "properties": {
+              "level": {
+                "type": "string",
+                "enum": ["critical", "high", "medium", "low"],
+                "description": "Issue severity"
+              },
+              "type": { "type": "string", "description": "Issue category (e.g. sql-injection, xss)" },
+              "file": { "type": "string" },
+              "line": { "type": "number" },
+              "message": { "type": "string" },
+              "suggestion": { "type": "string" }
+            }
+          }
+        },
+        "gradingResult": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "criterion": { "type": "string" },
+              "passed": { "type": "boolean" },
+              "notes": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "result": {
+      "type": "string",
+      "enum": ["passed", "failed", "warning"],
+      "description": "Overall review result"
+    },
+    "extractedForMemory": {
+      "type": "boolean",
+      "default": false,
+      "description": "Phase 4 pre-embedding: whether this record has been extracted for task memory"
+    }
+  }
+}

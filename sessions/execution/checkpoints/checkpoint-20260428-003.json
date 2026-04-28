@@ -1,0 +1,15 @@
+{
+  "checkpointId": "checkpoint-20260428-003",
+  "type": "agent-switch",
+  "fromState": "generator",
+  "toState": "evaluator",
+  "timestamp": 1745824800000,
+  "context": {
+    "contractId": "2026-04-28-v110-execution-layer",
+    "fromAgent": "generator",
+    "toAgent": "evaluator",
+    "runId": "run-20260428-001",
+    "scope": "实现完成，进入评审阶段"
+  },
+  "memoryLayer": "task"
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "execution-repair-verification",
+  "title": "ExecutionRepairVerification",
+  "description": "Verification result after applying fixes",
+  "type": "object",
+  "required": ["repairId", "runId", "timestamp", "verificationResults"],
+  "properties": {
+    "repairId": {
+      "type": "string",
+      "pattern": "^repair-\\d{8}-\\d{3}$"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "number"
+    },
+    "verificationResults": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["issueType", "verified"],
+        "properties": {
+          "issueType": { "type": "string" },
+          "verified": { "type": "boolean", "description": "Whether the fix resolved the issue" },
+          "method": { "type": "string", "enum": ["test", "review", "build", "manual"], "description": "How the fix was verified" },
+          "details": { "type": "string" }
+        }
+      }
+    },
+    "buildPassed": { "type": "boolean" },
+    "testsPassed": { "type": "boolean" }
+  }
+}

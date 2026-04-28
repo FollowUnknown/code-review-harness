@@ -1,0 +1,45 @@
+{
+  "runId": "run-20260428-001",
+  "contractId": "2026-04-28-v110-execution-layer",
+  "phase": "plan",
+  "agentType": "planner",
+  "timestamp": 1745817600000,
+  "content": {
+    "scope": "v1.1.0 Execution 层基础设施 — 目录结构、记录格式定义、Sessions 集成",
+    "approach": "基于现有 sessions/ 机制扩展 execution/ 子目录，定义 Run/Repair/Checkpoint 三类记录格式，更新 CLAUDE.md 会话规则集成 Execution 记录",
+    "risks": [
+      "PreToolUse Hook 对 Write/Edit 的支持能力未验证",
+      "execution/ 记录可能随时间膨胀需要清理策略"
+    ],
+    "decisions": [
+      {
+        "decision": "记录格式使用 JSON Schema 定义",
+        "rationale": "可验证、可生成文档、支持 IDE 自动补全"
+      },
+      {
+        "decision": "Phase 4 预埋字段放在每条记录的顶层",
+        "rationale": "方便 v1.2.0 Memory Extractor 扫描识别，不需要深层解析"
+      }
+    ],
+    "filesAffected": [
+      "sessions/execution/README.md",
+      "sessions/execution/runs/schemas/plan.json",
+      "sessions/execution/runs/schemas/implementation.json",
+      "sessions/execution/runs/schemas/review.json",
+      "sessions/execution/repairs/schemas/original-review.json",
+      "sessions/execution/repairs/schemas/fix-plan.json",
+      "sessions/execution/repairs/schemas/verification.json",
+      "sessions/execution/repairs/schemas/retry-result.json",
+      "sessions/execution/checkpoints/schemas/checkpoint.json",
+      "sessions/active-tasks.md",
+      "CLAUDE.md"
+    ],
+    "gradingCriteria": [
+      "目录结构完整，.gitkeep 保留空目录",
+      "JSON Schema 可解析，包含 Phase 4 预埋字段",
+      "active-tasks.md 支持 executionRunId 关联",
+      "CLAUDE.md 包含 Execution 记录触发规则"
+    ]
+  },
+  "extractedForMemory": false
+}

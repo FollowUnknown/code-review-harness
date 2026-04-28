@@ -1,0 +1,13 @@
+{
+  "checkpointId": "checkpoint-20260428-001",
+  "type": "contract-state-change",
+  "fromState": "draft",
+  "toState": "confirmed",
+  "timestamp": 1745814000000,
+  "context": {
+    "contractId": "2026-04-28-v110-execution-layer",
+    "confirmedBy": "user-explicit-confirmation",
+    "scope": "v1.1.0 Execution 层基础设施"
+  },
+  "memoryLayer": "task"
+}

@@ -36,6 +36,15 @@
             "command": "bash scripts/pre-commit-review-check.sh"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/check-contract-before-write.sh"
+          }
+        ]
       }
     ],
     "Stop": [
