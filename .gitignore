@@ -5,4 +5,4 @@ dist/
 .DS_Store
 Thumbs.db
 coverage/
-knowledge.db
+knowledge.db*
