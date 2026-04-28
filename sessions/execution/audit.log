@@ -114,3 +114,4 @@
 [2026-04-28T08:54:47Z] Edit docs/versions/v1.2.0/README.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
 [2026-04-28T09:06:24Z] Edit CLAUDE.md session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
 [AUDIT] Edit on CLAUDE.md - allowed (v1.1.0 phase: audit-only)
+[2026-04-28T09:37:34Z] Write scripts/pre-commit-review-check.sh session=ba07d94f-29e0-40bc-8697-87f7c879b5c7
