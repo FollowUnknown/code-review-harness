@@ -338,7 +338,7 @@ export function ReviewResult({ data, project, onReset, onKnowledgeClick }: Props
                 {data.knowledgeDispositions.map((disp, i) => {
                   const issue = report.issues[disp.issueIndex];
                   if (!issue) return null;
-                  const sev = SEVERITY_STYLES[issue.severity];
+                  const sev = SEVERITY_STYLES[issue.severity as SeverityLevel] || SEVERITY_STYLES.LOW;
                   return (
                     <div key={i} className="flex items-center gap-2 px-3 py-2 bg-slate-800/30 rounded-lg text-xs">
                       <span className={`px-1.5 py-0.5 rounded font-semibold ${sev.bg} ${sev.text}`}>{issue.severity}</span>
@@ -717,7 +717,7 @@ function IssuesSection({ issues, reviewId, project }: IssuesSectionProps) {
                     {groupIssues.map((issue, idx) => {
                       const globalIndex = issues.indexOf(issue);
                       const isExpanded = expandedIssues.has(globalIndex);
-                      const style = SEVERITY_STYLES[issue.severity];
+                      const style = SEVERITY_STYLES[issue.severity as SeverityLevel] || SEVERITY_STYLES.LOW;
                       const Icon = getSeverityIcon(issue.severity);
 
                       return (

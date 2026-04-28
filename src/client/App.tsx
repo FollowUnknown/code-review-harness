@@ -16,6 +16,7 @@ import { PlanNewPage } from "./pages/PlanNewPage";
 import { KnowledgePage } from "./pages/KnowledgePage";
 import { DimensionSetPage } from "./pages/DimensionSetPage";
 import { UserManagementPage } from "./pages/UserManagementPage";
+import { QualityPage } from "./pages/QualityPage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
@@ -132,6 +133,12 @@ export default function App() {
             >
               Knowledge
             </Link>
+            <Link
+              to="/quality"
+              className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
+            >
+              Quality
+            </Link>
             {authUser.role === "admin" && (
               <Link
                 to="/dimensions"
@@ -230,6 +237,7 @@ export default function App() {
           <Route path="/knowledge" element={<KnowledgePage />} />
           <Route path="/dimensions" element={<DimensionSetPage />} />
           <Route path="/users" element={<UserManagementPage currentUser={authUser} />} />
+          <Route path="/quality" element={<QualityPage />} />
         </Routes>
       </div>
     </div>

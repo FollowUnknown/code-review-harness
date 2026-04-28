@@ -226,7 +226,7 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
         // No batches reviewed (aborted or empty diff) — skip saving
         const reason = batchDiffs.length === 0 ? "empty diff" : aborted ? "client disconnected" : "unknown";
         console.log(`[Plan ${plan.id}] MR ${mi + 1}: no report, reason=${reason}`);
-        updatePlanItem(plan.id, item.id, { status: "failed" });
+        updatePlanItem(plan.id, item.id, { status: "failed", error_message: reason, reviewed_at: new Date().toISOString() });
         sendSSE({ step, status: "error", label: `MR ${mi + 1} failed: ${reason}` });
       } else {
         const stats = computeReviewStats(report);
@@ -234,13 +234,13 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
         saveReviewRecord({ id: reviewId, mr_url: item.mr_url, project, author: mr.author?.name || null, status: "completed", report_json: JSON.stringify(report), classification_json: JSON.stringify(classification), requirement_json: JSON.stringify({ type: requirement.type, module: requirement.module, features: requirement.features, conflicts: requirement.conflicts, source: requirement.source }), mr_meta_json: JSON.stringify(mr), reviewed_commit_sha: null, passed: report.passed, avg_score: stats.avgScore, issue_count: stats.issueCount, critical_count: stats.criticalCount, created_by: userId, knowledge_dispositions_json: JSON.stringify(suggestDispositions(report.issues)) });
         extractLearnings(report, project, reviewId);
         if (knowledge.length > 0) { trackKnowledgeHits(knowledge.map((e) => e.id), reviewId); }
-        updatePlanItem(plan.id, item.id, { status: "completed", review_id: reviewId });
+        updatePlanItem(plan.id, item.id, { status: "completed", review_id: reviewId, source_branch: mr.source_branch, target_branch: mr.target_branch, author: mr.author?.name || null, reviewed_at: new Date().toISOString() });
 
         sendSSE({ step, status: "done", label: "", detail: `MR ${mi + 1}/${pendingItems.length} completed: ${stats.avgScore?.toFixed(1) ?? "—"} score, ${stats.issueCount} issues`, currentMR: mi + 1, totalMRs: pendingItems.length });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Review failed";
-      updatePlanItem(plan.id, item.id, { status: "failed" });
+      updatePlanItem(plan.id, item.id, { status: "failed", error_message: msg.slice(0, 500), reviewed_at: new Date().toISOString() });
       sendSSE({ step, status: "error", label: `MR ${mi + 1} failed: ${msg.slice(0, 100)}` });
     }
   }

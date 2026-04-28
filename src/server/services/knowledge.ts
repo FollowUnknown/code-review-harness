@@ -40,6 +40,9 @@ export interface KnowledgeEntry {
   reviewed_by?: string;
   review_status: ReviewStatus;
   review_comment?: string;
+  fingerprint?: string;
+  confidence: number;
+  last_verified_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -100,10 +103,15 @@ export function addEntry(input: {
   derivation?: string;
   suggested_by?: string;
   review_status?: ReviewStatus;
+  fingerprint?: string;
 }): KnowledgeEntry {
   const db = getDb();
   const now = new Date().toISOString();
   const reviewStatus = input.review_status ?? "approved";
+  const fingerprint = input.fingerprint ?? generateFingerprint(input.type, input.project, input.title, input.pattern);
+
+  // Default confidence: 0.3 for auto-extracted, 0.7 for manual
+  const confidence = input.source_type === "LLM提取" ? 0.3 : 0.7;
 
   const result = db.transaction(() => {
     const id = getNextTempId(input.type);
@@ -114,9 +122,9 @@ export function addEntry(input: {
         source_review, source_mr, source_file, parent_id, hit_count,
         product_line, engineering, source_story, source_type, review_pass,
         scope, data_structure, default_value, first_seen_in, derivation,
-        suggested_by, review_status,
+        suggested_by, review_status, fingerprint, confidence, last_verified_at,
         created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'TEMP', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'TEMP', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id, input.type, input.project, input.module ?? null,
       input.severity ?? null, input.title, input.pattern ?? null,
@@ -130,10 +138,13 @@ export function addEntry(input: {
       input.default_value ?? null, input.first_seen_in ?? null,
       input.derivation ?? null,
       input.suggested_by ?? null, reviewStatus,
+      fingerprint,
+      confidence,
+      now,
       now, now
     );
 
-    return { ...input, id, status: "TEMP" as EntryStatus, hit_count: 0, review_status: reviewStatus, created_at: now, updated_at: now } as KnowledgeEntry;
+    return { ...input, id, status: "TEMP" as EntryStatus, hit_count: 0, review_status: reviewStatus, fingerprint, confidence, last_verified_at: now, created_at: now, updated_at: now } as KnowledgeEntry;
   })();
 
   return result;
@@ -183,8 +194,8 @@ export function confirmEntry(id: string, projectAbbr?: string): KnowledgeEntry |
     const now = new Date().toISOString();
 
     db.prepare(
-      `UPDATE knowledge_entries SET id = ?, status = 'CONFIRMED', updated_at = ? WHERE id = ?`
-    ).run(formalId, now, id);
+      `UPDATE knowledge_entries SET id = ?, status = 'CONFIRMED', confidence = MAX(confidence, 0.7), last_verified_at = ?, updated_at = ? WHERE id = ?`
+    ).run(formalId, now, now, id);
 
     return getEntry(formalId);
   })();
@@ -266,14 +277,114 @@ export function getKnowledgeStats(): Array<{ type: EntryType; status: EntryStatu
   ).all() as Array<{ type: EntryType; status: EntryStatus; project: string; count: number }>;
 }
 
+// ---- Lifecycle Management ----
+
+export function deprecateStaleEntries(): { deprecated: number; flagged: number } {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Auto-deprecate: confidence < 0.2 AND no hit in 30 days
+  const deprecatedResult = db.prepare(
+    `UPDATE knowledge_entries
+     SET status = 'DEPRECATED', updated_at = ?
+     WHERE status IN ('TEMP', 'CONFIRMED')
+       AND confidence < 0.2
+       AND (last_hit_at IS NULL OR last_hit_at < ?)`
+  ).run(now, thirtyDaysAgo);
+
+  // Flag for re-verification: CONFIRMED AND no hit in 90 days
+  const flaggedResult = db.prepare(
+    `UPDATE knowledge_entries
+     SET review_status = 'pending', updated_at = ?
+     WHERE status = 'CONFIRMED'
+       AND review_status = 'approved'
+       AND (last_hit_at IS NULL OR last_hit_at < ?)`
+  ).run(now, ninetyDaysAgo);
+
+  return {
+    deprecated: deprecatedResult.changes,
+    flagged: flaggedResult.changes,
+  };
+}
+
+export function refreshEntryVerification(id: string): KnowledgeEntry | undefined {
+  const db = getDb();
+  const now = new Date().toISOString();
+  db.prepare(
+    "UPDATE knowledge_entries SET last_verified_at = ?, updated_at = ? WHERE id = ?"
+  ).run(now, now, id);
+  return getEntry(id);
+}
+
+// ---- Pattern Matching ----
+
+function matchesChangedFiles(entry: KnowledgeEntry, changedFiles?: string[]): boolean {
+  if (!changedFiles || changedFiles.length === 0 || !entry.pattern) return false;
+  return changedFiles.some((file) => file.includes(entry.pattern!));
+}
+
+function sortByPatternMatch(items: KnowledgeEntry[], changedFiles?: string[]): KnowledgeEntry[] {
+  if (!changedFiles || changedFiles.length === 0) return items;
+  return [...items].sort((a, b) => {
+    const aMatch = matchesChangedFiles(a, changedFiles) ? 1 : 0;
+    const bMatch = matchesChangedFiles(b, changedFiles) ? 1 : 0;
+    return bMatch - aMatch;
+  });
+}
+
+// ---- Relevance Scoring ----
+
+export function scoreKnowledgeRelevance(
+  entry: KnowledgeEntry,
+  project: string,
+  changedFiles?: string[]
+): number {
+  let score = 0;
+
+  // Project match: +20
+  if (entry.project === project) score += 20;
+
+  // Pattern match against changed files: +30
+  if (matchesChangedFiles(entry, changedFiles)) score += 30;
+
+  // Severity: CRITICAL=25, HIGH=20, MEDIUM=10, LOW=5
+  const severityMap: Record<string, number> = {
+    CRITICAL: 25,
+    HIGH: 20,
+    MEDIUM: 10,
+    LOW: 5,
+  };
+  score += severityMap[entry.severity ?? ""] || 0;
+
+  // Hit rate: +2 per hit, capped at 20
+  score += Math.min((entry.hit_count || 0) * 2, 20);
+
+  // Confidence bonus: >0.8 = +15, >0.5 = +5
+  if ((entry.confidence || 0) > 0.8) score += 15;
+  else if ((entry.confidence || 0) > 0.5) score += 5;
+
+  // Module / file path match (for BN, RULE, EXP)
+  if (changedFiles && entry.module && changedFiles.some((f) => f.includes(entry.module!))) {
+    score += 15;
+  }
+
+  return score;
+}
+
+// ---- Token Budget ----
+
+const KNOWLEDGE_TOKEN_BUDGET = 4000;
+
+function estimateTokens(content: string): number {
+  return Math.ceil(content.length / 4);
+}
+
 // ---- Layered Knowledge Injection ----
 
-const KNOWLEDGE_LINE_LIMIT = 2000;
-
-export function getKnowledgeForReview(project: string, module?: string): KnowledgeEntry[] {
+export function getKnowledgeForReview(project: string, module?: string, changedFiles?: string[]): KnowledgeEntry[] {
   const db = getDb();
-  const entries: KnowledgeEntry[] = [];
-  let totalLines = 0;
 
   // Layer 1: Universal AP (HIGH, all projects)
   const layer1 = db.prepare(
@@ -318,57 +429,105 @@ export function getKnowledgeForReview(project: string, module?: string): Knowled
     ).all(...bnIds) as KnowledgeEntry[];
   }
 
-  // Deduplicate and apply line limit
+  // Combine all layers, deduplicate
+  const allEntries: KnowledgeEntry[] = [];
   const seen = new Set<string>();
-  const addLayer = (items: KnowledgeEntry[]) => {
+  const addUnique = (items: KnowledgeEntry[]) => {
     for (const item of items) {
-      if (seen.has(item.id)) continue;
-      seen.add(item.id);
-      const lineCount = item.content.split("\n").length + 2;
-      if (totalLines + lineCount > KNOWLEDGE_LINE_LIMIT) return;
-      totalLines += lineCount;
-      entries.push(item);
+      if (!seen.has(item.id)) {
+        seen.add(item.id);
+        allEntries.push(item);
+      }
     }
   };
 
-  addLayer(layer1);
-  addLayer(layer2);
-  addLayer(layer3);
+  addUnique(layer1);
+  addUnique(layer2);
+  addUnique(layer3);
+  addUnique(layer4);
+  addUnique(layer5);
+  addUnique(layer6);
 
-  // Layer 4: module-matching first
-  if (module) {
-    const matched = layer4.filter((e) => e.module === module);
-    const rest = layer4.filter((e) => e.module !== module);
-    addLayer(matched);
-    addLayer(rest);
-  } else {
-    addLayer(layer4);
+  // Sort by relevance score (descending)
+  allEntries.sort((a, b) =>
+    scoreKnowledgeRelevance(b, project, changedFiles) - scoreKnowledgeRelevance(a, project, changedFiles)
+  );
+
+  // Apply token budget: keep high-scoring entries, truncate low-scoring ones
+  let totalTokens = 0;
+  const result: KnowledgeEntry[] = [];
+  for (const item of allEntries) {
+    const tokens = estimateTokens(item.content);
+    if (totalTokens + tokens > KNOWLEDGE_TOKEN_BUDGET) break;
+    totalTokens += tokens;
+    result.push(item);
   }
 
-  addLayer(layer5);
-  addLayer(layer6);
-
-  return entries;
+  return result;
 }
 
 // ---- Hit Tracking ----
 
-export function trackKnowledgeHits(ids: string[], reviewId?: string): void {
+export function determineAdoptedKnowledge(
+  issues: Array<{ severity: string; message: string; suggestion?: string; file?: string }>,
+  knowledge: KnowledgeEntry[]
+): string[] {
+  const adopted: string[] = [];
+  for (const entry of knowledge) {
+    const keywords: string[] = [];
+    if (entry.pattern) keywords.push(entry.pattern.toLowerCase());
+    if (entry.title) keywords.push(entry.title.toLowerCase());
+
+    const match = issues.some((issue) => {
+      const msg = issue.message.toLowerCase();
+      const sug = (issue.suggestion || "").toLowerCase();
+      return keywords.some((kw) => msg.includes(kw) || sug.includes(kw));
+    });
+
+    if (match) adopted.push(entry.id);
+  }
+  return adopted;
+}
+
+export function trackKnowledgeHits(
+  ids: string[],
+  reviewId?: string,
+  adoptedIds?: string[]
+): void {
   if (ids.length === 0) return;
   const db = getDb();
   const now = new Date().toISOString();
+  const adoptedSet = new Set(adoptedIds ?? []);
   const placeholders = ids.map(() => "?").join(",");
+
+  // Increment hit_count for all used knowledge
   db.prepare(
     `UPDATE knowledge_entries SET hit_count = hit_count + 1, last_hit_at = ? WHERE id IN (${placeholders})`
   ).run(now, ...ids);
 
-  // Record review <-> knowledge usage
+  // Update confidence: +0.1 for adopted, -0.05 for not adopted
+  if (adoptedSet.size > 0) {
+    const adoptedPlaceholders = adoptedIds!.map(() => "?").join(",");
+    db.prepare(
+      `UPDATE knowledge_entries SET confidence = MIN(1.0, confidence + 0.1) WHERE id IN (${adoptedPlaceholders})`
+    ).run(...adoptedIds!);
+  }
+
+  const notAdopted = ids.filter((id) => !adoptedSet.has(id));
+  if (notAdopted.length > 0) {
+    const notAdoptedPlaceholders = notAdopted.map(() => "?").join(",");
+    db.prepare(
+      `UPDATE knowledge_entries SET confidence = MAX(0.1, confidence - 0.05) WHERE id IN (${notAdoptedPlaceholders})`
+    ).run(...notAdopted);
+  }
+
+  // Record review <-> knowledge usage with adoption status
   if (reviewId) {
     const insertUsage = db.prepare(
-      "INSERT OR IGNORE INTO review_knowledge_usage (review_id, knowledge_id, created_at) VALUES (?, ?, ?)"
+      "INSERT OR IGNORE INTO review_knowledge_usage (review_id, knowledge_id, adopted, created_at) VALUES (?, ?, ?, ?)"
     );
     for (const kid of ids) {
-      insertUsage.run(reviewId, kid, now);
+      insertUsage.run(reviewId, kid, adoptedSet.has(kid) ? 1 : 0, now);
     }
   }
 }
@@ -503,6 +662,28 @@ export function suggestDispositions(issues: ReviewIssue[]): KnowledgeDisposition
   });
 }
 
+// ---- Fingerprint ----
+
+export function generateFingerprint(type: string, project: string, title: string, pattern?: string): string {
+  return `${type}|${project}|${title.toLowerCase().trim()}|${pattern || ""}`;
+}
+
+function findEntryByFingerprint(fingerprint: string): KnowledgeEntry | undefined {
+  const db = getDb();
+  return db.prepare(
+    "SELECT * FROM knowledge_entries WHERE fingerprint = ? AND status IN ('TEMP', 'CONFIRMED') ORDER BY created_at DESC LIMIT 1"
+  ).get(fingerprint) as KnowledgeEntry | undefined;
+}
+
+function mergeIntoExisting(entry: KnowledgeEntry, newContent: string): KnowledgeEntry | undefined {
+  const db = getDb();
+  const now = new Date().toISOString();
+  db.prepare(
+    `UPDATE knowledge_entries SET content = content || '\n\n[MERGED] ' || ?, hit_count = hit_count + 1, last_verified_at = ?, updated_at = ? WHERE id = ?`
+  ).run(newContent, now, now, entry.id);
+  return getEntry(entry.id);
+}
+
 // ---- Extract Learnings from Review ----
 
 export function extractLearnings(
@@ -531,17 +712,29 @@ export function extractLearnings(
   // Extract from CRITICAL/HIGH issues
   for (const issue of report.issues) {
     if (issue.severity === "CRITICAL" || issue.severity === "HIGH") {
-      created.push(addEntry({
-        type: "AP",
-        project,
-        severity: issue.severity === "CRITICAL" ? "CRITICAL" : "HIGH",
-        title: issue.message.slice(0, 80),
-        content: issue.suggestion || issue.message,
-        source_review: reviewId,
-        source_file: issue.file ? JSON.stringify([issue.file]) : undefined,
-        source_type: "LLM提取",
-        review_pass: 1,
-      }));
+      const title = issue.message.slice(0, 80);
+      const content = issue.suggestion || issue.message;
+      const fingerprint = generateFingerprint("AP", project, title, issue.file || undefined);
+
+      // Check for existing entry with same fingerprint
+      const existing = findEntryByFingerprint(fingerprint);
+      if (existing) {
+        const merged = mergeIntoExisting(existing, content);
+        if (merged) created.push(merged);
+      } else {
+        created.push(addEntry({
+          type: "AP",
+          project,
+          severity: issue.severity === "CRITICAL" ? "CRITICAL" : "HIGH",
+          title,
+          pattern: issue.file || undefined,
+          content,
+          source_review: reviewId,
+          source_file: issue.file ? JSON.stringify([issue.file]) : undefined,
+          source_type: "LLM提取",
+          review_pass: 1,
+        }));
+      }
     }
   }
 

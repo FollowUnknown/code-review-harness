@@ -96,7 +96,7 @@ export function removePlanItem(planId: string, itemId: string): boolean {
   return result.changes > 0;
 }
 
-export function updatePlanItem(planId: string, itemId: string, patch: { status?: string; review_id?: string; position?: number }): boolean {
+export function updatePlanItem(planId: string, itemId: string, patch: { status?: string; review_id?: string; position?: number; source_branch?: string; target_branch?: string; author?: string; error_message?: string; reviewed_at?: string }): boolean {
   const db = getDb();
   const existing = db.prepare("SELECT id FROM review_plan_items WHERE id = ? AND plan_id = ?").get(itemId, planId);
   if (!existing) return false;
@@ -106,6 +106,11 @@ export function updatePlanItem(planId: string, itemId: string, patch: { status?:
   if (patch.status !== undefined) { sets.push("status = ?"); values.push(patch.status); }
   if (patch.review_id !== undefined) { sets.push("review_id = ?"); values.push(patch.review_id); }
   if (patch.position !== undefined) { sets.push("position = ?"); values.push(patch.position); }
+  if (patch.source_branch !== undefined) { sets.push("source_branch = ?"); values.push(patch.source_branch); }
+  if (patch.target_branch !== undefined) { sets.push("target_branch = ?"); values.push(patch.target_branch); }
+  if (patch.author !== undefined) { sets.push("author = ?"); values.push(patch.author); }
+  if (patch.error_message !== undefined) { sets.push("error_message = ?"); values.push(patch.error_message); }
+  if (patch.reviewed_at !== undefined) { sets.push("reviewed_at = ?"); values.push(patch.reviewed_at); }
   if (sets.length === 0) return true;
 
   values.push(itemId);
@@ -115,7 +120,59 @@ export function updatePlanItem(planId: string, itemId: string, patch: { status?:
 
 export function getPlanItems(planId: string): ReviewPlanItem[] {
   const db = getDb();
-  return db.prepare("SELECT * FROM review_plan_items WHERE plan_id = ? ORDER BY position").all(planId) as ReviewPlanItem[];
+  const rows = db.prepare(`
+    SELECT
+      i.*,
+      r.mr_meta_json
+    FROM review_plan_items i
+    LEFT JOIN reviews r ON i.review_id = r.id
+    WHERE i.plan_id = ?
+    ORDER BY i.position
+  `).all(planId) as Array<Record<string, unknown>>;
+
+  return rows.map((row) => {
+    const item: ReviewPlanItem = {
+      id: row.id as string,
+      plan_id: row.plan_id as string,
+      mr_url: row.mr_url as string,
+      review_id: row.review_id as string | null,
+      status: row.status as ReviewPlanItem["status"],
+      position: row.position as number,
+      error_message: row.error_message as string | undefined,
+      reviewed_at: row.reviewed_at as string | undefined,
+      created_at: row.created_at as string,
+    };
+
+    // Prefer direct columns on review_plan_items; fallback to mr_meta_json
+    const directSource = row.source_branch as string | null;
+    const directTarget = row.target_branch as string | null;
+    const directAuthor = row.author as string | null;
+
+    if (directSource) item.source_branch = directSource;
+    if (directTarget) item.target_branch = directTarget;
+    if (directAuthor) item.author = directAuthor;
+
+    // Fallback: extract from GitLab MR meta if direct columns are empty
+    if (!directSource || !directTarget || !directAuthor) {
+      const metaJson = row.mr_meta_json as string | null;
+      if (metaJson) {
+        try {
+          const meta = JSON.parse(metaJson) as {
+            source_branch?: string;
+            target_branch?: string;
+            author?: { name?: string };
+          };
+          if (!directSource && meta.source_branch) item.source_branch = meta.source_branch;
+          if (!directTarget && meta.target_branch) item.target_branch = meta.target_branch;
+          if (!directAuthor && meta.author?.name) item.author = meta.author.name;
+        } catch {
+          // Ignore invalid JSON
+        }
+      }
+    }
+
+    return item;
+  });
 }
 
 export function getPlanDetail(id: string): ReviewPlanDetail | null {

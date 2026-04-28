@@ -239,6 +239,11 @@ export interface ReviewPlanItem {
   review_id: string | null;
   status: PlanItemStatus;
   position: number;
+  source_branch?: string;
+  target_branch?: string;
+  author?: string;
+  error_message?: string;
+  reviewed_at?: string;
   created_at: string;
 }
 

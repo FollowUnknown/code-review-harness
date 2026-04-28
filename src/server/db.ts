@@ -137,12 +137,19 @@ function initialize(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS review_knowledge_usage (
       review_id    TEXT NOT NULL,
       knowledge_id TEXT NOT NULL,
+      adopted      INTEGER NOT NULL DEFAULT 0,
       created_at   TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (review_id, knowledge_id)
     );
     CREATE INDEX IF NOT EXISTS idx_rku_review ON review_knowledge_usage(review_id);
     CREATE INDEX IF NOT EXISTS idx_rku_knowledge ON review_knowledge_usage(knowledge_id);
   `);
+
+  // Migrate review_knowledge_usage table with adopted column (must be after CREATE TABLE)
+  migrateReviewKnowledgeUsageTable(db);
+
+  // Migrate review_plan_items table with branch/author columns
+  migrateReviewPlanItemsTable(db);
 
   // LLM communication logs
   db.exec(`
@@ -185,6 +192,11 @@ function initialize(db: Database.Database): void {
       review_id TEXT,
       status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'reviewing', 'completed', 'failed')),
       position INTEGER DEFAULT 0,
+      source_branch TEXT,
+      target_branch TEXT,
+      author TEXT,
+      error_message TEXT,
+      reviewed_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (plan_id) REFERENCES review_plans(id) ON DELETE CASCADE
     );
@@ -197,7 +209,7 @@ function initialize(db: Database.Database): void {
     "INSERT OR IGNORE INTO prompt_templates (id, name, category, description, system_template, variables, is_default, version) VALUES (?, ?, ?, ?, ?, ?, 1, 1)"
   );
   stmt.run("default-review", "review", "review", "代码评审核心 prompt 模板",
-    `你是一个专业的代码评审专家。你需要对提供的代码变更进行评审，并按照指定维度打分。\n\n评分维度（每项 1-5 分）：\n${dimensionsText}\n\n请严格按照以下 JSON 格式输出评审结果，不要输出其他内容：\n{\n  "scores": [{"dimension": "维度名", "score": 1-5, "comment": "具体说明"}],\n  "issues": [{"severity": "CRITICAL/HIGH/MEDIUM/LOW", "message": "问题描述", "file": "文件名", "line": 行号, "suggestion": "修复建议"}],\n  "summary": "1-2段总结"\n}\n\n当前评审批次：第 {{batchIndex}}/{{totalBatches}} 批，风险等级：{{riskLevel}}。`,
+    `你是一个专业的代码评审专家。你需要对提供的代码变更进行评审，并按照指定维度打分。\n\n**文件类型特殊规则：**\n- SVG 文件：仅检查文件大小/变更行数，不做代码逻辑评审。若 SVG diff 行数超过 500 行，标记为 MEDIUM 级别问题，建议压缩或拆分\n- 纯文档文件（.md）：跳过代码逻辑评审\n- 配置文件（.gitignore, tsconfig 等）：跳过代码逻辑评审\n\n评分维度（每项 1-5 分）：\n${dimensionsText}\n\n请严格按照以下 JSON 格式输出评审结果，不要输出其他内容：\n{\n  "scores": [{"dimension": "维度名", "score": 1-5, "comment": "具体说明"}],\n  "issues": [{"severity": "CRITICAL/HIGH/MEDIUM/LOW", "message": "问题描述", "file": "文件名", "line": 行号, "suggestion": "修复建议"}],\n  "summary": "1-2段总结"\n}\n\n当前评审批次：第 {{batchIndex}}/{{totalBatches}} 批，风险等级：{{riskLevel}}。`,
     '["dimensions","batchIndex","totalBatches","riskLevel"]'
   );
   stmt.run("default-requirement", "requirement", "understanding", "需求理解 prompt", "", '["type","module","features"]');
@@ -224,6 +236,12 @@ function migrateKnowledgeEntriesTable(db: Database.Database): void {
     { name: "reviewed_by", def: "TEXT" },
     { name: "review_status", def: "TEXT NOT NULL DEFAULT 'approved' CHECK(review_status IN ('pending', 'approved', 'rejected'))" },
     { name: "review_comment", def: "TEXT" },
+    // v1.2.0: Fingerprint deduplication
+    { name: "fingerprint", def: "TEXT" },
+    // v1.2.0: Confidence scoring
+    { name: "confidence", def: "REAL NOT NULL DEFAULT 0.5" },
+    // v1.2.0: Lifecycle management
+    { name: "last_verified_at", def: "TEXT" },
   ];
 
   for (const col of newColumns) {
@@ -284,6 +302,36 @@ function migrateReviewsTable(db: Database.Database): void {
   });
 
   migrate();
+}
+
+function migrateReviewKnowledgeUsageTable(db: Database.Database): void {
+  const columns = db.prepare("PRAGMA table_info(review_knowledge_usage)").all() as Array<{ name: string }>;
+  const colNames = new Set(columns.map((c) => c.name));
+
+  if (!colNames.has("adopted")) {
+    db.exec("ALTER TABLE review_knowledge_usage ADD COLUMN adopted INTEGER NOT NULL DEFAULT 0");
+  }
+}
+
+function migrateReviewPlanItemsTable(db: Database.Database): void {
+  const columns = db.prepare("PRAGMA table_info(review_plan_items)").all() as Array<{ name: string }>;
+  const colNames = new Set(columns.map((c) => c.name));
+
+  if (!colNames.has("source_branch")) {
+    db.exec("ALTER TABLE review_plan_items ADD COLUMN source_branch TEXT");
+  }
+  if (!colNames.has("target_branch")) {
+    db.exec("ALTER TABLE review_plan_items ADD COLUMN target_branch TEXT");
+  }
+  if (!colNames.has("author")) {
+    db.exec("ALTER TABLE review_plan_items ADD COLUMN author TEXT");
+  }
+  if (!colNames.has("error_message")) {
+    db.exec("ALTER TABLE review_plan_items ADD COLUMN error_message TEXT");
+  }
+  if (!colNames.has("reviewed_at")) {
+    db.exec("ALTER TABLE review_plan_items ADD COLUMN reviewed_at DATETIME");
+  }
 }
 
 function seedDefaultDimensionSet(db: Database.Database): void {

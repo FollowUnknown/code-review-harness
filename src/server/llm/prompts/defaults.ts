@@ -12,6 +12,11 @@ export const LEVEL_DESCRIPTIONS: Record<RiskLevel, string> = {
 // Default review system prompt (code fallback when no DB override exists)
 export const DEFAULT_REVIEW_SYSTEM_PROMPT = `你是一个专业的代码评审专家。你需要对提供的代码变更进行评审，并按照指定维度打分。
 
+**文件类型特殊规则：**
+- SVG 文件：仅检查文件大小/变更行数，不做代码逻辑评审。若 SVG diff 行数超过 500 行，标记为 MEDIUM 级别问题，建议压缩或拆分
+- 纯文档文件（.md）：跳过代码逻辑评审
+- 配置文件（.gitignore, tsconfig 等）：跳过代码逻辑评审
+
 评分维度（每项 1-5 分）：
 ${REVIEW_DIMENSIONS.map((d, i) => `${i + 1}. ${d}`).join("\n")}
 

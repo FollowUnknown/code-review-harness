@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { parseMRUrl, fetchMRMeta, fetchMRDiffs } from "../services/gitlab";
 import { classify } from "../services/classifier";
 import { understandRequirement } from "../services/requirement";
-import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnowledgeHits } from "../services/knowledge";
+import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnowledgeHits, determineAdoptedKnowledge } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
 import { buildRequirementPrompt } from "../services/requirement";
 import { buildKnowledgePrompt } from "../services/knowledge";
@@ -235,9 +235,10 @@ router.post("/review", async (req: Request, res: Response) => {
     });
     extractLearnings(report, project, reviewId);
 
-    // Track knowledge hits
+    // Track knowledge hits with adoption feedback
     if (knowledge.length > 0) {
-      trackKnowledgeHits(knowledge.map((e) => e.id), reviewId);
+      const adoptedIds = determineAdoptedKnowledge(report.issues, knowledge);
+      trackKnowledgeHits(knowledge.map((e) => e.id), reviewId, adoptedIds);
     }
 
     // Send final result

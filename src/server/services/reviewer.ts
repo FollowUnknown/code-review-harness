@@ -141,3 +141,118 @@ export function parseReviewResponse(text: string): ReviewReport {
     summary: (parsed.summary as string) || "",
   };
 }
+
+// ---- Review Consistency ----
+
+export interface ConsistencyResult {
+  scoreVariance: number;      // Average variance of dimension scores across reviews
+  rankCorrelation: number;    // Spearman-like rank correlation (0-1)
+  issueOverlap: number;       // Jaccard similarity of issue sets
+  overall: number;            // Weighted average consistency score (0-1)
+}
+
+function rankScores(scores: ReviewScore[]): number[] {
+  const sorted = [...scores].sort((a, b) => b.score - a.score);
+  const ranks = new Map<string, number>();
+  sorted.forEach((s, i) => ranks.set(s.dimension, i + 1));
+  return scores.map((s) => ranks.get(s.dimension) || 0);
+}
+
+function computeRankCorrelation(a: number[], b: number[]): number {
+  if (a.length !== b.length || a.length === 0) return 0;
+  const n = a.length;
+  const meanA = a.reduce((sum, v) => sum + v, 0) / n;
+  const meanB = b.reduce((sum, v) => sum + v, 0) / n;
+
+  let num = 0;
+  let denA = 0;
+  let denB = 0;
+  for (let i = 0; i < n; i++) {
+    const da = a[i] - meanA;
+    const db = b[i] - meanB;
+    num += da * db;
+    denA += da * da;
+    denB += db * db;
+  }
+  const denom = Math.sqrt(denA * denB);
+  return denom === 0 ? 1 : num / denom;
+}
+
+function issueFingerprint(issue: ReviewIssue): string {
+  return `${issue.severity}|${issue.file}|${issue.message.slice(0, 50)}`;
+}
+
+function computeIssueOverlap(a: ReviewIssue[], b: ReviewIssue[]): number {
+  if (a.length === 0 && b.length === 0) return 1;
+  if (a.length === 0 || b.length === 0) return 0;
+
+  const setA = new Set(a.map(issueFingerprint));
+  const setB = new Set(b.map(issueFingerprint));
+  const intersection = new Set([...setA].filter((x) => setB.has(x)));
+  const union = new Set([...setA, ...setB]);
+  return intersection.size / union.size;
+}
+
+export function computeReviewConsistency(reports: ReviewReport[]): ConsistencyResult {
+  if (reports.length < 2) {
+    return { scoreVariance: 0, rankCorrelation: 1, issueOverlap: 1, overall: 1 };
+  }
+
+  // Score variance: average variance per dimension across reviews
+  const dimensionScores = new Map<string, number[]>();
+  for (const report of reports) {
+    for (const s of report.scores) {
+      const arr = dimensionScores.get(s.dimension) || [];
+      arr.push(s.score);
+      dimensionScores.set(s.dimension, arr);
+    }
+  }
+
+  let totalVariance = 0;
+  let dimensionCount = 0;
+  for (const scores of dimensionScores.values()) {
+    if (scores.length >= 2) {
+      const mean = scores.reduce((sum, v) => sum + v, 0) / scores.length;
+      const variance = scores.reduce((sum, v) => sum + (v - mean) ** 2, 0) / scores.length;
+      totalVariance += variance;
+      dimensionCount++;
+    }
+  }
+  const avgVariance = dimensionCount > 0 ? totalVariance / dimensionCount : 0;
+  // Convert variance (0=perfect, 4=worst) to 0-1 score
+  const scoreVarianceScore = Math.max(0, 1 - avgVariance / 4);
+
+  // Rank correlation: average pairwise correlation between reports
+  let totalRankCorr = 0;
+  let pairCount = 0;
+  for (let i = 0; i < reports.length; i++) {
+    for (let j = i + 1; j < reports.length; j++) {
+      const ranksI = rankScores(reports[i].scores);
+      const ranksJ = rankScores(reports[j].scores);
+      totalRankCorr += computeRankCorrelation(ranksI, ranksJ);
+      pairCount++;
+    }
+  }
+  const rankCorrelation = pairCount > 0 ? totalRankCorr / pairCount : 1;
+
+  // Issue overlap: average pairwise Jaccard similarity
+  let totalOverlap = 0;
+  pairCount = 0;
+  for (let i = 0; i < reports.length; i++) {
+    for (let j = i + 1; j < reports.length; j++) {
+      totalOverlap += computeIssueOverlap(reports[i].issues, reports[j].issues);
+      pairCount++;
+    }
+  }
+  const issueOverlap = pairCount > 0 ? totalOverlap / pairCount : 1;
+
+  // Overall: weighted average
+  const overall = scoreVarianceScore * 0.4 + rankCorrelation * 0.35 + issueOverlap * 0.25;
+
+  return {
+    scoreVariance: avgVariance,
+    rankCorrelation,
+    issueOverlap,
+    overall,
+  };
+}

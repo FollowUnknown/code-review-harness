@@ -168,8 +168,11 @@ export function PlanDetailPage() {
           <table className="w-full text-xs">
             <thead><tr className="bg-slate-800/50 text-slate-500">
               <th className="px-3 py-2 text-left">MR</th>
+              <th className="px-3 py-2 text-left">分支</th>
+              <th className="px-3 py-2 text-left">发起人</th>
               <th className="px-3 py-2 text-center">Status</th>
               <th className="px-3 py-2 text-center">Score</th>
+              <th className="px-3 py-2 text-left">评审时间</th>
               <th className="px-3 py-2 text-right">Actions</th>
             </tr></thead>
             <tbody>
@@ -179,8 +182,34 @@ export function PlanDetailPage() {
                 return (
                   <tr key={item.id} className="border-t border-slate-800/50">
                     <td className="px-3 py-2.5 font-mono text-slate-400">{mrShort}</td>
-                    <td className="px-3 py-2.5 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] ${ITEM_STATUS[item.status] || ""}`}>{item.status}</span></td>
+                    <td className="px-3 py-2.5 text-slate-400">
+                      {item.source_branch && item.target_branch ? (
+                        <span className="text-[10px]">{item.source_branch} &rarr; {item.target_branch}</span>
+                      ) : (
+                        <span className="text-[10px] text-slate-600">&mdash;</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-400">
+                      {item.author ? (
+                        <span className="text-[10px]">{item.author}</span>
+                      ) : (
+                        <span className="text-[10px] text-slate-600">&mdash;</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${ITEM_STATUS[item.status] || ""}`}>{item.status}</span>
+                      {item.error_message && (
+                        <p className="text-[10px] text-red-400 mt-1 max-w-[200px] truncate" title={item.error_message}>{item.error_message}</p>
+                      )}
+                    </td>
                     <td className="px-3 py-2.5 text-center text-slate-400">{scoreEntry?.score?.toFixed(1) ?? "—"}</td>
+                    <td className="px-3 py-2.5 text-slate-400">
+                      {item.reviewed_at ? (
+                        <span className="text-[10px]" title={item.reviewed_at}>{new Date(item.reviewed_at).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                      ) : (
+                        <span className="text-[10px] text-slate-600">—</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2.5 text-right space-x-2">
                       {item.review_id && <Link to={`/reviews/${item.review_id}`} className="text-blue-400 hover:text-blue-300">View</Link>}
                       {plan.status === "open" && <button onClick={() => removeItem(item.id)} className="text-slate-600 hover:text-red-400">Remove</button>}
