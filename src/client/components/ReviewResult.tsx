@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ReviewResponse, SeverityLevel, RiskLevel, KnowledgeDisposition, KnowledgeEntrySummary } from "../../shared/types";
+import { ReviewResponse, SeverityLevel, RiskLevel, KnowledgeDisposition, KnowledgeEntrySummary, ReviewIssue } from "../../shared/types";
 import ReactDiffViewer from "react-diff-viewer-continued";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
@@ -37,11 +37,11 @@ const RISK_STYLES: Record<RiskLevel, { bg: string; text: string; border: string;
 
 const RISK_LABELS: Record<RiskLevel, string> = { S: "High Risk", A: "Mid-High", B: "Mid-Low", C: "Low" };
 
-const SEVERITY_STYLES: Record<SeverityLevel, { bg: string; text: string }> = {
-  CRITICAL: { bg: "bg-red-500/20", text: "text-red-400" },
-  HIGH: { bg: "bg-orange-500/20", text: "text-orange-400" },
-  MEDIUM: { bg: "bg-yellow-500/20", text: "text-yellow-400" },
-  LOW: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
+const SEVERITY_STYLES: Record<SeverityLevel, { bg: string; text: string; border: string; icon: string }> = {
+  CRITICAL: { bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/50", icon: "text-red-500" },
+  HIGH: { bg: "bg-orange-500/20", text: "text-orange-400", border: "border-orange-500/50", icon: "text-orange-500" },
+  MEDIUM: { bg: "bg-yellow-500/20", text: "text-yellow-400", border: "border-yellow-500/50", icon: "text-yellow-500" },
+  LOW: { bg: "bg-emerald-500/20", text: "text-emerald-400", border: "border-emerald-500/50", icon: "text-emerald-500" },
 };
 
 function ScoreCircle({ score, label }: { score: number; label: string }) {
@@ -256,48 +256,13 @@ export function ReviewResult({ data, project, onReset, onKnowledgeClick }: Props
           </div>
         )}
 
-        {/* Issues Table */}
+        {/* Enhanced Issues Section */}
         {report.issues.length > 0 && (
-          <div className="mb-5">
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">
-              Issues ({report.issues.length})
-            </h3>
-            <div className="space-y-2">
-              {report.issues.map((issue, i) => {
-                const sev = SEVERITY_STYLES[issue.severity];
-                return (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 + i * 0.05 }}
-                    className={`flex items-start gap-3 p-3 rounded-lg border-l-2 ${
-                      issue.severity === "CRITICAL"
-                        ? "border-l-red-500 bg-red-500/5"
-                        : issue.severity === "HIGH"
-                          ? "border-l-orange-500 bg-orange-500/5"
-                          : "border-l-slate-600 bg-slate-800/30"
-                    }`}
-                  >
-                    <span className={`px-2 py-0.5 text-xs font-semibold rounded ${sev.bg} ${sev.text}`}>
-                      {issue.severity}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-300">{issue.message}</p>
-                      <div className="flex gap-3 mt-1 text-xs text-slate-600">
-                        {issue.file && <span className="font-mono">{issue.file}{issue.line ? `:${issue.line}` : ""}</span>}
-                      </div>
-                      {issue.suggestion && (
-                        <p className="mt-1.5 text-xs text-slate-500 bg-slate-800/40 rounded px-2 py-1">
-                          {issue.suggestion}
-                        </p>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </div>
+          <IssuesSection
+            issues={report.issues}
+            reviewId={data.reviewId}
+            project={project || undefined}
+          />
         )}
 
         {/* Summary */}
@@ -470,6 +435,382 @@ export function ReviewResult({ data, project, onReset, onKnowledgeClick }: Props
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// ---- Icon Components ----
+
+function AlertCircleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+  );
+}
+
+function AlertTriangleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  );
+}
+
+function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="16" x2="12" y2="12"/>
+      <line x1="12" y1="8" x2="12.01" y2="8"/>
+    </svg>
+  );
+}
+
+function CheckCircleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="m9 12 2 2 4-4"/>
+    </svg>
+  );
+}
+
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m6 9 6 6 6-6"/>
+    </svg>
+  );
+}
+
+function FileIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+      <polyline points="14 2 14 8 20 8"/>
+    </svg>
+  );
+}
+
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8"/>
+      <path d="m21 21-4.3-4.3"/>
+    </svg>
+  );
+}
+
+function FilterIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+    </svg>
+  );
+}
+
+function getSeverityIcon(severity: SeverityLevel) {
+  switch (severity) {
+    case "CRITICAL":
+    case "HIGH":
+      return AlertCircleIcon;
+    case "MEDIUM":
+      return AlertTriangleIcon;
+    case "LOW":
+      return InfoIcon;
+    default:
+      return InfoIcon;
+  }
+}
+
+// ---- Enhanced Issues Section Component ----
+
+interface IssuesSectionProps {
+  issues: ReviewIssue[];
+  reviewId?: string;
+  project?: string;
+}
+
+type FilterSeverity = "ALL" | SeverityLevel;
+type GroupBy = "none" | "file" | "severity";
+
+function IssuesSection({ issues, reviewId, project }: IssuesSectionProps) {
+  const [filterSeverity, setFilterSeverity] = useState<FilterSeverity>("ALL");
+  const [groupBy, setGroupBy] = useState<GroupBy>("file");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [expandedIssues, setExpandedIssues] = useState<Set<number>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  // Filter and search issues
+  const filteredIssues = useMemo(() => {
+    return issues.filter((issue) => {
+      const matchesSeverity = filterSeverity === "ALL" || issue.severity === filterSeverity;
+      const matchesSearch = searchQuery === "" ||
+        issue.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        issue.file?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSeverity && matchesSearch;
+    });
+  }, [issues, filterSeverity, searchQuery]);
+
+  // Group issues
+  const groupedIssues = useMemo(() => {
+    if (groupBy === "none") {
+      return { "All Issues": filteredIssues };
+    }
+
+    const groups: Record<string, ReviewIssue[]> = {};
+    filteredIssues.forEach((issue) => {
+      const key = groupBy === "file" ? (issue.file || "Unknown File") : issue.severity;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(issue);
+    });
+    return groups;
+  }, [filteredIssues, groupBy]);
+
+  // Severity counts for filter badges
+  const severityCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: issues.length };
+    issues.forEach((issue) => {
+      counts[issue.severity] = (counts[issue.severity] || 0) + 1;
+    });
+    return counts;
+  }, [issues]);
+
+  function toggleIssueExpanded(index: number) {
+    setExpandedIssues((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  function toggleGroupCollapsed(groupKey: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
+    });
+  }
+
+  // Empty state
+  if (issues.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4">
+          <CheckCircleIcon className="w-8 h-8 text-emerald-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-slate-300 mb-2">No Issues Found</h3>
+        <p className="text-sm text-slate-500 max-w-sm">
+          Great job! The code review didn&apos;t find any issues that match the current criteria.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Filter Bar */}
+      <div className="flex flex-col gap-3 p-4 bg-slate-800/40 rounded-lg border border-slate-700/30">
+        {/* Search and Filter Row */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search issues..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-sm bg-slate-900/50 border border-slate-700/50 rounded-lg text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-slate-600"
+            />
+          </div>
+
+          {/* Group By */}
+          <div className="flex items-center gap-2">
+            <FilterIcon className="text-slate-500" />
+            <select
+              value={groupBy}
+              onChange={(e) => setGroupBy(e.target.value as GroupBy)}
+              className="px-2 py-1.5 text-sm bg-slate-900/50 border border-slate-700/50 rounded-lg text-slate-300 focus:outline-none focus:border-slate-600"
+            >
+              <option value="none">No Grouping</option>
+              <option value="file">Group by File</option>
+              <option value="severity">Group by Severity</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Severity Filter Pills */}
+        <div className="flex flex-wrap items-center gap-2">
+          {(["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW"] as const).map((sev) => {
+            const count = severityCounts[sev] || 0;
+            const isActive = filterSeverity === sev;
+            const style = sev === "ALL" ? { text: "text-slate-400", bg: "bg-slate-700/30", border: "border-slate-600" } : SEVERITY_STYLES[sev as SeverityLevel];
+
+            return (
+              <button
+                key={sev}
+                onClick={() => setFilterSeverity(sev)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border transition-all ${
+                  isActive
+                    ? `${style.bg} ${style.text} ${style.border}`
+                    : "bg-slate-800/30 text-slate-500 border-slate-700/30 hover:border-slate-600"
+                }`}
+              >
+                <span>{sev === "ALL" ? "All" : sev}</span>
+                <span className={`px-1 py-0.5 rounded-full text-[10px] ${isActive ? "bg-black/20" : "bg-slate-700/50"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Results Count */}
+        <div className="text-xs text-slate-500">
+          Showing {filteredIssues.length} of {issues.length} issues
+          {searchQuery && ` matching "${searchQuery}"`}
+        </div>
+      </div>
+
+      {/* Issues List */}
+      <div className="space-y-3">
+        {Object.entries(groupedIssues).map(([groupKey, groupIssues]) => {
+          const isCollapsed = collapsedGroups.has(groupKey);
+
+          return (
+            <div key={groupKey} className="space-y-2">
+              {/* Group Header */}
+              {groupBy !== "none" && (
+                <button
+                  onClick={() => toggleGroupCollapsed(groupKey)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-300 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg transition-colors"
+                >
+                  <motion.span animate={{ rotate: isCollapsed ? -90 : 0 }} transition={{ duration: 0.15 }}>
+                    <ChevronDownIcon />
+                  </motion.span>
+                  <FileIcon />
+                  <span className="flex-1 text-left truncate">{groupKey}</span>
+                  <span className="px-2 py-0.5 text-xs bg-slate-700/50 text-slate-400 rounded-full">
+                    {groupIssues.length}
+                  </span>
+                </button>
+              )}
+
+              {/* Group Issues */}
+              <AnimatePresence>
+                {!isCollapsed && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-2 overflow-hidden"
+                  >
+                    {groupIssues.map((issue, idx) => {
+                      const globalIndex = issues.indexOf(issue);
+                      const isExpanded = expandedIssues.has(globalIndex);
+                      const style = SEVERITY_STYLES[issue.severity];
+                      const Icon = getSeverityIcon(issue.severity);
+
+                      return (
+                        <motion.div
+                          key={`${groupKey}-${idx}`}
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.03 }}
+                          className={`relative overflow-hidden rounded-lg border-l-4 ${style.border} bg-slate-800/40 hover:bg-slate-800/60 transition-all`}
+                        >
+                          {/* Main Content */}
+                          <div
+                            onClick={() => toggleIssueExpanded(globalIndex)}
+                            className="flex items-start gap-3 p-4 cursor-pointer"
+                          >
+                            {/* Icon */}
+                            <div className={`shrink-0 w-8 h-8 rounded-full ${style.bg} flex items-center justify-center`}>
+                              <Icon className={style.icon} />
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <span className={`inline-flex items-center px-2 py-0.5 text-xs font-bold rounded ${style.bg} ${style.text}`}>
+                                  {issue.severity}
+                                </span>
+                                {issue.file && (
+                                  <span className="flex items-center gap-1 text-xs text-slate-500 font-mono">
+                                    <FileIcon className="w-3 h-3" />
+                                    {issue.file}{issue.line ? `:${issue.line}` : ""}
+                                  </span>
+                                )}
+                              </div>
+
+                              <p className="mt-2 text-sm text-slate-200 leading-relaxed">{issue.message}</p>
+
+                              {/* Preview of suggestion if available */}
+                              {issue.suggestion && (
+                                <div className="mt-2 text-xs text-slate-500 bg-slate-900/50 rounded px-2 py-1.5 border-l-2 border-slate-700 truncate">
+                                  <span className="text-slate-600">Suggestion:</span> {issue.suggestion}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Expand Icon */}
+                            <motion.div
+                              animate={{ rotate: isExpanded ? 180 : 0 }}
+                              className="shrink-0 text-slate-500"
+                            >
+                              <ChevronDownIcon />
+                            </motion.div>
+                          </div>
+
+                          {/* Expanded Content */}
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden border-t border-slate-700/30"
+                              >
+                                <div className="p-4 space-y-3">
+                                  {/* Full suggestion */}
+                                  {issue.suggestion && (
+                                    <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-700/50">
+                                      <h5 className="text-xs font-semibold text-slate-400 mb-2">Suggestion</h5>
+                                      <p className="text-sm text-slate-300">{issue.suggestion}</p>
+                                    </div>
+                                  )}
+
+                                  {/* Action buttons */}
+                                  <div className="flex items-center justify-between pt-2">
+                                    <div className="text-xs text-slate-500">
+                                      Click &quot;+ Knowledge&quot; to add this issue to the knowledge base
+                                    </div>
+                                    {/* Note: CreateKnowledgeButton would go here if needed */}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
