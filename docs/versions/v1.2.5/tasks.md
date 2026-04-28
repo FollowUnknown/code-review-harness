@@ -59,43 +59,25 @@
 
 ---
 
-## 模块 2: Repair → Knowledge 桥接
+## 模块 2: 记忆召回
 
-### TASK-255: Repair → knowledge_entries 桥接
-- **状态**: ⬜
-- **优先级**: P0
-- **依赖**: TASK-251
-- **描述**:
-  - 从 `sessions/execution/repairs/` 提取错误模式和修复方案
-  - 写入 `knowledge_entries`（type=AP，review_status=pending）
-  - 走 v1.1.5 审核流程
-  - 标记 `extractedForKnowledge: true`
-- **验收**:
-  - [ ] 可从 Repair 提取 Knowledge
-  - [ ] 写入后为 pending 状态
-  - [ ] 管理员审核后可被 v1.2.0 召回
-
----
-
-## 模块 3: 记忆召回
-
-### TASK-256: 召回策略框架
+### TASK-255: 召回策略框架
 - **状态**: ⬜
 - **优先级**: P0
 - **依赖**: TASK-251
 - **描述**:
   - 定义 RecallPolicy 接口
   - 实现 LayeredRecallPolicy
-  - 召回场景：新 Contract（project memory）、继续会话（session memory）、相似任务（task memory）
-  - 注意：评审场景不在此处理，由 v1.2.0 负责
+  - 召回场景：新 Contract（project memory）、继续会话（session memory）、相似任务（task memory）、修复参考（task memory with repair）
+  - **边界**：评审 MR 时的 Knowledge 召回由 v1.2.0 负责，此处不涉及
 - **验收**:
   - [ ] 召回框架可扩展
   - [ ] 按场景正确分层召回
 
-### TASK-257: 跨会话恢复
+### TASK-256: 跨会话恢复
 - **状态**: ⬜
 - **优先级**: P0
-- **依赖**: TASK-256, TASK-253
+- **依赖**: TASK-255, TASK-253
 - **描述**:
   - 新会话启动时读取 session memory
   - 恢复活跃任务列表和上下文
@@ -106,39 +88,40 @@
 
 ---
 
-## 模块 4: 记忆写回与升级
+## 模块 3: 记忆写回与升级
 
-### TASK-258: 写回策略框架
+### TASK-257: 写回策略框架
 - **状态**: ⬜
 - **优先级**: P0
 - **依赖**: TASK-251
 - **描述**:
   - 定义 WritebackPolicy 接口
-  - 写回触发点：Run 完成、Repair 完成、会话结束
+  - 写回触发点：Run 完成、会话结束
   - 写回目标和格式
 - **验收**:
   - [ ] 各触发点正确写回
 
-### TASK-259: 记忆升级路径
+### TASK-258: 记忆升级路径
 - **状态**: ⬜
 - **优先级**: P1
-- **依赖**: TASK-258, TASK-254
+- **依赖**: TASK-257, TASK-254
 - **描述**:
   - TaskMemory → ProjectMemory 升级（7 天后聚合）
-  - ProjectMemory → knowledge_entries 桥接（confidence > 0.8）
+  - ProjectMemory 30 天未命中 → 归档
   - 升级日志
+  - **注意**：升级路径终止于 project memory，不桥接到 knowledge_entries
 - **验收**:
   - [ ] 升级逻辑正确
-  - [ ] 桥接到 knowledge_entries 走审核流程
+  - [ ] 归档数据不丢失
 
-### TASK-260: TTL 清理与归档
+### TASK-259: TTL 清理与归档
 - **状态**: ⬜
 - **优先级**: P1
-- **依赖**: TASK-258
+- **依赖**: TASK-257
 - **描述**:
   - Session Memory 1 天后自动归档
   - Task Memory 7 天后升级或归档
-  - Project Memory 30 天后桥接或归档
+  - Project Memory 30 天后归档
   - 归档到 `sessions/memory/archive/`
 - **验收**:
   - [ ] TTL 自动清理生效
@@ -148,11 +131,10 @@
 
 ## Release Gate
 
-- [ ] **RG-251**: 4 层记忆模型定义完成且可验证
+- [ ] **RG-251**: 3 层记忆模型定义完成且可验证
 - [ ] **RG-252**: 从 Execution 数据提取记忆成功
-- [ ] **RG-253**: Repair → knowledge_entries 桥接生效
-- [ ] **RG-254**: 跨会话恢复功能可用
-- [ ] **RG-255**: 记忆升级和 TTL 清理生效
+- [ ] **RG-253**: 跨会话恢复功能可用
+- [ ] **RG-254**: 记忆升级和 TTL 清理生效
 
 ---
 
@@ -161,13 +143,12 @@
 ```
 TASK-251 (目录/Schemas) ──┬──→ TASK-252 (Run→TaskMemory) ──→ TASK-254 (Task→Project 聚合)
     │                     ├──→ TASK-253 (Checkpoint→Session)
-    │                     ├──→ TASK-255 (Repair→Knowledge 桥接)
-    │                     ├──→ TASK-256 (召回框架) ──→ TASK-257 (跨会话恢复)
-    │                     │                             │
-    │                     └──→ TASK-258 (写回框架) ──→ TASK-259 (升级路径)
+    │                     ├──→ TASK-255 (召回框架) ──→ TASK-256 (跨会话恢复)
+    │                     │
+    │                     └──→ TASK-257 (写回框架) ──→ TASK-258 (升级路径)
     │                                                  │
-    │                                                  └──→ TASK-260 (TTL 清理)
+    │                                                  └──→ TASK-259 (TTL 清理)
     │
-    TASK-253 + TASK-256 ──→ TASK-257 (跨会话恢复)
-    TASK-254 + TASK-258 ──→ TASK-259 (升级路径)
+    TASK-253 + TASK-255 ──→ TASK-256 (跨会话恢复)
+    TASK-254 + TASK-257 ──→ TASK-258 (升级路径)
 ```

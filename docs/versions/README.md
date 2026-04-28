@@ -51,9 +51,9 @@ Phase 4 Memory 拆为两个版本，分别服务不同用户价值：
 | 版本 | 侧 | 存储 | 用户价值 | 边界 |
 |------|-----|------|---------|------|
 | v1.2.0 | CodeReview | `knowledge_entries` 表 | 评审更准更一致 | 不做 Harness 编排记忆 |
-| v1.2.5 | Harness | `sessions/memory/` 文件 | AI 编排更智能、上下文不丢失 | 评审召回由 v1.2.0 负责 |
+| v1.2.5 | Harness | `sessions/memory/` 文件 | AI 编排更智能、上下文不丢失 | 评审召回由 v1.2.0 负责，不桥接 knowledge_entries |
 
-**桥接点**：v1.2.5 的 Repair → Knowledge 桥接写入 `knowledge_entries`（review_status=pending），经审核后可被 v1.2.0 精准召回。
+**两者完全独立**：Harness Memory 服务 AI 编排（记住"什么方案行不通"），Knowledge 服务 LLM 评审 MR（记住"项目禁止什么模式"）。数据来源、存储、服务场景均不同，不应混入同一存储。
 
 ### 版本间数据流转
 
@@ -67,9 +67,9 @@ v1.2.0 (CodeReview 侧 Memory)
     │ 新增：代码模式匹配、confidence、指纹去重、Token 预算
     ▼
 v1.2.5 (Harness 侧 Memory)
-    │ 消费：从 Execution 数据提取 4 层记忆
-    │ 桥接：validated knowledge → knowledge_entries
+    │ 消费：从 Execution 数据提取 3 层记忆（session/task/project）
     │ 新增：跨会话恢复、记忆升级、TTL 清理
+    │ 注意：不桥接到 knowledge_entries，两者完全独立
     ▼
 v1.3.0 (Capability 基础)
     │ 基于：v1.2.5 Memory 构建 Skill/Provider/Capability
@@ -87,7 +87,7 @@ v1.4.0 (Capability 高级)
 | v1.1.0 | [详细规划](./v1.1.0/README.md) | Execution 层补充：Run/Repair/Checkpoint 记录、PreToolUse Hook | Phase 3 Execution |
 | v1.1.5 | [详细规划](./v1.1.5/README.md) | 用户管理、Token 刷新、Knowledge 审核流程 | Phase 3 Execution (补充) |
 | v1.2.0 | [详细规划](./v1.2.0/README.md) | Knowledge 精准召回、自动沉淀增强、评审 Prompt 增强、质量可量化 | Phase 4 Memory (CodeReview) |
-| v1.2.5 | [详细规划](./v1.2.5/README.md) | 4 层记忆模型、Execution→Memory 提取、Repair→Knowledge 桥接、跨会话恢复 | Phase 4 Memory (Harness) |
+| v1.2.5 | [详细规划](./v1.2.5/README.md) | 3 层记忆模型、Execution→Memory 提取、跨会话恢复、TTL 清理 | Phase 4 Memory (Harness) |
 | v1.3.0 | [详细规划](./v1.3.0/README.md) | Capability 基础：Skill/Provider/Capability Registry、Governor、Sandbox | Phase 5 Capability (基础) |
 | v1.4.0 | [详细规划](./v1.4.0/README.md) | Capability 高级：Skill 版本管理、Provider 智能路由、Capability 依赖治理 | Phase 5 Capability (高级) |
 

@@ -115,8 +115,8 @@ extractLearnings(report, project, reviewId)
 |------|------------------------|---------------------|
 | 存储位置 | `knowledge_entries` 表 | `sessions/memory/` 文件系统 |
 | 数据来源 | 评审结果（LLM 产出） | Execution 数据（Run/Repair/Checkpoint） |
-| 核心能力 | 精准召回、自动沉淀、评审增强 | 4 层记忆、跨会话恢复、记忆升级 |
-| 桥接 | — | validated knowledge → `knowledge_entries` |
+| 核心能力 | 精准召回、自动沉淀、评审增强 | 3 层记忆、跨会话恢复、记忆升级 |
+| 服务对象 | LLM 评审 MR | AI agent 编排 |
 | 用户价值 | 评审更准、更一致 | AI 编排更智能、上下文不丢失 |
 
 ---
