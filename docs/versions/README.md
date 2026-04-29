@@ -12,8 +12,8 @@
 |------|------|----------|------------------|------|------|
 | [v1.1.0](./v1.1.0/README.md) | ✅ 完成 | **Phase 3 Execution 完善** | Phase 3 Execution | 无 | v1.1.5 |
 | [v1.1.5](./v1.1.5/README.md) | ✅ 完成 | **用户管理与 Knowledge 审核** | Phase 3 Execution (补充) | v1.1.0 | v1.2.0 |
-| [v1.2.0](./v1.2.0/README.md) | ⚪ 待规划 | **Knowledge 精准召回与评审质量提升** | Phase 4 Memory (CodeReview 侧) | v1.1.5 | v1.2.5 |
-| [v1.2.5](./v1.2.5/README.md) | ⚪ 待规划 | **Harness Memory 分层系统** | Phase 4 Memory (Harness 侧) | v1.2.0 | v1.3.0 |
+| [v1.2.0](./v1.2.0/README.md) | ✅ 完成 | **Knowledge 精准召回与评审质量提升** | Phase 4 Memory (CodeReview 侧) | v1.1.5 | v1.2.5 |
+| [v1.2.5](./v1.2.5/README.md) | ✅ 完成 | **Harness Memory 分层系统** | Phase 4 Memory (Harness 侧) | v1.2.0 | v1.3.0 |
 | [v1.3.0](./v1.3.0/README.md) | ⚪ 待规划 | **Phase 5 Capability 基础** | Phase 5 Capability (基础) | v1.2.5 | v1.4.0 |
 | [v1.4.0](./v1.4.0/README.md) | ⚪ 待规划 | **Phase 5 Capability 高级** | Phase 5 Capability (高级) | v1.3.0 | v2.0.0 |
 
@@ -114,7 +114,7 @@ v1.4.0 (Capability 高级)
 | Phase 1: Session | - | ✅ 已完成 |
 | Phase 2: Orchestration | - | ✅ 已完成 |
 | Phase 3: Execution | v1.1.0 + v1.1.5 | ✅ 完成 |
-| Phase 4: Memory | v1.2.0 + v1.2.5 | ⚪ 待规划 |
+| Phase 4: Memory | v1.2.0 + v1.2.5 | ✅ 完成 |
 | Phase 5: Capability | v1.3.0 + v1.4.0 | ⚪ 待规划 |
 
 ---
