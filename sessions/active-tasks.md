@@ -7,15 +7,11 @@
 
 ### P0 — 紧急
 - [x] V110-001~007: Week 1 全部完成 (来源: 2026-04-28, v1.1.0) → **✅ 已完成**
-- [x] V110-008: 创建 Hook 能力测试脚本 (来源: 2026-04-28, v1.1.0) → **✅ 已完成**
-- [x] V110-009: 测试 PreToolUse Hook Write/Edit 匹配 → **✅ 通过** (`Edit|Write` matcher 生效)
-- [x] V110-010: 测试 PreToolUse Hook 阻止执行能力 → **✅ 通过** (`exit 2` 阻止成功)
-- [x] V110-011: 测试 PreToolUse Hook 上下文获取能力 → **✅ 通过** (stdin JSON 含 file_path/session_id)
-- [x] V110-012: 根据 Hook 验收结果选择实现方案 → **✅ 方案 A 选中**
-- [x] V110-013: 方案 A — 扩展 PreToolUse Hook → **✅ 已完成** (check-contract-before-write.sh)
-- [x] V110-014~015: 方案 B/C → **⏭ 跳过**
-- [x] V110-016: 更新 harness-plan.md → **✅ 已完成**
-- [x] V110-017: Week 2 端到端验证 → **✅ 已完成**
+- [x] V110-008~017: v1.1.0 全部完成 (Hook 测试/方案选择/实现/验证) → **✅ 已完成**
+- [x] V120-001: v1.2.0 Contract 确认 → **已完成**
+- [x] V120-Phase1: 核心召回 + 沉淀基础 (TASK-201/202/203/205/206)
+- [x] V120-Phase2: Prompt 增强 + 反馈闭环 (TASK-204/208/209)
+- [x] V120-Phase3: 生命周期 + 质量量化 (TASK-207/210/211)
 
 ### P1 — 重要
 - [ ] TASK-002: OpenCodeServer 本地源码扫描（第二期，来源: 2026-04-22）→ **已映射到 v1.3.0**
@@ -26,9 +22,10 @@
 
 | 版本 | 周期 | 核心目标 | Superpower Phase | 状态 |
 |------|------|----------|------------------|------|
-| [v1.1.0](../docs/versions/v1.1.0/README.md) | 04/28-05/09 | Execution 层补充 | Phase 3 Execution | 🔵 开发中 |
-| [v1.1.5](../docs/versions/v1.1.5/README.md) | 待定 | 用户管理与分配 | Phase 3 (补充) | ⚪ 待启动 |
-| [v1.2.0](../docs/versions/v1.2.0/README.md) | 待定 | Memory 记忆系统 | Phase 4 Memory | ⚪ 待启动 |
+| [v1.1.0](../docs/versions/v1.1.0/README.md) | 04/28 | Execution 层补充 | Phase 3 Execution | ✅ 已完成 |
+| [v1.1.5](../docs/versions/v1.1.5/README.md) | 04/28 | 用户管理与 Knowledge 审核 | Phase 3 (补充) | ✅ 已完成 |
+| [v1.2.0](../docs/versions/v1.2.0/README.md) | 04/28 | Knowledge 精准召回 + 评审质量 | Phase 4 Memory (CodeReview) | ✅ 已完成 (11/11 tasks) |
+| [v1.2.5](../docs/versions/v1.2.5/README.md) | 待定 | Harness Memory 分层系统 | Phase 4 Memory (Harness) | ⚪ 待启动 |
 | [v1.3.0](../docs/versions/v1.3.0/README.md) | 待定 | Capability 基础 | Phase 5 (基础) | ⚪ 待启动 |
 | [v1.4.0](../docs/versions/v1.4.0/README.md) | 待定 | Capability 高级 | Phase 5 (高级) | ⚪ 待启动 |
 
