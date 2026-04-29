@@ -1,0 +1,18 @@
+{
+  "totalEntries": 0,
+  "byLayer": {
+    "session": 0,
+    "task": 0,
+    "project": 0
+  },
+  "upgrades": {
+    "taskToProject": 0,
+    "projectRenewed": 0
+  },
+  "archived": {
+    "session": 0,
+    "task": 0,
+    "project": 0
+  },
+  "lastMaintenance": null
+}

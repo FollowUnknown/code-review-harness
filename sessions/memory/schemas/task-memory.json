@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TaskMemory",
+  "type": "object",
+  "required": ["id", "contractId", "scope", "approach", "risks", "decisions", "reviewResult", "keyIssues", "createdAt", "expiresAt"],
+  "properties": {
+    "id": { "type": "string", "description": "Run ID, e.g. run-20260428-001" },
+    "contractId": { "type": "string" },
+    "scope": { "type": "string" },
+    "approach": { "type": "string" },
+    "risks": { "type": "array", "items": { "type": "string" } },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["decision", "rationale"],
+        "properties": {
+          "decision": { "type": "string" },
+          "rationale": { "type": "string" }
+        }
+      }
+    },
+    "reviewResult": { "type": "string", "enum": ["passed", "failed"] },
+    "keyIssues": { "type": "array", "items": { "type": "string" } },
+    "repairPattern": { "type": "string", "description": "If associated repair exists" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time", "description": "createdAt + 7 days" }
+  }
+}

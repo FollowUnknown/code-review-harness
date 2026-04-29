@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SessionMemory",
+  "type": "object",
+  "required": ["id", "sessionDate", "activeTasks", "contextSnapshot", "pendingDecisions", "createdAt", "expiresAt"],
+  "properties": {
+    "id": { "type": "string", "description": "Date string, e.g. 2026-04-29" },
+    "sessionDate": { "type": "string", "format": "date" },
+    "activeTasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["taskId", "description", "priority"],
+        "properties": {
+          "taskId": { "type": "string" },
+          "description": { "type": "string" },
+          "priority": { "type": "string", "enum": ["P0", "P1", "P2"] }
+        }
+      }
+    },
+    "contextSnapshot": {
+      "type": "object",
+      "required": ["currentContract", "currentPhase", "lastAction"],
+      "properties": {
+        "currentContract": { "type": ["string", "null"], "description": "Contract ID or null" },
+        "currentPhase": { "type": ["string", "null"] },
+        "lastAction": { "type": "string" }
+      }
+    },
+    "pendingDecisions": { "type": "array", "items": { "type": "string" } },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time", "description": "createdAt + 1 day" }
+  }
+}

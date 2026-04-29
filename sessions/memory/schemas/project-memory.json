@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProjectMemory",
+  "type": "object",
+  "required": ["id", "projectName", "type", "content", "sourceTaskIds", "confidence", "createdAt", "expiresAt", "lastHitAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "projectName": { "type": "string" },
+    "type": { "type": "string", "enum": ["conventions", "risks", "best-practices"] },
+    "content": { "type": "string" },
+    "sourceTaskIds": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time", "description": "lastHitAt + 30 days" },
+    "lastHitAt": { "type": "string", "format": "date-time" }
+  }
+}
