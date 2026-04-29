@@ -11,6 +11,7 @@ import usersRouter from "./routes/users";
 import knowledgeRouter from "./routes/knowledge";
 import dimensionsRouter from "./routes/dimensions";
 import qualityRouter from "./routes/quality";
+import memoryRouter from "./routes/memory";
 import llmRouter from "./llm/router";
 
 const app = express();
@@ -34,6 +35,7 @@ app.use("/api/users", usersRouter);
 app.use("/api/knowledge", knowledgeRouter);
 app.use("/api/dimension-sets", dimensionsRouter);
 app.use("/api/quality", qualityRouter);
+app.use("/api/memory", memoryRouter);
 app.use("/api/llm", llmRouter);
 
 // SPA fallback for client-side routing (must be last)
