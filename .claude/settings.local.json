@@ -11,7 +11,8 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(node:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(md5)"
     ],
     "deny": [
       "Bash(rm -rf*)",
@@ -43,6 +44,10 @@
           {
             "type": "command",
             "command": "bash scripts/check-contract-before-write.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/check-session-realtime.sh"
           }
         ]
       }
@@ -62,7 +67,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "TODAY=$(date +%Y-%m-%d); FILE=\"sessions/${TODAY}.md\"; if [ -f \"$FILE\" ]; then if ! grep -q '## 今日总结' \"$FILE\"; then echo \"⚠️  今日会话文件 $FILE 缺少总结区块，请补写\"; fi; else echo \"⚠️  今日会话文件 $FILE 不存在，请创建\"; fi"
+            "command": "bash scripts/check-session-on-stop.sh"
           }
         ]
       }
