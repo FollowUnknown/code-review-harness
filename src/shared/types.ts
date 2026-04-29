@@ -324,3 +324,77 @@ export interface DimensionSet {
   created_at: string;
   updated_at: string;
 }
+
+// ---- Harness Memory (v1.2.5) ----
+
+export type MemoryLayer = "session" | "task" | "project";
+
+export type ProjectMemoryType = "conventions" | "risks" | "best-practices";
+
+export interface MemoryIndexEntry {
+  id: string;
+  layer: MemoryLayer;
+  file: string;
+  scope: string;
+  createdAt: string;
+  expiresAt: string;
+  hitCount: number;
+  lastHitAt: string;
+  tags: string[];
+}
+
+export interface MemoryIndex {
+  lastUpdated: string;
+  entries: MemoryIndexEntry[];
+}
+
+export interface MemoryStats {
+  totalEntries: number;
+  byLayer: Record<MemoryLayer, number>;
+  upgrades: {
+    taskToProject: number;
+    projectRenewed: number;
+  };
+  archived: Record<MemoryLayer, number>;
+  lastMaintenance: string | null;
+}
+
+export interface SessionMemory {
+  id: string;
+  sessionDate: string;
+  activeTasks: { taskId: string; description: string; priority: string }[];
+  contextSnapshot: {
+    currentContract: string | null;
+    currentPhase: string | null;
+    lastAction: string;
+  };
+  pendingDecisions: string[];
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface TaskMemory {
+  id: string;
+  contractId: string;
+  scope: string;
+  approach: string;
+  risks: string[];
+  decisions: { decision: string; rationale: string }[];
+  reviewResult: "passed" | "failed";
+  keyIssues: string[];
+  repairPattern?: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface ProjectMemory {
+  id: string;
+  projectName: string;
+  type: ProjectMemoryType;
+  content: string;
+  sourceTaskIds: string[];
+  confidence: number;
+  createdAt: string;
+  expiresAt: string;
+  lastHitAt: string;
+}
