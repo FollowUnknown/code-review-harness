@@ -1,0 +1,22 @@
+{
+  "id": "run-20260428-001",
+  "contractId": "2026-04-28-v110-execution-layer",
+  "scope": "v1.1.0 Execution 层基础设施 — 目录结构、记录格式定义、Sessions 集成",
+  "approach": "基于现有 sessions/ 机制扩展 execution/ 子目录，定义 Run/Repair/Checkpoint 三类记录格式，更新 CLAUDE.md 会话规则集成 Execution 记录",
+  "risks": [
+    "PreToolUse Hook 对 Write/Edit 的支持能力未验证",
+    "execution/ 记录可能随时间膨胀需要清理策略"
+  ],
+  "decisions": [
+    { "decision": "记录格式使用 JSON Schema 定义", "rationale": "可验证、可生成文档、支持 IDE 自动补全" },
+    { "decision": "Phase 4 预埋字段放在每条记录的顶层", "rationale": "方便 v1.2.0 Memory Extractor 扫描识别，不需要深层解析" }
+  ],
+  "reviewResult": "passed",
+  "keyIssues": [
+    "Execution 记录无验证脚本，建议增加 JSON Schema 验证工具",
+    "README 缺少清理和归档策略说明"
+  ],
+  "repairPattern": "review failed on missing validation script → added repair → passed",
+  "createdAt": "2026-04-28T00:00:00Z",
+  "expiresAt": "2026-05-05T00:00:00Z"
+}

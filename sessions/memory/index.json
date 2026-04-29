@@ -1,4 +1,16 @@
 {
-  "lastUpdated": "2026-04-29T00:00:00Z",
-  "entries": []
+  "lastUpdated": "2026-04-30T12:00:00Z",
+  "entries": [
+    {
+      "id": "run-20260428-001",
+      "layer": "task",
+      "file": "task/run-20260428-001.json",
+      "scope": "v1.1.0 Execution 层基础设施",
+      "createdAt": "2026-04-28",
+      "expiresAt": "2026-05-05",
+      "hitCount": 1,
+      "lastHitAt": "2026-04-30",
+      "tags": ["execution", "schema", "v1.1.0"]
+    }
+  ]
 }
