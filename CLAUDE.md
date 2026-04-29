@@ -205,7 +205,7 @@ AI 在以下场景**自动**写入 `sessions/execution/` 记录：
 2. 至少明确：对象、状态流、作用域、接口边界、文档影响范围
 3. 需要时更新：
    - `docs/architecture/`
-   - `docs/superpowers/specs/`
+   - `docs/versions/{v}/design.md`（对应版本的设计文档）
    - 对应 contract
 4. 架构确认后进入开发，Contract 状态改为 `in_progress`
 
@@ -225,7 +225,7 @@ AI 在以下场景**自动**写入 `sessions/execution/` 记录：
 
 #### 阶段 5: Knowledge Sync
 
-1. 将通用结论回写到 `docs/superpowers/specs/` 或相关 architecture 文档
+1. 将通用结论回写到 `docs/versions/{v}/design.md` 或相关 architecture 文档
 2. 更新会话记录、活跃任务和相关计划
 3. 如需提交代码或文档，最后将 Contract 状态改为 `completed`
 
@@ -260,7 +260,13 @@ sessions/                       # 会话机制（运营日志，与 docs/ 分离
 
 docs/                            # 项目知识（参考型）
 ├── contracts/
-│   └── YYYY-MM-DD-<task>.md  # Sprint Contract
+│   └── YYYY-MM-DD-<task>.md  # Sprint Contract（需求合同）
+├── versions/
+│   ├── README.md              # 版本迭代概览
+│   └── {v}/                   # 版本级聚合
+│       ├── README.md          # 版本规划（目标、验收、风险）
+│       ├── design.md          # 详细设计 spec
+│       └── tasks.md           # 任务拆解
 ├── architecture/
 │   ├── index.md              # 项目架构总览
 │   └── implicit-contracts.md # 隐性业务约定

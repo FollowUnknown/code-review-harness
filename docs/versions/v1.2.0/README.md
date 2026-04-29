@@ -21,8 +21,8 @@ v1.2.0（本版本）
     │ 评审质量提升：更精准的注入、质量可量化
     ▼
 v1.2.5（Harness 侧）
-    │ Memory 分层系统（session/task/project/validated）
-    │ 消费 Execution 数据，桥接到 Knowledge
+    │ Memory 分层系统（session/task/project）
+    │ 消费 Execution 数据，服务 AI 编排（与 Knowledge 完全独立，不桥接）
 ```
 
 ---

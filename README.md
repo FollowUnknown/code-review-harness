@@ -56,9 +56,8 @@ codeReview/
 相关文档：
 
 - [CLAUDE.md](./CLAUDE.md)
-- [2026-04-22-harness-framework-design.md](./docs/superpowers/specs/2026-04-22-harness-framework-design.md)
-- [2026-04-23-harness-superpower-roadmap.md](./docs/superpowers/specs/2026-04-23-harness-superpower-roadmap.md)
-- [2026-04-23-harness-superpower-roadmap.md](./docs/superpowers/plans/2026-04-23-harness-superpower-roadmap.md)
+- [v1.1.0 设计](./docs/archive/superpowers/specs/2026-04-22-harness-framework-design.md)
+- [Superpower 路线图](./docs/archive/superpowers/specs/2026-04-23-harness-superpower-roadmap.md)
 
 ---
 

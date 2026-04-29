@@ -77,7 +77,7 @@ interface TaskMemory {
 interface ProjectMemory {
   id: string;
   projectName: string;
-  type: 'rules' | 'conventions' | 'best-practices';
+  type: 'conventions' | 'risks' | 'best-practices';
   content: string;
   sourceTaskIds: string[];
   confidence: number;

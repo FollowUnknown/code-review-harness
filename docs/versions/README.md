@@ -87,7 +87,7 @@ v1.4.0 (Capability 高级)
 | v1.1.0 | [详细规划](./v1.1.0/README.md) | Execution 层补充：Run/Repair/Checkpoint 记录、PreToolUse Hook | Phase 3 Execution |
 | v1.1.5 | [详细规划](./v1.1.5/README.md) | 用户管理、Token 刷新、Knowledge 审核流程 | Phase 3 Execution (补充) |
 | v1.2.0 | [详细规划](./v1.2.0/README.md) | Knowledge 精准召回、自动沉淀增强、评审 Prompt 增强、质量可量化 | Phase 4 Memory (CodeReview) |
-| v1.2.5 | [详细规划](./v1.2.5/README.md) | 3 层记忆模型、Execution→Memory 提取、跨会话恢复、TTL 清理 | Phase 4 Memory (Harness) |
+| v1.2.5 | [规划](./v1.2.5/README.md) · [设计](./v1.2.5/design.md) | 3 层记忆模型、Execution→Memory 提取、跨会话恢复、TTL 清理 | Phase 4 Memory (Harness) |
 | v1.3.0 | [详细规划](./v1.3.0/README.md) | Capability 基础：Skill/Provider/Capability Registry、Governor、Sandbox | Phase 5 Capability (基础) |
 | v1.4.0 | [详细规划](./v1.4.0/README.md) | Capability 高级：Skill 版本管理、Provider 智能路由、Capability 依赖治理 | Phase 5 Capability (高级) |
 
@@ -119,4 +119,21 @@ v1.4.0 (Capability 高级)
 
 ---
 
-*最后更新: 2026-04-28*
+## 文档约定
+
+每个版本目录 `{v}/` 按需包含以下文件：
+
+| 文件 | 用途 | 何时创建 |
+|------|------|---------|
+| `README.md` | 版本规划（目标、边界、验收标准、风险） | 版本创建时 |
+| `design.md` | 详细设计 spec（架构、Schema、流程） | 复杂版本需要设计文档时 |
+| `tasks.md` | 任务拆解与进度跟踪 | 进入 Development 阶段时 |
+
+**规则**：
+- `docs/contracts/` 只放 Sprint Contract（需求合同，开发前创建）
+- `docs/superpowers/` 已废弃，设计文档统一放 `docs/versions/{v}/design.md`
+- 历史归档在 `docs/archive/superpowers/`，不再更新
+
+---
+
+*最后更新: 2026-04-29*
