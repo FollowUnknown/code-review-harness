@@ -148,9 +148,6 @@ function initialize(db: Database.Database): void {
   // Migrate review_knowledge_usage table with adopted column (must be after CREATE TABLE)
   migrateReviewKnowledgeUsageTable(db);
 
-  // Migrate review_plan_items table with branch/author columns
-  migrateReviewPlanItemsTable(db);
-
   // LLM communication logs
   db.exec(`
     CREATE TABLE IF NOT EXISTS llm_logs (
@@ -202,6 +199,9 @@ function initialize(db: Database.Database): void {
     );
     CREATE INDEX IF NOT EXISTS idx_plan_items_plan_id ON review_plan_items(plan_id);
   `);
+
+  // Migrate review_plan_items table with branch/author/error_message/reviewed_at columns
+  migrateReviewPlanItemsTable(db);
 
   // Seed default prompt templates (idempotent via INSERT OR IGNORE)
   const dimensionsText = REVIEW_DIMENSIONS.map((d: string, i: number) => `${i + 1}. ${d}`).join("\n");
