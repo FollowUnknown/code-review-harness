@@ -51,6 +51,25 @@ AI 每次对话自动遵循以下规则，记录会话内容和任务清单。
 
 **上下文控制：只读当天 session + active-tasks.md。历史文件按需 grep。**
 
+**规则 4：记忆召回**
+- 对话启动时：
+  1. 读取 `sessions/memory/session/{today}.json`，如存在则恢复活跃任务和上下文
+  2. 读取 `sessions/memory/project/*.json`，注入项目规则到规划上下文
+  3. 如 `sessions/memory/session/{today}.json` 不存在，基于 session 文件和 active-tasks.md 创建
+- 创建新 Contract 时：
+  1. 读取 `sessions/memory/project/conventions.json`，检查是否与已有规则冲突
+  2. 扫描 `sessions/memory/index.json` 按 tags 匹配相似 task memory，参考历史方案
+- 命中记忆时：
+  1. 更新 `sessions/memory/index.json` 中对应条目 `hitCount++` 和 `lastHitAt`
+  2. 如 `hitCount ≥ 3` 且距创建 ≥ 1d，执行 task → project 升级
+- Run/Repair 完成后：
+  1. 从 execution 数据提取 TaskMemory，写入 `sessions/memory/task/{run-id}.json`
+  2. 更新 `sessions/memory/index.json` 添加条目
+  3. 标记 execution 记录 `extractedForMemory: true`
+- 会话结束时：
+  1. 更新当日 `sessions/memory/session/{date}.json` 的上下文快照
+  2. 更新 `sessions/memory/stats.json` 中的计数
+
 ### Execution 记录规则（Phase 3）
 
 AI 在以下场景**自动**写入 `sessions/execution/` 记录：
