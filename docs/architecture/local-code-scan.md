@@ -362,7 +362,187 @@ if (reviewMode === "diff_only") {
 
 ---
 
-## 8. 错误处理
+## 8. Token 控制策略（核心）
+
+本地扫描的核心风险：关联文件可能非常大（几千行的工具类、生成的代码），导致 token 超限。
+
+**三层防御**：
+
+### 8.1 第一层：关联文件数量上限
+
+```typescript
+const MAX_RELATED_FILES_PER_CHANGE = 3;  // 每个变更文件最多3个关联
+const MAX_TOTAL_RELATED_FILES = 10;       // 全局最多10个关联文件
+```
+
+### 8.2 第二层：单文件行数上限
+
+```typescript
+const MAX_RELATED_FILE_LINES = 300;  // 单个关联文件最多读取300行
+```
+
+读取时只取前 300 行（接口定义通常在前部）：
+```typescript
+const lines = content.split("\n").slice(0, MAX_RELATED_FILE_LINES);
+const truncated = lines.join("\n");
+// 如果超了，末尾加提示
+if (content.split("\n").length > MAX_RELATED_FILE_LINES) {
+  truncated += "\n\n... [文件过长，已截断，仅保留前300行] ...";
+}
+```
+
+### 8.3 第三层：全局 Token 预算
+
+```typescript
+const RELATED_FILES_TOKEN_BUDGET = 3000;  // 关联文件总预算
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);  // 粗略估算：1 token ≈ 4 chars
+}
+
+function truncateRelatedFiles(files: RelatedFile[], budget: number): RelatedFile[] {
+  const result: RelatedFile[] = [];
+  let used = 0;
+  
+  for (const file of files) {
+    const tokens = estimateTokens(file.content);
+    if (used + tokens > budget) {
+      // 尝试只保留文件头部（接口定义区域）
+      const headOnly = extractInterfaceDefinitions(file.content);
+      const headTokens = estimateTokens(headOnly);
+      if (used + headTokens <= budget) {
+        result.push({ ...file, content: headOnly });
+        used += headTokens;
+      }
+      break;  // 预算用完，停止
+    }
+    result.push(file);
+    used += tokens;
+  }
+  
+  return result;
+}
+```
+
+### 8.4 智能截断：保留接口定义，去掉实现
+
+关联文件的作用是**让 AI 知道接口长什么样**，不需要完整实现：
+
+```typescript
+/**
+ * 从文件中提取关键定义（接口、类型、导出函数签名）
+ * 用于预算不足时降级提供"精简版关联文件"
+ */
+function extractInterfaceDefinitions(content: string): string {
+  const lines = content.split("\n");
+  const result: string[] = [];
+  let inInterface = false;
+  let braceDepth = 0;
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // 匹配接口/类型定义开始
+    if (/^(export\s+)?(interface|type)\s+\w+/.test(trimmed)) {
+      inInterface = true;
+      result.push(line);
+      braceDepth = (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
+      continue;
+    }
+    
+    // 匹配导出函数签名（不含实现体）
+    if (/^(export\s+)?(async\s+)?function\s+\w+\s*\(/.test(trimmed)) {
+      result.push(line);
+      // 如果函数体在同一行且是简单返回，保留
+      if (trimmed.includes("{")) {
+        const closeIdx = findMatchingBrace(lines, lines.indexOf(line));
+        if (closeIdx - lines.indexOf(line) < 5) {
+          // 短函数，保留完整
+          for (let i = lines.indexOf(line); i <= closeIdx; i++) {
+            result.push(lines[i]);
+          }
+        }
+      }
+      continue;
+    }
+    
+    // 在接口内部，追踪括号深度
+    if (inInterface) {
+      result.push(line);
+      braceDepth += (line.match(/{/g) || []).length;
+      braceDepth -= (line.match(/}/g) || []).length;
+      if (braceDepth <= 0) {
+        inInterface = false;
+        result.push("");  // 空行分隔
+      }
+    }
+  }
+  
+  if (result.length === 0) {
+    //  fallback：只保留前50行
+    return lines.slice(0, 50).join("\n") + "\n... [已截断] ...";
+  }
+  
+  return result.join("\n");
+}
+```
+
+**示例效果**：
+
+```typescript
+// 原始文件（500行）
+// src/types/user.ts
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  // ... 更多字段
+}
+
+export function createUser(data: CreateUserInput): User {
+  // 100行验证逻辑
+  // 100行数据库操作
+  // 100行错误处理
+  // ...
+}
+
+export function updateUser(id: string, data: UpdateUserInput): User {
+  // 200行实现
+}
+
+// 截断后（只保留接口+函数签名，约20行）
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  // ... 更多字段
+}
+
+export function createUser(data: CreateUserInput): User;
+export function updateUser(id: string, data: UpdateUserInput): User;
+```
+
+AI 只需要知道 "createUser 接收什么参数、返回什么类型"，不需要知道里面怎么查数据库。
+
+### 8.5 预算分配优先级
+
+```
+total LLM context budget ≈ 100K - 200K tokens (Claude Sonnet)
+
+分配：
+- System Prompt:          ~1.5K  (固定)
+- Knowledge Prompt:       ~4K    (已有预算)
+- Diff Content:           ~variable (核心，优先保证)
+- Related Files:          ~3K    (新增预算)
+- User Prompt Overhead:   ~0.5K  (固定)
+
+Diff 优先，关联文件是"锦上添花"。如果 diff 本身已经占用了大量 token，
+关联文件自动降级为"只保留接口定义"甚至"完全不注入"。
+```
+
+---
+
+## 9. 错误处理
 
 | 场景 | 错误码 | 消息 |
 |------|--------|------|
@@ -376,7 +556,7 @@ if (reviewMode === "diff_only") {
 
 ---
 
-## 9. 性能考虑
+## 10. 性能考虑
 
 | 场景 | 策略 |
 |------|------|
@@ -388,7 +568,7 @@ if (reviewMode === "diff_only") {
 
 ---
 
-## 10. 待确认的关键决策
+## 11. 待确认的关键决策
 
 ### 决策 1：仓库路径映射方式
 
