@@ -409,3 +409,6 @@
 [2026-04-29T18:09:03Z] Edit sessions/execution/runs/run-20260428-001/plan.json session=c569a0d7-79e6-4ccd-ba74-b16ce0fc1752
 [2026-04-29T18:09:03Z] Edit sessions/execution/runs/run-20260428-001/implementation.json session=c569a0d7-79e6-4ccd-ba74-b16ce0fc1752
 [2026-04-29T18:09:03Z] Edit sessions/execution/runs/run-20260428-001/review.json session=c569a0d7-79e6-4ccd-ba74-b16ce0fc1752
+[2026-04-29T18:09:55Z] Edit docs/versions/README.md session=c569a0d7-79e6-4ccd-ba74-b16ce0fc1752
+[2026-04-29T18:10:12Z] Edit docs/versions/README.md session=c569a0d7-79e6-4ccd-ba74-b16ce0fc1752
+[2026-04-29T18:10:23Z] Edit docs/versions/v1.2.5/README.md session=c569a0d7-79e6-4ccd-ba74-b16ce0fc1752
