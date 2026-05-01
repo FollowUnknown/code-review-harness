@@ -14,7 +14,8 @@
 | [v1.1.5](./v1.1.5/README.md) | ✅ 完成 | **用户管理与 Knowledge 审核** | Phase 3 Execution (补充) | v1.1.0 | v1.2.0 |
 | [v1.2.0](./v1.2.0/README.md) | ✅ 完成 | **Knowledge 精准召回与评审质量提升** | Phase 4 Memory (CodeReview 侧) | v1.1.5 | v1.2.5 |
 | [v1.2.5](./v1.2.5/README.md) | ✅ 完成 | **Harness Memory 分层系统** | Phase 4 Memory (Harness 侧) | v1.2.0 | v1.3.0 |
-| [v1.3.0](./v1.3.0/README.md) | ⚪ 待规划 | **Phase 5 Capability 基础** | Phase 5 Capability (基础) | v1.2.5 | v1.4.0 |
+| [v1.3.0](./v1.3.0/README.md) | ✅ 完成 | **本地代码扫描** | Local Scan | v1.2.5 | v1.3.5 |
+| [v1.3.5](./v1.3.5/plan.md) | ✅ 完成 | **文件选择过滤器** | Diff Preview + FileSelector | v1.3.0 | v1.4.0 |
 | [v1.4.0](./v1.4.0/README.md) | ⚪ 待规划 | **Phase 5 Capability 高级** | Phase 5 Capability (高级) | v1.3.0 | v2.0.0 |
 
 ---
@@ -136,4 +137,4 @@ v1.4.0 (Capability 高级)
 
 ---
 
-*最后更新: 2026-04-29*
+*最后更新: 2026-05-02*
