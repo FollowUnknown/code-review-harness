@@ -407,12 +407,14 @@ export interface LocalReviewRequest {
   targetBranch: string;
   includeRelatedFiles?: boolean;   // default true
   relatedFileDepth?: number;       // 1 = direct deps only (default)
+  excludedFiles?: string[];        // v1.3.5: files to skip
 }
 
 export interface DiffReviewRequest {
   project: string;
   diffText: string;
   fileName?: string;
+  excludedFiles?: string[];        // v1.3.5: files to skip
 }
 
 export interface RepoMapping {
@@ -436,4 +438,45 @@ export interface ScanContext {
   changedSymbols: string[];
   relatedFiles: Array<RelatedFile & { content?: string }>;
   totalTokens: number;
+}
+
+// ---- Diff Preview (v1.3.5) ----
+
+export interface FilePreviewItem {
+  path: string;
+  newFile: boolean;
+  deletedFile: boolean;
+  renamedFile: boolean;
+  diffChars: number;
+  riskLevel: RiskLevel;
+  fileCategory: FileCategory;
+  symbols: string[];
+}
+
+export type GroupByMode = "fileType" | "directory" | "riskLevel";
+
+export interface FileGroup {
+  key: string;
+  label: string;
+  count: number;
+  newCount: number;
+  modifiedCount: number;
+  suggestedSkip: boolean;
+  files: FilePreviewItem[];
+}
+
+export interface DiffPreviewRequest {
+  project?: string;
+  diffText?: string;
+  sourceBranch?: string;
+  targetBranch?: string;
+}
+
+export interface DiffPreviewResponse {
+  totalFiles: number;
+  skipCount: number;
+  groups: FileGroup[];
+  batchEstimate: number;
+  tokenEstimate: number;
+  triggerThreshold: boolean;
 }

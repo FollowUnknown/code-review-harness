@@ -14,6 +14,7 @@ import qualityRouter from "./routes/quality";
 import memoryRouter from "./routes/memory";
 import reviewLocalRouter from "./routes/review-local";
 import reviewDiffRouter from "./routes/review-diff";
+import reviewPreviewRouter from "./routes/review-preview";
 import repoMappingRouter from "./routes/repo-mapping";
 import llmRouter from "./llm/router";
 
@@ -41,6 +42,7 @@ app.use("/api/quality", qualityRouter);
 app.use("/api/memory", memoryRouter);
 app.use("/api/review", reviewLocalRouter);
 app.use("/api/review", reviewDiffRouter);
+app.use("/api/review", reviewPreviewRouter);
 app.use("/api/repo-mappings", repoMappingRouter);
 app.use("/api/llm", llmRouter);
 

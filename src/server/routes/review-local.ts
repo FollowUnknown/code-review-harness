@@ -62,7 +62,13 @@ router.post("/local", async (req: Request, res: Response) => {
     const context = await buildLocalScanContext(mapping.localPath, targetBranch, sourceBranch);
     completeStep(`${context.diffs.length} files changed, ${context.relatedFiles.length} related files`);
 
-    if (context.diffs.length === 0) {
+    // Filter excluded files (v1.3.5)
+    const excludedFiles: string[] = req.body.excludedFiles || [];
+    const diffs = excludedFiles.length > 0
+      ? context.diffs.filter((d: { new_path: string }) => !excludedFiles.includes(d.new_path))
+      : context.diffs;
+
+    if (diffs.length === 0) {
       sendSSE(res, { step: step + 1, status: "done", label: "No changes", detail: "No diff found between branches" });
       res.end();
       return;
@@ -70,7 +76,7 @@ router.post("/local", async (req: Request, res: Response) => {
 
     // Step 2: Classify
     nextStep("Classifying files");
-    const { summary: classification, batchDiffs } = classify(context.diffs);
+    const { summary: classification, batchDiffs } = classify(diffs);
     const batchLevels = classification.batches.map((b) => b.level);
     completeStep();
 

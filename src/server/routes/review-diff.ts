@@ -27,7 +27,14 @@ router.post("/diff", async (req: Request, res: Response) => {
   }
 
   try {
-    const diffs = parseDiffToGitLabDiffs(diffText);
+    const parsedDiffs = parseDiffToGitLabDiffs(diffText);
+
+    // Filter excluded files (v1.3.5)
+    const excludedFiles: string[] = req.body.excludedFiles || [];
+    const diffs = excludedFiles.length > 0
+      ? parsedDiffs.filter((d: { new_path: string }) => !excludedFiles.includes(d.new_path))
+      : parsedDiffs;
+
     if (diffs.length === 0) {
       res.json({ success: true, data: { message: "No changes found in diff" } });
       return;
