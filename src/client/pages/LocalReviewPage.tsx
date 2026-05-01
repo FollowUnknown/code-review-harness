@@ -48,7 +48,8 @@ export function LocalReviewPage() {
         return;
       }
 
-      const previewData: DiffPreviewResponse = await previewRes.json();
+      const rawPreview = await previewRes.json();
+      const previewData: DiffPreviewResponse = rawPreview.data || rawPreview;
 
       if (previewData.totalFiles === 0) {
         setError("No diff files found between the branches");
