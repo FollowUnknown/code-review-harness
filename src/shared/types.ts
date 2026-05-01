@@ -398,3 +398,42 @@ export interface ProjectMemory {
   expiresAt: string;
   lastHitAt: string;
 }
+
+// ---- Local Scan (v1.3.0) ----
+
+export interface LocalReviewRequest {
+  project: string;
+  sourceBranch: string;
+  targetBranch: string;
+  includeRelatedFiles?: boolean;   // default true
+  relatedFileDepth?: number;       // 1 = direct deps only (default)
+}
+
+export interface DiffReviewRequest {
+  project: string;
+  diffText: string;
+  fileName?: string;
+}
+
+export interface RepoMapping {
+  id: number;
+  project: string;
+  localPath: string;
+  createdAt: string;
+}
+
+export type FileCategory = "utility" | "business" | "entry" | "config";
+
+export interface RelatedFile {
+  path: string;
+  category: FileCategory;
+  relevance: number;               // 0-1, 用于排序
+  reason: string;                  // 为什么关联（import/call/same-dir）
+}
+
+export interface ScanContext {
+  diffs: GitLabDiff[];
+  changedSymbols: string[];
+  relatedFiles: Array<RelatedFile & { content?: string }>;
+  totalTokens: number;
+}

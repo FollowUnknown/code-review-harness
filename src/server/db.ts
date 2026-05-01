@@ -60,6 +60,14 @@ function initialize(db: Database.Database): void {
     );
   `);
 
+  // Repo mappings (v1.3.0 local code scanning)
+  db.exec(`CREATE TABLE IF NOT EXISTS repo_mappings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project TEXT NOT NULL UNIQUE,
+    local_path TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+
   // Knowledge entries (replacing legacy `entries` table)
   db.exec(`
     CREATE TABLE IF NOT EXISTS knowledge_entries (

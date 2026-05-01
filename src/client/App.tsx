@@ -18,6 +18,7 @@ import { DimensionSetPage } from "./pages/DimensionSetPage";
 import { UserManagementPage } from "./pages/UserManagementPage";
 import { QualityPage } from "./pages/QualityPage";
 import { MemoryPage } from "./pages/MemoryPage";
+import { LocalReviewPage } from "./pages/LocalReviewPage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
@@ -146,6 +147,12 @@ export default function App() {
             >
               Memory
             </Link>
+            <Link
+              to="/local-review"
+              className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
+            >
+              Local
+            </Link>
             {authUser.role === "admin" && (
               <Link
                 to="/dimensions"
@@ -246,6 +253,7 @@ export default function App() {
           <Route path="/users" element={<UserManagementPage currentUser={authUser} />} />
           <Route path="/quality" element={<QualityPage />} />
           <Route path="/memory" element={<MemoryPage />} />
+          <Route path="/local-review" element={<LocalReviewPage />} />
         </Routes>
       </div>
     </div>
