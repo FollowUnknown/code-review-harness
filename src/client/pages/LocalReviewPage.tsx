@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { FileSelectorDialog } from "../components/FileSelectorDialog";
+import type { DiffPreviewResponse } from "../../shared/types";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
@@ -11,6 +13,14 @@ export function LocalReviewPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [steps, setSteps] = useState<string[]>([]);
+  const [preview, setPreview] = useState<DiffPreviewResponse | null>(null);
+  const [allFilePaths, setAllFilePaths] = useState<string[]>([]);
+
+  const token = localStorage.getItem("auth_token");
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
 
   const handleSubmit = async () => {
     if (!project || !sourceBranch || !targetBranch) {
@@ -23,56 +33,106 @@ export function LocalReviewPage() {
     setSteps([]);
     setReviewId(null);
 
-    const token = localStorage.getItem("auth_token");
-    const response = await fetch(`${API_BASE}/api/review/local`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ project, sourceBranch, targetBranch }),
-    });
+    try {
+      // Step 1: Get file preview
+      const previewRes = await fetch(`${API_BASE}/api/review/preview`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ project, sourceBranch, targetBranch }),
+      });
 
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({ error: "Request failed" }));
-      setError(data.error || "Unknown error");
+      if (!previewRes.ok) {
+        const data = await previewRes.json().catch(() => ({ error: "Preview failed" }));
+        setError(data.error || "Preview failed");
+        setLoading(false);
+        return;
+      }
+
+      const previewData: DiffPreviewResponse = await previewRes.json();
+
+      if (previewData.totalFiles === 0) {
+        setError("No diff files found between the branches");
+        setLoading(false);
+        return;
+      }
+
+      if (previewData.triggerThreshold) {
+        // Collect all file paths for computing excludedFiles later
+        const allPaths = previewData.groups.flatMap((g) => g.files.map((f) => f.path));
+        setAllFilePaths(allPaths);
+        setPreview(previewData);
+        setLoading(false);
+        return;
+      }
+
+      // Below threshold — review directly
+      await startReview([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
       setLoading(false);
-      return;
     }
+  };
 
-    // Read SSE stream
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
+  const handleFileSelect = async (selectedFiles: string[]) => {
+    setPreview(null);
+    const excludedFiles = allFilePaths.filter((p) => !selectedFiles.includes(p));
+    await startReview(excludedFiles);
+  };
 
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
+  const startReview = async (excludedFiles: string[]) => {
+    setLoading(true);
+    setError(null);
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const event = JSON.parse(line.slice(6));
-              if (event.status === "running") {
-                setSteps((prev) => [...prev, `${event.label}: ${event.detail || ""}`]);
-              }
-              if (event.status === "done" && event.detail?.startsWith("{")) {
-                try {
-                  const data = JSON.parse(event.detail);
-                  if (data.reviewId) setReviewId(data.reviewId);
-                } catch { /* last event */ }
-              }
-            } catch { /* skip */ }
+    try {
+      const response = await fetch(`${API_BASE}/api/review/local`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ project, sourceBranch, targetBranch, excludedFiles }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: "Request failed" }));
+        setError(data.error || "Unknown error");
+        setLoading(false);
+        return;
+      }
+
+      // Read SSE stream
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const event = JSON.parse(line.slice(6));
+                if (event.status === "running") {
+                  setSteps((prev) => [...prev, `${event.label}: ${event.detail || ""}`]);
+                }
+                if (event.status === "done" && event.detail?.startsWith("{")) {
+                  try {
+                    const data = JSON.parse(event.detail);
+                    if (data.reviewId) setReviewId(data.reviewId);
+                  } catch { /* last event */ }
+                }
+              } catch { /* skip */ }
+            }
           }
         }
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -118,7 +178,7 @@ export function LocalReviewPage() {
           disabled={loading}
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
         >
-          {loading ? "Reviewing..." : "Start Review"}
+          {loading ? "Analyzing..." : "Start Review"}
         </button>
       </div>
 
@@ -143,6 +203,16 @@ export function LocalReviewPage() {
           <a href={`#/reviews/${reviewId}`} className="text-blue-400 underline text-sm">View Report</a>
         </div>
       )}
+
+      <AnimatePresence>
+        {preview && (
+          <FileSelectorDialog
+            preview={preview}
+            onConfirm={handleFileSelect}
+            onCancel={() => { setPreview(null); setLoading(false); }}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
