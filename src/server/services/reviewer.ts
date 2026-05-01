@@ -99,6 +99,57 @@ export function mergeReports(reports: ReviewReport[]): ReviewReport {
   };
 }
 
+/**
+ * Sanitize JSON text by escaping literal control characters inside string values.
+ * LLMs sometimes emit literal \n, \t, etc. inside JSON strings instead of escaped versions.
+ */
+function sanitizeJsonString(text: string): string {
+  let result = "";
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '\\' && inString) {
+      result += ch;
+      if (i + 1 < text.length) result += text[++i];
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      result += ch;
+      continue;
+    }
+    if (inString) {
+      if (ch === '\n') { result += '\\n'; continue; }
+      if (ch === '\r') { result += '\\r'; continue; }
+      if (ch === '\t') { result += '\\t'; continue; }
+      if (ch.charCodeAt(0) < 0x20) continue; // strip other control chars
+    }
+    result += ch;
+  }
+  return result;
+}
+
+/**
+ * Close open strings and brace/bracket structures in truncated JSON.
+ */
+function closeOpenStructures(text: string): string {
+  let inString = false;
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '\\' && inString) { i++; continue; }
+    if (ch === '"') inString = !inString;
+    if (!inString) {
+      if (ch === '{' || ch === '[') depth++;
+      if (ch === '}' || ch === ']') depth--;
+    }
+  }
+  let result = text;
+  if (inString) result += '"';
+  while (depth-- > 0) result += '}';
+  return result;
+}
+
 export function parseReviewResponse(text: string): ReviewReport {
   const fallbackReport = (): ReviewReport => ({
     contractTitle: "Review",
@@ -109,7 +160,10 @@ export function parseReviewResponse(text: string): ReviewReport {
     summary: "评审结果解析失败",
   });
 
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  // Strip markdown code fences if present
+  const stripped = text.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
+
+  const jsonMatch = stripped.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     return fallbackReport();
   }
@@ -118,7 +172,19 @@ export function parseReviewResponse(text: string): ReviewReport {
   try {
     parsed = JSON.parse(jsonMatch[0]);
   } catch {
-    return fallbackReport();
+    // Attempt recovery: LLM output may be truncated or contain literal control chars
+    try {
+      let recovered = sanitizeJsonString(jsonMatch[0]);
+      try {
+        parsed = JSON.parse(recovered);
+      } catch {
+        // Truncation recovery — close open strings and braces
+        recovered = closeOpenStructures(recovered);
+        parsed = JSON.parse(recovered);
+      }
+    } catch {
+      return fallbackReport();
+    }
   }
 
   const scores: ReviewScore[] = (parsed.scores as ReviewScore[]) || [];
