@@ -38,6 +38,8 @@ export function classifyFile(filePath: string): FileCategory {
     normalized.endsWith(".json") ||
     normalized.endsWith(".yml") ||
     normalized.endsWith(".yaml") ||
+    normalized.endsWith(".gitignore") ||
+    normalized.endsWith(".env") ||
     normalized.endsWith(".config.") ||
     normalized.includes("tsconfig") ||
     normalized.includes(".eslintrc") ||
