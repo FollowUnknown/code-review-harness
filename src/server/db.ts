@@ -6,7 +6,10 @@ import { REVIEW_DIMENSIONS } from "../shared/constants";
 let db: Database.Database | null = null;
 
 function getDbPath(): string {
-  return process.env.KNOWLEDGE_DB_PATH || path.join(process.cwd(), "knowledge.db");
+  if (process.env.KNOWLEDGE_DB_PATH) return process.env.KNOWLEDGE_DB_PATH;
+  // Use __dirname (dist/server) to resolve to project root, independent of cwd
+  const projectRoot = path.resolve(__dirname, "../..");
+  return path.join(projectRoot, "knowledge.db");
 }
 
 export function getDb(): Database.Database {

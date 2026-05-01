@@ -12,6 +12,7 @@
 4. **审查步骤必须分离** — verify、review、架构审查、SQL 审查各司其职，不能混在一起
 5. **隐性约定必须记录** — 发现口头约定或业务隐含规则，立即写入 `docs/architecture/implicit-contracts.md`
 6. **禁止硬编码密钥** — 密码、token、API key 必须走环境变量或密钥管理
+7. **数据库变更红线** — 禁止 DROP TABLE、DELETE 无 WHERE、TRUNCATE 等破坏性 SQL；禁止删除 .db 文件；ALTER TABLE 必须经过审查；数据库路径必须用环境变量，不允许依赖 cwd
 
 ---
 
