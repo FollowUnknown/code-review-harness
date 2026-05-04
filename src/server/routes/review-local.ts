@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import { randomUUID } from "crypto";
 import { getRepoMapping } from "../config/repo-mapping";
 import { classify } from "../services/classifier";
-import { getKnowledgeForReview, buildKnowledgePrompt } from "../services/knowledge";
+import { getKnowledgeForReview, buildKnowledgePrompt, extractLearnings, trackKnowledgeHits, determineAdoptedKnowledge, suggestDispositions } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
 import { callLLM, getLLMConfig } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
@@ -10,6 +10,7 @@ import { getDimensionsForProject } from "../services/dimensions";
 import { saveReviewRecord, computeReviewStats } from "../services/review-store";
 import { saveLLMLog } from "../services/llm-logger";
 import { buildLocalScanContext, buildRelatedFilesPrompt } from "../services/local-scan";
+import { inferModuleFromPaths } from "../services/module-utils";
 import type { LocalReviewRequest } from "../../shared/types";
 
 const router = Router();
@@ -80,9 +81,10 @@ router.post("/local", async (req: Request, res: Response) => {
     const batchLevels = classification.batches.map((b) => b.level);
     completeStep();
 
-    // Step 3: Load knowledge
+    // Step 3: Load knowledge — infer module from diff file paths
     nextStep("Loading knowledge base");
-    const knowledge = getKnowledgeForReview(project);
+    const inferredModule = inferModuleFromPaths(diffs.map((d: { new_path: string }) => d.new_path));
+    const knowledge = getKnowledgeForReview(project, inferredModule, diffs.map((d: { new_path: string }) => d.new_path));
     completeStep(`${knowledge.length} entries loaded`);
 
     // Step 4: Review batches
@@ -143,7 +145,7 @@ router.post("/local", async (req: Request, res: Response) => {
       completeStep(`${batchDiffs[i].length} files reviewed`);
     }
 
-    const report = mergeReports(batchReports);
+    const report = mergeReports(batchReports, dimensions);
     const stats = computeReviewStats(report);
 
     // Save
@@ -163,7 +165,16 @@ router.post("/local", async (req: Request, res: Response) => {
       issue_count: stats.issueCount,
       critical_count: stats.criticalCount,
       created_by: (req as Request & { user?: { id: string } }).user?.id || null,
+      knowledge_dispositions_json: JSON.stringify(suggestDispositions(report.issues)),
     });
+
+    // Extract learnings and track knowledge hits (knowledge loop)
+    extractLearnings(report, project, reviewId);
+
+    if (knowledge.length > 0) {
+      const adoptedIds = determineAdoptedKnowledge(report.issues, knowledge);
+      trackKnowledgeHits(knowledge.map((e) => e.id), reviewId, adoptedIds);
+    }
 
     const response = { reviewId, report, classification, localScan: { relatedFiles: context.relatedFiles.length, totalTokens: context.totalTokens } };
     sendSSE(res, { step: step + 1, status: "done", label: "COMPLETE", detail: JSON.stringify(response) });

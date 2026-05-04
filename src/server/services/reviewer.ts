@@ -43,13 +43,14 @@ export async function reviewBatches(
   return mergeReports(batchReports);
 }
 
-export function mergeReports(reports: ReviewReport[]): ReviewReport {
+export function mergeReports(reports: ReviewReport[], dimensions?: readonly string[]): ReviewReport {
   if (reports.length === 0) {
+    const dims = dimensions ?? REVIEW_DIMENSIONS;
     return {
       contractTitle: "Code Review",
       timestamp: new Date().toISOString(),
       passed: false,
-      scores: REVIEW_DIMENSIONS.map((d) => ({ dimension: d, score: 3, comment: "无评审结果" })),
+      scores: dims.map((d) => ({ dimension: d, score: 3, comment: "无评审结果" })),
       issues: [],
       summary: "无评审批次",
     };
@@ -70,7 +71,9 @@ export function mergeReports(reports: ReviewReport[]): ReviewReport {
     }
   }
 
-  const scores: ReviewScore[] = REVIEW_DIMENSIONS.map((dim) => {
+  // Use dimensions from reports if not explicitly provided
+  const dims = dimensions ?? [...dimensionScores.keys()];
+  const scores: ReviewScore[] = dims.map((dim) => {
     const entry = dimensionScores.get(dim);
     const avg = entry ? Math.round(entry.total / entry.count) : 3;
     const comment = entry?.comments.join("; ") || "未评分";
@@ -84,7 +87,7 @@ export function mergeReports(reports: ReviewReport[]): ReviewReport {
   const passed =
     scores.every((s) => s.score >= PASS_THRESHOLD.minAllScores) &&
     scores
-      .filter((s) => s.dimension.includes("输入验证") || s.dimension.includes("密钥"))
+      .filter((s) => s.dimension.includes("输入验证") || s.dimension.includes("密钥") || s.dimension.includes("安全"))
       .every((s) => s.score >= PASS_THRESHOLD.minSecurityScore) &&
     issues.filter((i) => i.severity === "CRITICAL").length <= PASS_THRESHOLD.maxCriticalIssues &&
     issues.filter((i) => i.severity === "HIGH").length <= PASS_THRESHOLD.maxHighIssues;
@@ -150,12 +153,13 @@ function closeOpenStructures(text: string): string {
   return result;
 }
 
-export function parseReviewResponse(text: string): ReviewReport {
+export function parseReviewResponse(text: string, fallbackDimensions?: readonly string[]): ReviewReport {
+  const fallbackDims = fallbackDimensions ?? REVIEW_DIMENSIONS;
   const fallbackReport = (): ReviewReport => ({
     contractTitle: "Review",
     timestamp: new Date().toISOString(),
     passed: false,
-    scores: REVIEW_DIMENSIONS.map((d) => ({ dimension: d, score: 3, comment: "无法解析评分" })),
+    scores: fallbackDims.map((d) => ({ dimension: d, score: 3, comment: "无法解析评分" })),
     issues: [{ severity: "HIGH", message: "AI 返回格式异常，无法解析评审结果", file: "" }],
     summary: "评审结果解析失败",
   });
@@ -164,36 +168,117 @@ export function parseReviewResponse(text: string): ReviewReport {
   const stripped = text.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
 
   const jsonMatch = stripped.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    return fallbackReport();
-  }
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(jsonMatch[0]);
-  } catch {
-    // Attempt recovery: LLM output may be truncated or contain literal control chars
+  if (jsonMatch) {
+    let parsed: Record<string, unknown>;
     try {
-      let recovered = sanitizeJsonString(jsonMatch[0]);
-      try {
-        parsed = JSON.parse(recovered);
-      } catch {
-        // Truncation recovery — close open strings and braces
-        recovered = closeOpenStructures(recovered);
-        parsed = JSON.parse(recovered);
-      }
+      parsed = JSON.parse(jsonMatch[0]);
     } catch {
-      return fallbackReport();
+      try {
+        let recovered = sanitizeJsonString(jsonMatch[0]);
+        try {
+          parsed = JSON.parse(recovered);
+        } catch {
+          recovered = closeOpenStructures(recovered);
+          parsed = JSON.parse(recovered);
+        }
+      } catch {
+        // JSON parse failed — try markdown fallback below
+        parsed = null as unknown as Record<string, unknown>;
+      }
+    }
+
+    if (parsed) {
+      const scores: ReviewScore[] = (parsed.scores as ReviewScore[]) || [];
+      const issues: ReviewIssue[] = (parsed.issues as ReviewIssue[]) || [];
+
+      if (scores.length > 0) {
+        const passed =
+          scores.every((s) => s.score >= PASS_THRESHOLD.minAllScores) &&
+          scores
+            .filter((s) => s.dimension.includes("输入验证") || s.dimension.includes("密钥") || s.dimension.includes("安全"))
+            .every((s) => s.score >= PASS_THRESHOLD.minSecurityScore) &&
+          issues.filter((i) => i.severity === "CRITICAL").length <= PASS_THRESHOLD.maxCriticalIssues &&
+          issues.filter((i) => i.severity === "HIGH").length <= PASS_THRESHOLD.maxHighIssues;
+
+        return {
+          contractTitle: "Code Review",
+          timestamp: new Date().toISOString(),
+          passed,
+          scores,
+          issues,
+          summary: (parsed.summary as string) || "",
+        };
+      }
     }
   }
 
-  const scores: ReviewScore[] = (parsed.scores as ReviewScore[]) || [];
-  const issues: ReviewIssue[] = (parsed.issues as ReviewIssue[]) || [];
+  // Fallback: parse markdown-formatted review when JSON is not available
+  const mdReport = parseMarkdownReview(stripped, fallbackDims);
+  if (mdReport.scores.length > 0 || mdReport.issues.length > 0) {
+    return mdReport;
+  }
+
+  return fallbackReport();
+}
+
+/**
+ * Parse a markdown-formatted LLM review response when JSON parsing fails.
+ * Extracts scores from patterns like "维度名：N 分" or "维度名 - N/5",
+ * and issues from patterns like "[CRITICAL] message" or "严重级别: HIGH".
+ */
+function parseMarkdownReview(text: string, dimensions: readonly string[]): ReviewReport {
+  const scores: ReviewScore[] = [];
+  const issues: ReviewIssue[] = [];
+
+  // Extract scores: look for "维度名：N 分" or "维度名：N 分" or "维度名 - N"
+  const allDims = [...dimensions];
+  // Also try to find dimensions mentioned in the text that aren't in the provided list
+  const dimScoreRegex = /(?:#{2,4}\s*\d+\.?\s*)?([^：:\n]{2,30})(?:：|:)\s*(\d)\s*分?/g;
+  let match: RegExpExecArray | null;
+  const seenDims = new Set<string>();
+
+  while ((match = dimScoreRegex.exec(text)) !== null) {
+    const dimName = match[1].trim();
+    const score = parseInt(match[2], 10);
+    if (score >= 1 && score <= 5 && dimName.length >= 2) {
+      // Try to match against known dimensions
+      const matched = allDims.find((d) =>
+        d === dimName || d.includes(dimName) || dimName.includes(d)
+      );
+      const dimension = matched || dimName;
+      if (!seenDims.has(dimension)) {
+        seenDims.add(dimension);
+        scores.push({ dimension, score, comment: "" });
+      }
+    }
+  }
+
+  // Extract issues: look for [CRITICAL/HIGH/MEDIUM/LOW] or **[CRITICAL]** patterns
+  const issueRegex = /\*{0,2}\[(CRITICAL|HIGH|MEDIUM|LOW)\]\*{0,2}[:：]?\s*(.{5,200}?)(?=\n\n|\n\*{0,2}\[|$)/gi;
+  while ((match = issueRegex.exec(text)) !== null) {
+    const severity = match[1].toUpperCase() as ReviewIssue["severity"];
+    const message = match[2].trim().replace(/\n/g, " ").replace(/\*{2}/g, "");
+    if (message.length > 0) {
+      // Try to extract file name
+      const fileMatch = message.match(/(?:文件|File)[：:]\s*`?([^`\n,]+)`?/i);
+      const suggestionMatch = message.match(/(?:修复建议|建议)[：:]\s*(.{10,100})/i);
+      issues.push({
+        severity,
+        message: message.slice(0, 300),
+        file: fileMatch?.[1]?.trim() || "",
+        suggestion: suggestionMatch?.[1]?.trim() || "",
+      });
+    }
+  }
+
+  // Extract summary: first paragraph or section after "总体评价" or "总结"
+  const summaryMatch = text.match(/(?:总体评价|总结|Summary)[：:]*\s*\n([\s\S]{20,300}?)(?=\n---|\n#{1,4}\s|$)/i);
+  const summary = summaryMatch?.[1]?.trim() || text.slice(0, 200).trim();
 
   const passed =
     scores.every((s) => s.score >= PASS_THRESHOLD.minAllScores) &&
     scores
-      .filter((s) => s.dimension.includes("输入验证") || s.dimension.includes("密钥"))
+      .filter((s) => s.dimension.includes("输入验证") || s.dimension.includes("密钥") || s.dimension.includes("安全"))
       .every((s) => s.score >= PASS_THRESHOLD.minSecurityScore) &&
     issues.filter((i) => i.severity === "CRITICAL").length <= PASS_THRESHOLD.maxCriticalIssues &&
     issues.filter((i) => i.severity === "HIGH").length <= PASS_THRESHOLD.maxHighIssues;
@@ -204,7 +289,7 @@ export function parseReviewResponse(text: string): ReviewReport {
     passed,
     scores,
     issues,
-    summary: (parsed.summary as string) || "",
+    summary,
   };
 }
 

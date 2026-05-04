@@ -1,21 +1,28 @@
 import { execSync } from "child_process";
 import type { GitLabDiff } from "../../../shared/types";
 
+const GIT_TIMEOUT = 30_000; // 30s timeout for git operations
+
 export function extractLocalDiff(repoPath: string, targetBranch: string, sourceBranch: string): string {
   try {
-    execSync(`git fetch origin ${targetBranch} ${sourceBranch} 2>/dev/null || true`, { cwd: repoPath });
+    // Fetch with timeout — skip if already fetched
+    try {
+      execSync(
+        `git fetch origin ${targetBranch} ${sourceBranch} 2>/dev/null || true`,
+        { cwd: repoPath, timeout: GIT_TIMEOUT }
+      );
+    } catch {
+      // Fetch timeout — try with local branches
+    }
 
     let diff: string;
+    const diffOpts = { cwd: repoPath, maxBuffer: 10 * 1024 * 1024, timeout: GIT_TIMEOUT };
+
     try {
-      diff = execSync(`git diff origin/${targetBranch}...origin/${sourceBranch} -- .`, {
-        cwd: repoPath,
-        maxBuffer: 10 * 1024 * 1024,
-      }).toString();
+      diff = execSync(`git diff origin/${targetBranch}...origin/${sourceBranch} -- .`, diffOpts).toString();
     } catch {
-      diff = execSync(`git diff ${targetBranch}..${sourceBranch} -- .`, {
-        cwd: repoPath,
-        maxBuffer: 10 * 1024 * 1024,
-      }).toString();
+      // Fallback: local branch diff (no origin/ prefix)
+      diff = execSync(`git diff ${targetBranch}..${sourceBranch} -- .`, diffOpts).toString();
     }
 
     return diff;

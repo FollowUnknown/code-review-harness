@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { randomUUID } from "crypto";
 import { classify } from "../services/classifier";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
+import { getKnowledgeForReview, buildKnowledgePrompt, extractLearnings, trackKnowledgeHits, determineAdoptedKnowledge, suggestDispositions } from "../services/knowledge";
 import { callLLM, getLLMConfig } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { getDimensionsForProject } from "../services/dimensions";
@@ -45,6 +46,10 @@ router.post("/diff", async (req: Request, res: Response) => {
     const dimensions = getDimensionsForProject(project || "default");
     const reviewId = `R-${randomUUID().slice(0, 8)}`;
 
+    // Load knowledge for this project
+    const knowledge = getKnowledgeForReview(project || "diff-upload", undefined, diffs.map((d: { new_path: string }) => d.new_path));
+    const knowledgePrompt = knowledge.length > 0 ? buildKnowledgePrompt(knowledge) : "";
+
     const batchReports = [];
     for (let i = 0; i < batchDiffs.length; i++) {
       const diffContent = batchDiffs[i]
@@ -57,7 +62,7 @@ router.post("/diff", async (req: Request, res: Response) => {
         totalBatches: batchDiffs.length,
         riskLevel: batchLevels[i],
         requirement: "",
-        knowledge: "",
+        knowledge: knowledgePrompt,
       });
 
       const userMessage = `${getReviewUserPrompt()}${diffContent}`;
@@ -83,7 +88,7 @@ router.post("/diff", async (req: Request, res: Response) => {
       });
     }
 
-    const report = mergeReports(batchReports);
+    const report = mergeReports(batchReports, dimensions);
     const stats = computeReviewStats(report);
 
     saveReviewRecord({
@@ -102,7 +107,16 @@ router.post("/diff", async (req: Request, res: Response) => {
       issue_count: stats.issueCount,
       critical_count: stats.criticalCount,
       created_by: (req as Request & { user?: { id: string } }).user?.id || null,
+      knowledge_dispositions_json: JSON.stringify(suggestDispositions(report.issues)),
     });
+
+    // Knowledge loop: extract learnings and track hits
+    extractLearnings(report, project || "diff-upload", reviewId);
+
+    if (knowledge.length > 0) {
+      const adoptedIds = determineAdoptedKnowledge(report.issues, knowledge);
+      trackKnowledgeHits(knowledge.map((e) => e.id), reviewId, adoptedIds);
+    }
 
     res.json({ success: true, data: { reviewId, report, classification } });
   } catch (error) {

@@ -1,5 +1,6 @@
 import { getDb } from "../../db";
-import { ReviewPromptContext, buildDefaultReviewPrompt, DEFAULT_REVIEW_USER_PROMPT } from "./defaults";
+import { ReviewPromptContext, buildDefaultReviewPrompt, DEFAULT_REVIEW_USER_PROMPT, LEVEL_DESCRIPTIONS, RISK_CHECKLISTS, getDimensionCriteria } from "./defaults";
+import { REVIEW_DIMENSIONS } from "../../../shared/constants";
 
 interface PromptTemplate {
   name: string;
@@ -33,12 +34,22 @@ export function getReviewPrompt(ctx: ReviewPromptContext): string {
 
   const vars: Record<string, string> = {
     dimensions: ctx.dimensions.map((d, i) => `${i + 1}. ${d}`).join("\n"),
+    dimensionCriteria: getDimensionCriteria(ctx.dimensions),
     batchIndex: String(ctx.batchIndex + 1),
     totalBatches: String(ctx.totalBatches),
     riskLevel: ctx.riskLevel,
   };
 
   let prompt = renderTemplate(tmpl.system_template, vars);
+
+  // Append risk-level specific context
+  const levelDesc = LEVEL_DESCRIPTIONS[ctx.riskLevel];
+  prompt += `\n\n当前评审批次：第 ${ctx.batchIndex + 1}/${ctx.totalBatches} 批，风险等级：${levelDesc}。`;
+  const checklist = RISK_CHECKLISTS[ctx.riskLevel];
+  if (checklist) {
+    prompt += `\n\n${checklist}`;
+  }
+
   if (ctx.requirement) prompt += ctx.requirement;
   if (ctx.knowledge) prompt += ctx.knowledge;
   return prompt;
@@ -127,7 +138,7 @@ export function resetPromptTemplate(name: string): boolean {
   let systemTemplate = "";
   if (name === "review") {
     systemTemplate = buildDefaultReviewPrompt({
-      dimensions: ["placeholder"],
+      dimensions: REVIEW_DIMENSIONS,
       batchIndex: 0,
       totalBatches: 1,
       riskLevel: "C",

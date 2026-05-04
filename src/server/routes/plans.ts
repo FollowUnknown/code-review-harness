@@ -9,7 +9,7 @@ import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { parseMRUrl, fetchMRMeta, fetchMRDiffs } from "../services/gitlab";
 import { classify } from "../services/classifier";
 import { understandRequirement } from "../services/requirement";
-import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnowledgeHits } from "../services/knowledge";
+import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnowledgeHits, determineAdoptedKnowledge } from "../services/knowledge";
 import { buildRequirementPrompt } from "../services/requirement";
 import { buildKnowledgePrompt } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
@@ -219,7 +219,7 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
 
       console.log(`[Plan ${plan.id}] MR ${mi + 1}: batchReports=${batchReports.length}, batchDiffs=${batchDiffs.length}, aborted=${aborted}`);
       const report = batchDiffs.length > 0 && batchReports.length > 0
-        ? mergeReports(batchReports)
+        ? mergeReports(batchReports, dimensions)
         : null;
 
       if (!report) {
@@ -233,7 +233,10 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
 
         saveReviewRecord({ id: reviewId, mr_url: item.mr_url, project, author: mr.author?.name || null, status: "completed", report_json: JSON.stringify(report), classification_json: JSON.stringify(classification), requirement_json: JSON.stringify({ type: requirement.type, module: requirement.module, features: requirement.features, conflicts: requirement.conflicts, source: requirement.source }), mr_meta_json: JSON.stringify(mr), reviewed_commit_sha: null, passed: report.passed, avg_score: stats.avgScore, issue_count: stats.issueCount, critical_count: stats.criticalCount, created_by: userId, knowledge_dispositions_json: JSON.stringify(suggestDispositions(report.issues)) });
         extractLearnings(report, project, reviewId);
-        if (knowledge.length > 0) { trackKnowledgeHits(knowledge.map((e) => e.id), reviewId); }
+        if (knowledge.length > 0) {
+          const adoptedIds = determineAdoptedKnowledge(report.issues, knowledge);
+          trackKnowledgeHits(knowledge.map((e) => e.id), reviewId, adoptedIds);
+        }
         updatePlanItem(plan.id, item.id, { status: "completed", review_id: reviewId, source_branch: mr.source_branch, target_branch: mr.target_branch, author: mr.author?.name || null, reviewed_at: new Date().toISOString() });
 
         sendSSE({ step, status: "done", label: "", detail: `MR ${mi + 1}/${pendingItems.length} completed: ${stats.avgScore?.toFixed(1) ?? "—"} score, ${stats.issueCount} issues`, currentMR: mi + 1, totalMRs: pendingItems.length });

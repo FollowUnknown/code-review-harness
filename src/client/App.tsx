@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Routes, Route, Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Routes, Route, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ReviewResponse, User } from "../shared/types";
 import { ReviewForm } from "./components/ReviewForm";
@@ -22,11 +22,48 @@ import { LocalReviewPage } from "./pages/LocalReviewPage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
+// Reusable nav link with active state
+function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+  return (
+    <Link
+      to={to}
+      className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
+        isActive
+          ? "bg-blue-600/20 border-blue-500/40 text-blue-300"
+          : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+// Admin menu link item
+function AdminMenuLink({ to, children, onClick }: { to: string; children: React.ReactNode; onClick: () => void }) {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+  return (
+    <Link
+      to={to}
+      onClick={onClick}
+      className={`block px-3 py-1.5 text-xs transition-colors ${
+        isActive ? "text-blue-400" : "text-slate-400 hover:text-white"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
 export default function App() {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showPrompts, setShowPrompts] = useState(false);
+  const [showAdminMenu, setShowAdminMenu] = useState(false);
+  const adminMenuRef = useRef<HTMLDivElement>(null);
 
   // Check existing auth on mount
   useEffect(() => {
@@ -46,6 +83,18 @@ export default function App() {
       .catch(() => localStorage.removeItem("auth_token"))
       .finally(() => setAuthChecked(true));
   }, []);
+
+  // Close admin menu on outside click
+  useEffect(() => {
+    if (!showAdminMenu) return;
+    function handleClick(e: MouseEvent) {
+      if (adminMenuRef.current && !adminMenuRef.current.contains(e.target as Node)) {
+        setShowAdminMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showAdminMenu]);
 
   // Auto-refresh token periodically (every 6 days, token expires in 7)
   useEffect(() => {
@@ -111,70 +160,97 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="flex justify-between items-center mb-8"
         >
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Link to="/">
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                 Story Code Review
               </h1>
             </Link>
-            <Link
-              to="/reviews"
-              className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
-            >
-              History
-            </Link>
-            <Link
-              to="/plans"
-              className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
-            >
-              Plans
-            </Link>
-            <Link
-              to="/knowledge"
-              className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
-            >
-              Knowledge
-            </Link>
-            <Link
-              to="/quality"
-              className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
-            >
-              Quality
-            </Link>
-            <Link
-              to="/memory"
-              className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
-            >
-              Memory
-            </Link>
-            <Link
-              to="/local-review"
-              className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
-            >
-              Local
-            </Link>
-            {authUser.role === "admin" && (
-              <Link
-                to="/dimensions"
-                className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
-              >
-                Dimensions
-              </Link>
-            )}
-            {authUser.role === "admin" && (
-              <Link
-                to="/users"
-                className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
-              >
-                Users
-              </Link>
-            )}
+
+            {/* Primary actions */}
+            <NavLink to="/reviews">History</NavLink>
+            <NavLink to="/local-review">Local</NavLink>
+
+            {/* Divider */}
+            <div className="w-px h-5 bg-slate-700/60" />
+
+            {/* Data pages */}
+            <NavLink to="/plans">Plans</NavLink>
+            <NavLink to="/knowledge">Knowledge</NavLink>
+            <NavLink to="/quality">Quality</NavLink>
+            <NavLink to="/memory">Memory</NavLink>
           </div>
+
           <div className="flex items-center gap-3">
             <span className="text-xs text-slate-500">{authUser.displayName || authUser.username}</span>
             {authUser.role === "admin" && (
               <span className="text-xs px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded">admin</span>
             )}
+
+            {/* Admin dropdown (admin only) */}
+            {authUser.role === "admin" && (
+              <div className="relative" ref={adminMenuRef}>
+                <button
+                  onClick={() => setShowAdminMenu(!showAdminMenu)}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg border transition-all ${
+                    showAdminMenu
+                      ? "bg-slate-700 border-slate-600 text-white"
+                      : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600"
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  </svg>
+                </button>
+                <AnimatePresence>
+                  {showAdminMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 z-50"
+                    >
+                      <AdminMenuLink to="/dimensions" onClick={() => setShowAdminMenu(false)}>Dimensions</AdminMenuLink>
+                      <AdminMenuLink to="/users" onClick={() => setShowAdminMenu(false)}>Users</AdminMenuLink>
+                      <button
+                        onClick={() => { setShowPrompts(!showPrompts); setShowAdminMenu(false); }}
+                        className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                          showPrompts ? "text-blue-400" : "text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        Prompts
+                      </button>
+                      <button
+                        onClick={() => { setShowSettings(!showSettings); setShowAdminMenu(false); }}
+                        className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                          showSettings ? "text-blue-400" : "text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        Settings
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {/* Settings button for non-admin */}
+            {authUser.role !== "admin" && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowSettings(!showSettings)}
+                className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
+                  showSettings
+                    ? "bg-slate-700 border-slate-600 text-white"
+                    : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600"
+                }`}
+              >
+                Settings
+              </motion.button>
+            )}
+
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -182,32 +258,6 @@ export default function App() {
               className="px-3 py-1.5 text-xs rounded-lg border bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
             >
               Logout
-            </motion.button>
-            {authUser.role === "admin" && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowPrompts(!showPrompts)}
-                className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
-                  showPrompts
-                    ? "bg-slate-700 border-slate-600 text-white"
-                    : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600"
-                }`}
-              >
-                Prompts
-              </motion.button>
-            )}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowSettings(!showSettings)}
-              className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
-                showSettings
-                  ? "bg-slate-700 border-slate-600 text-white"
-                  : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600"
-              }`}
-            >
-              Settings
             </motion.button>
           </div>
         </motion.div>

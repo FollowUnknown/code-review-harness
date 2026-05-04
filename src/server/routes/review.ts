@@ -197,7 +197,7 @@ router.post("/review", async (req: Request, res: Response) => {
 
       // Merge reports
       nextStep("Merging results", `${batchReports.length} batches`);
-      report = mergeReports(batchReports);
+      report = mergeReports(batchReports, dimensions);
       completeStep();
 
       if (totalInput > 0) {

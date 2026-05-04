@@ -102,7 +102,7 @@ export function ReviewResult({ data, project, onReset, onKnowledgeClick }: Props
       {/* Header with reset */}
       <div className="flex justify-between items-center">
         <div className="text-sm text-slate-500">
-          {mr.author.name} · {mr.source_branch} → {mr.target_branch} · {mr.changes_count} files
+          {mr.author?.name || "Local Review"} · {mr.source_branch} → {mr.target_branch} · {mr.changes_count} files
           {tokenUsage && (
             <span className="ml-3 text-xs text-slate-600">
               Tokens: {tokenUsage.inputTokens.toLocaleString()} in + {tokenUsage.outputTokens.toLocaleString()} out

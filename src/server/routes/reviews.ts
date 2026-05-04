@@ -292,7 +292,7 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
       sendSSE({ step, status: "done", label: "", detail: tokenDetail, progress: Math.round(((i + 1) / batchDiffs.length) * 100) });
     }
 
-    const report = mergeReports(batchReports);
+    const report = mergeReports(batchReports, dimensions);
     const stats = computeReviewStats(report);
 
     saveReviewRecord({

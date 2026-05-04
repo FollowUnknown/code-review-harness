@@ -279,11 +279,21 @@ export function getKnowledgeStats(): Array<{ type: EntryType; status: EntryStatu
 
 // ---- Lifecycle Management ----
 
-export function deprecateStaleEntries(): { deprecated: number; flagged: number } {
+export function deprecateStaleEntries(): { deprecated: number; flagged: number; autoConfirmed: number } {
   const db = getDb();
   const now = new Date().toISOString();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Auto-confirm: TEMP entries with confidence >= 0.7 AND hit_count >= 2
+  // These have been used in reviews multiple times and have high confidence
+  const autoConfirmResult = db.prepare(
+    `UPDATE knowledge_entries
+     SET status = 'CONFIRMED', confidence = MIN(1.0, confidence + 0.1), updated_at = ?
+     WHERE status = 'TEMP'
+       AND confidence >= 0.7
+       AND hit_count >= 2`
+  ).run(now);
 
   // Auto-deprecate: confidence < 0.2 AND no hit in 30 days
   const deprecatedResult = db.prepare(
@@ -306,6 +316,7 @@ export function deprecateStaleEntries(): { deprecated: number; flagged: number }
   return {
     deprecated: deprecatedResult.changes,
     flagged: flaggedResult.changes,
+    autoConfirmed: autoConfirmResult.changes,
   };
 }
 

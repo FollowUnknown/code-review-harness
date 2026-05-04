@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileSelectorDialog } from "../components/FileSelectorDialog";
 import type { DiffPreviewResponse } from "../../shared/types";
@@ -6,6 +7,7 @@ import type { DiffPreviewResponse } from "../../shared/types";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
 export function LocalReviewPage() {
+  const navigate = useNavigate();
   const [project, setProject] = useState("");
   const [sourceBranch, setSourceBranch] = useState("");
   const [targetBranch, setTargetBranch] = useState("");
@@ -201,7 +203,12 @@ export function LocalReviewPage() {
       {reviewId && (
         <div className="bg-green-900/20 border border-green-800/50 rounded-xl p-4">
           <span className="text-green-400 text-sm">Review complete: </span>
-          <a href={`#/reviews/${reviewId}`} className="text-blue-400 underline text-sm">View Report</a>
+          <button
+            onClick={() => navigate(`/reviews/${reviewId}`)}
+            className="text-blue-400 underline text-sm"
+          >
+            View Report
+          </button>
         </div>
       )}
 

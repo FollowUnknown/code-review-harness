@@ -220,11 +220,29 @@ function initialize(db: Database.Database): void {
     "INSERT OR IGNORE INTO prompt_templates (id, name, category, description, system_template, variables, is_default, version) VALUES (?, ?, ?, ?, ?, ?, 1, 1)"
   );
   stmt.run("default-review", "review", "review", "代码评审核心 prompt 模板",
-    `你是一个专业的代码评审专家。你需要对提供的代码变更进行评审，并按照指定维度打分。\n\n**文件类型特殊规则：**\n- SVG 文件：仅检查文件大小/变更行数，不做代码逻辑评审。若 SVG diff 行数超过 500 行，标记为 MEDIUM 级别问题，建议压缩或拆分\n- 纯文档文件（.md）：跳过代码逻辑评审\n- 配置文件（.gitignore, tsconfig 等）：跳过代码逻辑评审\n\n评分维度（每项 1-5 分）：\n${dimensionsText}\n\n请严格按照以下 JSON 格式输出评审结果，不要输出其他内容：\n{\n  "scores": [{"dimension": "维度名", "score": 1-5, "comment": "具体说明"}],\n  "issues": [{"severity": "CRITICAL/HIGH/MEDIUM/LOW", "message": "问题描述", "file": "文件名", "line": 行号, "suggestion": "修复建议"}],\n  "summary": "1-2段总结"\n}\n\n当前评审批次：第 {{batchIndex}}/{{totalBatches}} 批，风险等级：{{riskLevel}}。`,
-    '["dimensions","batchIndex","totalBatches","riskLevel"]'
+    `你是一个专业的代码评审专家。你需要对提供的代码变更进行评审，并按照指定维度打分。\n\n**文件类型特殊规则：**\n- SVG 文件：仅检查文件大小/变更行数，不做代码逻辑评审。若 SVG diff 行数超过 500 行，标记为 MEDIUM 级别问题，建议压缩或拆分\n- 纯文档文件（.md）：跳过代码逻辑评审\n- 配置文件（.gitignore, tsconfig 等）：跳过代码逻辑评审\n\n## 评分维度（每项 1-5 分）\n\n{{dimensions}}\n\n## 评分标准\n\n{{dimensionCriteria}}\n\n## Issue 严重级别判定\n\n| 级别 | 触发条件 |\n|------|----------|\n| CRITICAL | 硬编码密钥、安全漏洞、数据丢失风险 |\n| HIGH | Bug、核心逻辑错误、重要错误处理缺失、状态泄漏 |\n| MEDIUM | 可维护性问题、代码重复、缺失的边界处理 |\n| LOW | 命名建议、风格优化、小改进 |\n\n请严格按照以下 JSON 格式输出评审结果，不要输出其他内容：\n{\n  "scores": [{"dimension": "维度名", "score": 1-5, "comment": "具体说明"}],\n  "issues": [{"severity": "CRITICAL/HIGH/MEDIUM/LOW", "message": "问题描述", "file": "文件名", "line": 行号, "suggestion": "修复建议"}],\n  "summary": "1-2段总结"\n}`,
+    '["dimensions","dimensionCriteria","batchIndex","totalBatches","riskLevel"]'
   );
   stmt.run("default-requirement", "requirement", "understanding", "需求理解 prompt", "", '["type","module","features"]');
   stmt.run("default-knowledge", "knowledge", "extraction", "知识提取 prompt", "", '["entries"]');
+
+  // Migrate existing DB: update prompt template to include dimensionCriteria and remove batch context
+  migratePromptTemplate(db);
+}
+
+function migratePromptTemplate(db: Database.Database): void {
+  // Check if the existing template needs migration
+  const row = db.prepare("SELECT system_template, variables FROM prompt_templates WHERE name = 'review'").get() as { system_template: string; variables: string } | undefined;
+  if (!row) return;
+
+  // Skip if template already has dimensionCriteria AND is long enough (not truncated)
+  if (row.system_template.includes("dimensionCriteria") && row.system_template.includes("JSON 格式")) return;
+
+  // Update the template to include {{dimensionCriteria}} and {{dimensions}}, remove hardcoded batch context
+  const newTemplate = `你是一个专业的代码评审专家。你需要对提供的代码变更进行评审，并按照指定维度打分。\n\n**文件类型特殊规则：**\n- SVG 文件：仅检查文件大小/变更行数，不做代码逻辑评审。若 SVG diff 行数超过 500 行，标记为 MEDIUM 级别问题，建议压缩或拆分\n- 纯文档文件（.md）：跳过代码逻辑评审\n- 配置文件（.gitignore, tsconfig 等）：跳过代码逻辑评审\n\n## 评分维度（每项 1-5 分）\n\n{{dimensions}}\n\n## 评分标准\n\n{{dimensionCriteria}}\n\n## Issue 严重级别判定\n\n| 级别 | 触发条件 |\n|------|----------|\n| CRITICAL | 硬编码密钥、安全漏洞、数据丢失风险 |\n| HIGH | Bug、核心逻辑错误、重要错误处理缺失、状态泄漏 |\n| MEDIUM | 可维护性问题、代码重复、缺失的边界处理 |\n| LOW | 命名建议、风格优化、小改进 |\n\n请严格按照以下 JSON 格式输出评审结果，不要输出其他内容：\n{\n  "scores": [{"dimension": "维度名", "score": 1-5, "comment": "具体说明"}],\n  "issues": [{"severity": "CRITICAL/HIGH/MEDIUM/LOW", "message": "问题描述", "file": "文件名", "line": 行号, "suggestion": "修复建议"}],\n  "summary": "1-2段总结"\n}`;
+
+  db.prepare("UPDATE prompt_templates SET system_template = ?, variables = ?, version = version + 1 WHERE name = 'review'")
+    .run(newTemplate, '["dimensions","dimensionCriteria","batchIndex","totalBatches","riskLevel"]');
 }
 
 function migrateKnowledgeEntriesTable(db: Database.Database): void {
