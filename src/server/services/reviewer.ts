@@ -43,6 +43,21 @@ export async function reviewBatches(
   return mergeReports(batchReports);
 }
 
+/** Check if a dimension is security-sensitive and requires stricter scoring. */
+function isSecurityDimension(dim: string): boolean {
+  return dim.includes("输入验证") || dim.includes("密钥") || dim.includes("安全");
+}
+
+/** Compute whether a review passes based on scores and issues. */
+function computePassed(scores: ReviewScore[], issues: ReviewIssue[]): boolean {
+  return (
+    scores.every((s) => s.score >= PASS_THRESHOLD.minAllScores) &&
+    scores.filter((s) => isSecurityDimension(s.dimension)).every((s) => s.score >= PASS_THRESHOLD.minSecurityScore) &&
+    issues.filter((i) => i.severity === "CRITICAL").length <= PASS_THRESHOLD.maxCriticalIssues &&
+    issues.filter((i) => i.severity === "HIGH").length <= PASS_THRESHOLD.maxHighIssues
+  );
+}
+
 export function mergeReports(reports: ReviewReport[], dimensions?: readonly string[]): ReviewReport {
   if (reports.length === 0) {
     const dims = dimensions ?? REVIEW_DIMENSIONS;
@@ -83,14 +98,7 @@ export function mergeReports(reports: ReviewReport[], dimensions?: readonly stri
   // Merge issues: concatenate
   const issues: ReviewIssue[] = reports.flatMap((r) => r.issues);
 
-  // Recompute passed
-  const passed =
-    scores.every((s) => s.score >= PASS_THRESHOLD.minAllScores) &&
-    scores
-      .filter((s) => s.dimension.includes("输入验证") || s.dimension.includes("密钥") || s.dimension.includes("安全"))
-      .every((s) => s.score >= PASS_THRESHOLD.minSecurityScore) &&
-    issues.filter((i) => i.severity === "CRITICAL").length <= PASS_THRESHOLD.maxCriticalIssues &&
-    issues.filter((i) => i.severity === "HIGH").length <= PASS_THRESHOLD.maxHighIssues;
+  const passed = computePassed(scores, issues);
 
   return {
     contractTitle: "Code Review",
@@ -192,13 +200,7 @@ export function parseReviewResponse(text: string, fallbackDimensions?: readonly 
       const issues: ReviewIssue[] = (parsed.issues as ReviewIssue[]) || [];
 
       if (scores.length > 0) {
-        const passed =
-          scores.every((s) => s.score >= PASS_THRESHOLD.minAllScores) &&
-          scores
-            .filter((s) => s.dimension.includes("输入验证") || s.dimension.includes("密钥") || s.dimension.includes("安全"))
-            .every((s) => s.score >= PASS_THRESHOLD.minSecurityScore) &&
-          issues.filter((i) => i.severity === "CRITICAL").length <= PASS_THRESHOLD.maxCriticalIssues &&
-          issues.filter((i) => i.severity === "HIGH").length <= PASS_THRESHOLD.maxHighIssues;
+        const passed = computePassed(scores, issues);
 
         return {
           contractTitle: "Code Review",
@@ -275,13 +277,7 @@ function parseMarkdownReview(text: string, dimensions: readonly string[]): Revie
   const summaryMatch = text.match(/(?:总体评价|总结|Summary)[：:]*\s*\n([\s\S]{20,300}?)(?=\n---|\n#{1,4}\s|$)/i);
   const summary = summaryMatch?.[1]?.trim() || text.slice(0, 200).trim();
 
-  const passed =
-    scores.every((s) => s.score >= PASS_THRESHOLD.minAllScores) &&
-    scores
-      .filter((s) => s.dimension.includes("输入验证") || s.dimension.includes("密钥") || s.dimension.includes("安全"))
-      .every((s) => s.score >= PASS_THRESHOLD.minSecurityScore) &&
-    issues.filter((i) => i.severity === "CRITICAL").length <= PASS_THRESHOLD.maxCriticalIssues &&
-    issues.filter((i) => i.severity === "HIGH").length <= PASS_THRESHOLD.maxHighIssues;
+  const passed = computePassed(scores, issues);
 
   return {
     contractTitle: "Code Review",

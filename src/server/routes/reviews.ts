@@ -8,7 +8,7 @@ import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { parseMRUrl, fetchMRMeta, fetchMRDiffs, fetchMRHeadSha, fetchCompareDiffs } from "../services/gitlab";
 import { classify } from "../services/classifier";
 import { understandRequirement } from "../services/requirement";
-import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnowledgeHits, getKnowledgeUsedByReview, getKnowledgeProducedByReview } from "../services/knowledge";
+import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnowledgeHits, determineAdoptedKnowledge, getKnowledgeUsedByReview, getKnowledgeProducedByReview } from "../services/knowledge";
 import { buildRequirementPrompt } from "../services/requirement";
 import { buildKnowledgePrompt } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
@@ -316,7 +316,8 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
     extractLearnings(report, project, newReviewId);
 
     if (knowledge.length > 0) {
-      trackKnowledgeHits(knowledge.map((e) => e.id), newReviewId);
+      const adoptedIds = determineAdoptedKnowledge(report.issues, knowledge);
+      trackKnowledgeHits(knowledge.map((e) => e.id), newReviewId, adoptedIds);
     }
 
     // Update old record status
