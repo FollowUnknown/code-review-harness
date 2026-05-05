@@ -50,6 +50,7 @@ function isSecurityDimension(dim: string): boolean {
 
 /** Compute whether a review passes based on scores and issues. */
 function computePassed(scores: ReviewScore[], issues: ReviewIssue[]): boolean {
+  if (scores.length === 0) return false;
   return (
     scores.every((s) => s.score >= PASS_THRESHOLD.minAllScores) &&
     scores.filter((s) => isSecurityDimension(s.dimension)).every((s) => s.score >= PASS_THRESHOLD.minSecurityScore) &&
@@ -228,39 +229,41 @@ export function parseReviewResponse(text: string, fallbackDimensions?: readonly 
  * Extracts scores from patterns like "维度名：N 分" or "维度名 - N/5",
  * and issues from patterns like "[CRITICAL] message" or "严重级别: HIGH".
  */
-function parseMarkdownReview(text: string, dimensions: readonly string[]): ReviewReport {
+export function parseMarkdownReview(text: string, dimensions: readonly string[]): ReviewReport {
   const scores: ReviewScore[] = [];
   const issues: ReviewIssue[] = [];
 
   // Extract scores: look for "维度名：N 分" or "维度名：N 分" or "维度名 - N"
   const allDims = [...dimensions];
-  // Also try to find dimensions mentioned in the text that aren't in the provided list
-  const dimScoreRegex = /(?:#{2,4}\s*\d+\.?\s*)?([^：:\n]{2,30})(?:：|:)\s*(\d)\s*分?/g;
+  const dimScoreRegex = /(?:#{2,4}\s*\d+\.?\s*)?([^：:\n]{2,30})(?:：|:)\s*([1-5])\s*分?/g;
   let match: RegExpExecArray | null;
   const seenDims = new Set<string>();
 
   while ((match = dimScoreRegex.exec(text)) !== null) {
     const dimName = match[1].trim();
     const score = parseInt(match[2], 10);
-    if (score >= 1 && score <= 5 && dimName.length >= 2) {
-      // Try to match against known dimensions
-      const matched = allDims.find((d) =>
-        d === dimName || d.includes(dimName) || dimName.includes(d)
-      );
-      const dimension = matched || dimName;
-      if (!seenDims.has(dimension)) {
-        seenDims.add(dimension);
-        scores.push({ dimension, score, comment: "" });
-      }
+    if (dimName.length < 2) continue;
+
+    // Match against known dimensions — prefer exact, then prefix match
+    let matched: string | undefined = allDims.find((d) => d === dimName);
+    if (!matched) {
+      matched = allDims.find((d) => d.startsWith(dimName) || dimName.startsWith(d));
+    }
+    // Skip if not matching any known dimension (avoid false positives like "时间：2")
+    if (!matched) continue;
+    const dimension = matched;
+    if (!seenDims.has(dimension)) {
+      seenDims.add(dimension);
+      scores.push({ dimension, score, comment: "" });
     }
   }
 
   // Extract issues: look for [CRITICAL/HIGH/MEDIUM/LOW] or **[CRITICAL]** patterns
-  const issueRegex = /\*{0,2}\[(CRITICAL|HIGH|MEDIUM|LOW)\]\*{0,2}[:：]?\s*(.{5,200}?)(?=\n\n|\n\*{0,2}\[|$)/gi;
+  const issueRegex = /\*{0,2}\[(CRITICAL|HIGH|MEDIUM|LOW)\]\*{0,2}[:：]?\s*(.+)/gi;
   while ((match = issueRegex.exec(text)) !== null) {
     const severity = match[1].toUpperCase() as ReviewIssue["severity"];
-    const message = match[2].trim().replace(/\n/g, " ").replace(/\*{2}/g, "");
-    if (message.length > 0) {
+    const message = match[2].trim().replace(/\*{2}/g, "");
+    if (message.length >= 5) {
       // Try to extract file name
       const fileMatch = message.match(/(?:文件|File)[：:]\s*`?([^`\n,]+)`?/i);
       const suggestionMatch = message.match(/(?:修复建议|建议)[：:]\s*(.{10,100})/i);

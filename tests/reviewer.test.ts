@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseReviewResponse } from "../src/server/services/reviewer.js";
+import { parseReviewResponse, parseMarkdownReview } from "../src/server/services/reviewer.js";
 
 describe("parseReviewResponse", () => {
   it("parses valid JSON response", () => {
@@ -58,6 +58,85 @@ describe("parseReviewResponse", () => {
     });
 
     const result = parseReviewResponse(input);
+    expect(result.passed).toBe(false);
+  });
+});
+
+describe("parseMarkdownReview", () => {
+  const dims = ["Contract 完成度", "测试覆盖率", "函数长度", "输入验证", "密钥管理"];
+
+  it("extracts scores from markdown format", () => {
+    const md = `
+## 评分
+Contract 完成度：4 分
+测试覆盖率：3 分
+函数长度：5 分
+输入验证：4 分
+密钥管理：5 分
+
+[HIGH] 函数 handleX 过长，建议拆分
+`;
+    const result = parseMarkdownReview(md, dims);
+    expect(result.scores).toHaveLength(5);
+    expect(result.scores.find((s) => s.dimension === "Contract 完成度")?.score).toBe(4);
+  });
+
+  it("matches dimensions by prefix when not exact", () => {
+    const md = `
+Contract：4 分
+测试覆盖：3 分
+`;
+    const result = parseMarkdownReview(md, dims);
+    expect(result.scores).toHaveLength(2);
+    // "Contract" should match "Contract 完成度" via prefix
+    expect(result.scores[0].dimension).toBe("Contract 完成度");
+  });
+
+  it("does not match arbitrary colons as dimensions", () => {
+    const md = `
+时间：2024-01-01
+状态：完成
+`;
+    const result = parseMarkdownReview(md, dims);
+    expect(result.scores).toHaveLength(0);
+  });
+
+  it("extracts issues with severity", () => {
+    const md = `
+[HIGH] 函数 handleX 超过 80 行
+**[CRITICAL]** 硬编码 API key 在 config.ts
+`;
+    const result = parseMarkdownReview(md, dims);
+    expect(result.issues).toHaveLength(2);
+    expect(result.issues.find((i) => i.severity === "HIGH")).toBeDefined();
+    expect(result.issues.find((i) => i.severity === "CRITICAL")).toBeDefined();
+  });
+
+  it("deduplicates dimension scores", () => {
+    const md = `
+Contract 完成度：4 分
+Contract 完成度：3 分
+`;
+    const result = parseMarkdownReview(md, dims);
+    expect(result.scores).toHaveLength(1);
+    // First match wins
+    expect(result.scores[0].score).toBe(4);
+  });
+
+  it("extracts summary from 总结 section", () => {
+    const md = `
+Contract 完成度：4 分
+总结：
+代码质量良好，建议补充测试。
+`;
+    const result = parseMarkdownReview(md, dims);
+    expect(result.summary).toContain("代码质量良好");
+  });
+
+  it("returns empty scores for non-matching text", () => {
+    const result = parseMarkdownReview("no review content here", dims);
+    expect(result.scores).toHaveLength(0);
+    expect(result.issues).toHaveLength(0);
     expect(result.passed).toBe(false);
   });
 });

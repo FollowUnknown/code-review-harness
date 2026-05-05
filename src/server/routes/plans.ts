@@ -237,7 +237,7 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
           const adoptedIds = determineAdoptedKnowledge(report.issues, knowledge);
           trackKnowledgeHits(knowledge.map((e) => e.id), reviewId, adoptedIds);
         }
-        updatePlanItem(plan.id, item.id, { status: "completed", review_id: reviewId, source_branch: mr.source_branch, target_branch: mr.target_branch, author: mr.author?.name || null, reviewed_at: new Date().toISOString() });
+        updatePlanItem(plan.id, item.id, { status: "completed", review_id: reviewId, source_branch: mr.source_branch ?? undefined, target_branch: mr.target_branch ?? undefined, author: mr.author?.name ?? undefined, reviewed_at: new Date().toISOString() });
 
         sendSSE({ step, status: "done", label: "", detail: `MR ${mi + 1}/${pendingItems.length} completed: ${stats.avgScore?.toFixed(1) ?? "—"} score, ${stats.issueCount} issues`, currentMR: mi + 1, totalMRs: pendingItems.length });
       }

@@ -24,6 +24,12 @@ import os from "os";
 const DB_PATH = process.env.KNOWLEDGE_DB_PATH || path.resolve(__dirname, "../knowledge.db");
 const KB_ROOT = process.env.FRONTEND_KB_PATH || path.resolve(os.homedir(), "Documents/do1/workspace/claude-skills/.claude/skills/frontend-review");
 
+// Safety: refuse to write to the default production DB unless explicitly allowed
+if (DB_PATH === path.resolve(__dirname, "../knowledge.db") && process.env.NODE_ENV === "production" && !process.env.ALLOW_SEED_PROD) {
+  console.error("✗ Refusing to seed into production DB. Set ALLOW_SEED_PROD=1 to override.");
+  process.exit(1);
+}
+
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 
