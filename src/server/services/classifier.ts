@@ -105,6 +105,12 @@ function checkEarlyTermination(diff: GitLabDiff): string | null {
   if (/(?:webpack|vite|rollup|babel|eslint|prettier|jest|vitest)\.config\./.test(path) ||
     /(?:tsconfig)\./.test(path)) return "BUILD_CONFIG";
 
+  // Skip binary files by extension (images, fonts, etc.)
+  if (/\.(png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot|mp4|mp3|zip|tar|gz)$/i.test(path)) return "BINARY_ASSET";
+
+  // Skip empty diffs that couldn't be recovered (non-new files with no changes)
+  if (!diff.diff.trim() && !diff.new_file) return "EMPTY_DIFF";
+
   const lineCount = countDiffLines(diff.diff);
   if (lineCount < 10) {
     const codeLines = diff.diff.split("\n").filter((line) => {
