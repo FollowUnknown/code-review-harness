@@ -39,6 +39,29 @@ describe("parseReviewResponse", () => {
     expect(result.issues[0].severity).toBe("HIGH");
   });
 
+  it("recovers JSON with unescaped quotes inside string values", () => {
+    // Real-world case: LLM returns `get("id")` inside a JSON string
+    const input = `\`\`\`json
+{
+  "scores": [
+    { "dimension": "输入验证", "score": 3, "comment": "代码中使用了 \`aggsFormDataMap.get("id").toString()\` 和 \`Integer.parseInt(aggsFormDataMap.get("version").toString())\`，存在空指针风险" },
+    { "dimension": "密钥管理", "score": 5, "comment": "无问题" }
+  ],
+  "issues": [
+    { "severity": "MEDIUM", "message": "使用了 map.get(\\"id\\")", "file": "Test.java", "line": 10, "suggestion": "做空值判断" }
+  ],
+  "summary": "代码有改进空间"
+}
+\`\`\``;
+
+    const result = parseReviewResponse(input);
+    expect(result.scores).toHaveLength(2);
+    expect(result.scores[0].dimension).toBe("输入验证");
+    expect(result.scores[0].score).toBe(3);
+    expect(result.issues).toHaveLength(1);
+    expect(result.summary).toContain("改进空间");
+  });
+
   it("detects fail when CRITICAL issue present", () => {
     const input = JSON.stringify({
       scores: [

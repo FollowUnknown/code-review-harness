@@ -142,6 +142,61 @@ function sanitizeJsonString(text: string): string {
 }
 
 /**
+ * Fix unescaped double quotes inside JSON string values.
+ * LLMs sometimes produce JSON like:  "msg": "called get("id") with ..."
+ * The inner quotes break JSON parsing. This function escapes them.
+ */
+function fixUnescapedQuotes(text: string): string {
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < text.length) {
+    // Find the next key or string value pattern: "..."
+    if (text[i] === '"') {
+      // Find the colon to distinguish keys from values
+      // Collect the opening quote
+      result.push('"');
+      i++;
+
+      // Collect content until we find the true closing quote
+      // Heuristic: a closing quote is followed by , or } or ] or : or whitespace+[,}]
+      const content: string[] = [];
+      while (i < text.length) {
+        if (text[i] === '\\' && i + 1 < text.length) {
+          content.push(text[i], text[i + 1]);
+          i += 2;
+          continue;
+        }
+        if (text[i] === '"') {
+          // Check if this quote is the true end of the string value
+          const rest = text.slice(i + 1).trimStart();
+          if (rest.length === 0 || /^[,}\]:]/.test(rest) || /^:/.test(rest)) {
+            // This is the real closing quote
+            break;
+          }
+          // Unescaped quote inside a string — escape it
+          content.push('\\"');
+          i++;
+          continue;
+        }
+        content.push(text[i]);
+        i++;
+      }
+      result.push(content.join(''));
+      if (i < text.length) {
+        result.push('"');
+        i++; // skip the closing quote
+      }
+    } else {
+      result.push(text[i]);
+      i++;
+    }
+  }
+
+  return result.join('');
+}
+
+/**
  * Close open strings and brace/bracket structures in truncated JSON.
  */
 function closeOpenStructures(text: string): string {
@@ -187,8 +242,13 @@ export function parseReviewResponse(text: string, fallbackDimensions?: readonly 
         try {
           parsed = JSON.parse(recovered);
         } catch {
-          recovered = closeOpenStructures(recovered);
-          parsed = JSON.parse(recovered);
+          recovered = fixUnescapedQuotes(recovered);
+          try {
+            parsed = JSON.parse(recovered);
+          } catch {
+            recovered = closeOpenStructures(recovered);
+            parsed = JSON.parse(recovered);
+          }
         }
       } catch {
         // JSON parse failed — try markdown fallback below
