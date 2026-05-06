@@ -1,6 +1,6 @@
 # Contract: v1.3.6 — 知识库闭环修复
 
-> 状态: confirmed
+> 状态: completed
 > 创建: 2026-05-02
 > 类型: Business Task
 
