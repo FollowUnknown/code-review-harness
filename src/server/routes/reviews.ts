@@ -14,6 +14,7 @@ import { buildKnowledgePrompt } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
 import { saveLLMLog } from "../services/llm-logger";
 import { getDimensionsForProject } from "../services/dimensions";
+import { inferTechStack } from "../services/techstack";
 import { getDb } from "../db";
 import type { ReviewResponse, ReviewFilter, ContinueReviewRequest, KnowledgeDisposition } from "../../shared/types";
 
@@ -232,14 +233,15 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
 
   try {
     const project = ctx.parsed.projectPath.split("/").pop() || ctx.parsed.projectPath;
-    const dimensions = getDimensionsForProject(ctx.parsed.projectPath);
+    const techStack = inferTechStack(ctx.diffs.map((d: { new_path: string }) => d.new_path));
+    const dimensions = getDimensionsForProject(ctx.parsed.projectPath, techStack);
     const { summary: classification, batchDiffs } = classify(ctx.diffs);
     const batchLevels = classification.batches.map((b) => b.level);
     const requirement = await understandRequirement(
       ctx.existing.mr_meta_json ? JSON.parse(ctx.existing.mr_meta_json) : {},
       ctx.diffs
     );
-    const knowledge = getKnowledgeForReview(project, requirement.module);
+    const knowledge = getKnowledgeForReview(project, requirement.module, undefined, techStack);
     const reqPrompt = requirement ? buildRequirementPrompt(requirement) : "";
     const knowledgePrompt = knowledge.length > 0 ? buildKnowledgePrompt(knowledge) : "";
     const userPromptPrefix = getReviewUserPrompt();

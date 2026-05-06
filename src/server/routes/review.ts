@@ -10,6 +10,7 @@ import { buildKnowledgePrompt } from "../services/knowledge";
 import { callLLM, getLLMConfig } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { getDimensionsForProject } from "../services/dimensions";
+import { inferTechStack } from "../services/techstack";
 import { ReviewRequest, ReviewResponse } from "../../shared/types";
 import { saveReviewRecord, computeReviewStats } from "../services/review-store";
 import { saveLLMLog } from "../services/llm-logger";
@@ -84,7 +85,8 @@ router.post("/review", async (req: Request, res: Response) => {
     completeStep(`${diffs.length} files changed`);
 
     const project = parsed.projectPath.split("/").pop() || parsed.projectPath;
-    const dimensions = getDimensionsForProject(parsed.projectPath);
+    const techStack = inferTechStack(diffs.map((d: { new_path: string }) => d.new_path));
+    const dimensions = getDimensionsForProject(parsed.projectPath, techStack);
 
     // Step 3: Classify files
     nextStep("Classifying files", `Analyzing risk levels...`);
@@ -103,7 +105,7 @@ router.post("/review", async (req: Request, res: Response) => {
 
     // Step 5: Load knowledge
     nextStep("Loading knowledge base", `Searching for relevant entries...`);
-    const knowledge = getKnowledgeForReview(project, requirement.module);
+    const knowledge = getKnowledgeForReview(project, requirement.module, undefined, techStack);
     completeStep(`${knowledge.length} entries loaded`);
 
     // Step 6+: Review batches

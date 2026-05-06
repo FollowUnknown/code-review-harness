@@ -1,17 +1,26 @@
 import { getDb } from "../db";
 import type { DimensionSet } from "../../shared/types";
+import type { TechStack } from "./techstack";
 
-export function getDimensionsForProject(projectPath: string | null): string[] {
+export function getDimensionsForProject(projectPath: string | null, techStack?: TechStack): string[] {
   const db = getDb();
 
+  // 1. Tech-stack match (highest priority for auto-detected stacks)
+  if (techStack && techStack !== "unknown") {
+    const tsMatch = db.prepare(
+      "SELECT dimensions FROM review_dimension_sets WHERE project = ? LIMIT 1"
+    ).get(techStack) as { dimensions: string } | undefined;
+    if (tsMatch) return JSON.parse(tsMatch.dimensions);
+  }
+
+  // 2. Exact project path match
   if (projectPath) {
-    // Exact match
     const exact = db.prepare(
       "SELECT dimensions FROM review_dimension_sets WHERE project = ? LIMIT 1"
     ).get(projectPath) as { dimensions: string } | undefined;
     if (exact) return JSON.parse(exact.dimensions);
 
-    // Prefix match
+    // 3. Prefix match
     const parts = projectPath.split("/");
     for (let i = parts.length - 1; i >= 1; i--) {
       const prefix = parts.slice(0, i).join("/");
@@ -22,7 +31,7 @@ export function getDimensionsForProject(projectPath: string | null): string[] {
     }
   }
 
-  // Fallback: default set
+  // 4. Fallback: default set
   const def = db.prepare(
     "SELECT dimensions FROM review_dimension_sets WHERE is_default = 1 LIMIT 1"
   ).get() as { dimensions: string } | undefined;

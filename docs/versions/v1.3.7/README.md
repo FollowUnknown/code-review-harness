@@ -49,6 +49,28 @@ v1.3.6 真实 MR 验证暴露了 3 层差距（详见 [gap-analysis](../v1.3.6/g
 | 137-04 | 维度匹配改造（技术栈优先） | 137-01, 137-02 |
 | 137-05 | 知识召回改造（技术栈过滤） | 137-01, 137-03 |
 | 137-06 | 端到端验证（同一 MR 对比） | 全部 |
+| 137-07 | Java 后端关联文件发现（related-finder/symbol-extractor/context-extractor 改造） | 137-01 |
+
+## 详细设计
+
+### 137-07: Java 后端关联文件发现
+
+当前 `local-scan/` 下三个模块仅支持前端技术栈：
+
+| 模块 | 前端局限 | Java 需要的改造 |
+|------|----------|----------------|
+| `related-finder.ts` | grepSymbol 仅搜 `.ts/.tsx/.js/.vue` | 增加 `.java` 扩展名搜索 |
+| `related-finder.ts` | findImporters 匹配 ESM `from` 导入 | 增加 Java `import cn.com.do1...` 模式 |
+| `symbol-extractor.ts` | extractChangedSymbols 仅匹配前端模式 | 增加 Java class/interface/method 声明提取 |
+| `symbol-extractor.ts` | classifyFile 无 Java 分类 | 增加 Controller/Service/Mapper/Entity/DTO/Config 分类 |
+| `context-extractor.ts` | Vue 特定逻辑，Java 文件截断到 300 行 | 增加 Java 上下文提取（类签名、方法签名） |
+
+**Java 关联文件链**：
+```
+Controller → Service(Interface) → ServiceImpl → Mapper/DAO → Entity/DTO
+```
+
+**改动范围**：仅 `src/server/services/local-scan/` 下三个文件，不影响评审路由和 Prompt 逻辑。
 
 ## 文档
 

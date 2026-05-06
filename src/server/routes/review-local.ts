@@ -7,6 +7,7 @@ import { parseReviewResponse, mergeReports } from "../services/reviewer";
 import { callLLM, getLLMConfig } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { getDimensionsForProject } from "../services/dimensions";
+import { inferTechStack } from "../services/techstack";
 import { saveReviewRecord, computeReviewStats } from "../services/review-store";
 import { saveLLMLog } from "../services/llm-logger";
 import { buildLocalScanContext, buildRelatedFilesPrompt } from "../services/local-scan";
@@ -84,12 +85,13 @@ router.post("/local", async (req: Request, res: Response) => {
     // Step 3: Load knowledge — infer module from diff file paths
     nextStep("Loading knowledge base");
     const inferredModule = inferModuleFromPaths(diffs.map((d: { new_path: string }) => d.new_path));
-    const knowledge = getKnowledgeForReview(project, inferredModule, diffs.map((d: { new_path: string }) => d.new_path));
+    const techStack = inferTechStack(diffs.map((d: { new_path: string }) => d.new_path));
+    const knowledge = getKnowledgeForReview(project, inferredModule, diffs.map((d: { new_path: string }) => d.new_path), techStack);
     completeStep(`${knowledge.length} entries loaded`);
 
     // Step 4: Review batches
     const reviewId = `R-${randomUUID().slice(0, 8)}`;
-    const dimensions = getDimensionsForProject(project);
+    const dimensions = getDimensionsForProject(project, techStack);
     const knowledgePrompt = knowledge.length > 0 ? buildKnowledgePrompt(knowledge) : "";
     const relatedPrompt = buildRelatedFilesPrompt(context);
     const userPromptPrefix = getReviewUserPrompt();

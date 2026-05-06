@@ -6,6 +6,7 @@ import { getKnowledgeForReview, buildKnowledgePrompt, extractLearnings, trackKno
 import { callLLM, getLLMConfig } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { getDimensionsForProject } from "../services/dimensions";
+import { inferTechStack } from "../services/techstack";
 import { saveReviewRecord, computeReviewStats } from "../services/review-store";
 import { saveLLMLog } from "../services/llm-logger";
 import { parseDiffToGitLabDiffs } from "../services/local-scan/git-diff";
@@ -43,11 +44,12 @@ router.post("/diff", async (req: Request, res: Response) => {
 
     const { summary: classification, batchDiffs } = classify(diffs);
     const batchLevels = classification.batches.map((b) => b.level);
-    const dimensions = getDimensionsForProject(project || "default");
+    const techStack = inferTechStack(diffs.map((d: { new_path: string }) => d.new_path));
+    const dimensions = getDimensionsForProject(project || "default", techStack);
     const reviewId = `R-${randomUUID().slice(0, 8)}`;
 
     // Load knowledge for this project
-    const knowledge = getKnowledgeForReview(project || "diff-upload", undefined, diffs.map((d: { new_path: string }) => d.new_path));
+    const knowledge = getKnowledgeForReview(project || "diff-upload", undefined, diffs.map((d: { new_path: string }) => d.new_path), techStack);
     const knowledgePrompt = knowledge.length > 0 ? buildKnowledgePrompt(knowledge) : "";
 
     const batchReports = [];

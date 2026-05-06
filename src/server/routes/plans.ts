@@ -16,6 +16,7 @@ import { parseReviewResponse, mergeReports } from "../services/reviewer";
 import { saveReviewRecord, computeReviewStats } from "../services/review-store";
 import { saveLLMLog } from "../services/llm-logger";
 import { getDimensionsForProject } from "../services/dimensions";
+import { inferTechStack } from "../services/techstack";
 import type { ReviewResponse, PlanFilter, ReviewRecord } from "../../shared/types";
 
 const router = Router();
@@ -191,13 +192,14 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
       console.log(`[Plan ${plan.id}] MR ${mi + 1}: fetched ${diffs.length} diffs`);
 
       const project = parsed.projectPath.split("/").pop() || parsed.projectPath;
-      const dimensions = getDimensionsForProject(parsed.projectPath);
+      const techStack = inferTechStack(diffs.map((d: { new_path: string }) => d.new_path));
+      const dimensions = getDimensionsForProject(parsed.projectPath, techStack);
       const { summary: classification, batchDiffs } = classify(diffs);
       console.log(`[Plan ${plan.id}] MR ${mi + 1}: classified ${classification.stats.total} files, ${batchDiffs.length} batches, aborted=${aborted}`);
 
       const batchLevels = classification.batches.map((b) => b.level);
       const requirement = await understandRequirement(mr, diffs);
-      const knowledge = getKnowledgeForReview(project, requirement.module);
+      const knowledge = getKnowledgeForReview(project, requirement.module, undefined, techStack);
       const reqPrompt = requirement ? buildRequirementPrompt(requirement) : "";
       const knowledgePrompt = knowledge.length > 0 ? buildKnowledgePrompt(knowledge) : "";
       const userPromptPrefix = getReviewUserPrompt();

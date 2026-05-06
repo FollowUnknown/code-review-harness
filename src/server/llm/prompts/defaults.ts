@@ -169,7 +169,78 @@ const DIMENSION_CRITERIA: Record<string, string> = {
 2分：构建配置有问题
 1分：严重构建问题
 判定重点：使用 require.context 标记为 MEDIUM（应改用 import.meta.glob）`,
+
+  // ---- Java Backend Dimensions ----
+
+  "数据结构选择": `5分：集合类型精确匹配业务语义（List vs Set vs Map）；泛型参数完整；避免过早优化使用并发集合；DTO/VO/Entity 分层清晰
+4分：主要集合选择合理，个别可优化
+3分：使用 ArrayList 替代所有场景，缺少 Map/Set 的合理使用
+2分：大量原始类型（raw type）或 Object 滥用；DTO 与 Entity 混用
+1分：数据结构严重不合理，导致性能或正确性问题
+判定重点：用 Map 存储应使用对象/DTO 的数据标记为 HIGH；ArrayList 存储需去重的数据标记为 MEDIUM；raw type 使用标记为 MEDIUM`,
+
+  "算法复杂度": `5分：时间复杂度最优；避免 O(n²) 嵌套循环；数据库查询有索引支撑；分页查询合理
+4分：主要逻辑复杂度合理，个别可优化点
+3分：存在可优化的 O(n²) 循环或 N+1 查询
+2分：大量嵌套循环或不必要的全表扫描
+1分：算法复杂度严重影响性能（如大数据量下的 O(n³)）
+判定重点：循环内数据库查询标记为 HIGH；未分页的全量查询标记为 HIGH；可优化为 O(n log n) 的 O(n²) 排序标记为 MEDIUM`,
+
+  "异常处理": `5分：异常分类精确（业务异常 vs 系统异常）；catch 块不吞异常；finally 释放资源；自定义异常携带上下文；全局异常处理器覆盖完整
+4分：主要异常路径处理正确，个别边界遗漏
+3分：部分异常被空 catch 吞掉或仅 printStackTrace
+2分：大量异常处理缺失或不规范
+1分：异常完全未处理，或 catch(Exception e) 吞掉所有异常
+判定重点：空 catch 块标记为 CRITICAL；catch(Exception e) 过宽标记为 HIGH；仅 e.printStackTrace() 无日志框架标记为 MEDIUM；资源未在 finally/try-with-resources 释放标记为 HIGH`,
+
+  "并发安全": `5分：共享状态使用正确的同步机制；线程池配置合理；无死锁风险；无竞态条件；@Transactional 边界正确
+4分：主要并发场景处理正确
+3分：部分共享变量缺少同步保护
+2分：多处线程安全问题
+1分：严重的并发 bug（如 double-checked locking 错误、共享可变状态无保护）
+判定重点：SimpleDateFormat 在多线程使用标记为 HIGH；@Transactional 在私有方法标记为 HIGH；synchronized 过粗粒度标记为 MEDIUM；线程池未关闭标记为 HIGH`,
+
+  "日志与可观测性": `5分：关键业务操作有 info 日志；异常有完整堆栈和上下文参数；日志级别使用正确（debug/info/warn/error）；敏感信息脱敏；有 traceId/spanId 支持链路追踪
+4分：主要操作有日志，个别关键路径缺失
+3分：有日志但上下文不足（如仅打印异常消息，无入参）
+2分：大量 System.out.println 或无日志
+1分：完全无日志或日志暴露敏感数据
+判定重点：System.out.println 替代日志框架标记为 MEDIUM；日志中打印密码/token 标记为 CRITICAL；catch 块中无日志记录标记为 HIGH；关键业务操作（支付/状态变更）无日志标记为 HIGH`,
+
+  "代码可维护性": `5分：类职责单一（<500 行）；方法 <30 行；命名语义化（避免 data/info/temp）；魔法值提取为常量；注释解释 why 而非 what
+4分：代码结构清晰，个别命名或长度可优化
+3分：存在过长方法或类，命名不清晰
+2分：大量重复代码、过深嵌套、魔法数字
+1分：代码严重不可维护，无注释、命名混乱、超长方法
+判定重点：方法超过 50 行标记为 MEDIUM；类超过 800 行标记为 HIGH；魔法数字/字符串未提取常量标记为 MEDIUM；过长参数列表（>5）标记为 MEDIUM`,
+
+  "根因分析": `5分：错误消息精确定位问题根因（含类名、字段名、期望值 vs 实际值）；异常链完整（cause 不丢失）；提供修复建议或参考链接
+4分：主要错误有明确描述和定位
+3分：错误消息笼统（如"操作失败"），需查日志定位
+2分：大量模糊错误消息，难以排查
+1分：错误消息误导或与实际不符
+判定重点：异常消息为空字符串或"error"标记为 HIGH；丢失异常 cause（catch 后抛新异常不传 cause）标记为 HIGH；业务校验错误消息仅"参数错误"无具体说明标记为 MEDIUM`,
+
+  "测试覆盖": `5分：核心业务逻辑有单元测试；Service 层有集成测试；边界条件和异常路径有覆盖；测试独立无外部依赖
+4分：主要逻辑有测试，部分边界遗漏
+3分：有少量测试但覆盖率不足
+2分：几乎没有测试
+1分：完全无测试
+判定重点：核心 Service 无单元测试标记为 HIGH；复杂条件分支未覆盖标记为 MEDIUM；测试依赖外部服务（未 mock）标记为 MEDIUM`,
 };
+
+/** Java backend dimensions — used when tech-stack is java-backend */
+export const JAVA_BACKEND_DIMENSIONS = [
+  "数据结构选择",
+  "算法复杂度",
+  "异常处理",
+  "并发安全",
+  "日志与可观测性",
+  "代码可维护性",
+  "根因分析",
+  "测试覆盖",
+  "密钥管理",
+] as const;
 
 // ---- Risk-Level Specific Checklists ----
 

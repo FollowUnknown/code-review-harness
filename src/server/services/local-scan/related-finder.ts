@@ -82,7 +82,7 @@ export function findRelatedFiles(
 
 function grepSymbol(symbol: string, repoPath: string, excludeFile: string): string[] {
   try {
-    const cmd = `grep -rl "\\b${symbol}\\b" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.vue" src/ 2>/dev/null || true`;
+    const cmd = `grep -rl "\\b${symbol}\\b" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.vue" --include="*.java" src/ 2>/dev/null || true`;
     const output = execSync(cmd, { cwd: repoPath, encoding: "utf-8", timeout: 10000 });
     return output.trim().split("\n").filter((f) => f && f !== excludeFile);
   } catch {
@@ -91,14 +91,36 @@ function grepSymbol(symbol: string, repoPath: string, excludeFile: string): stri
 }
 
 function findImporters(changedFile: string, repoPath: string): string[] {
+  const results = new Set<string>();
+  const baseName = path.basename(changedFile);
+
+  // Frontend: ESM import pattern
   const moduleName = changedFile.replace(/\.(ts|tsx|js|jsx|vue)$/, "");
   try {
     const cmd = `grep -rl "from.*['\\"].*${escapeRegex(path.basename(moduleName))}" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.vue" src/ 2>/dev/null || true`;
     const output = execSync(cmd, { cwd: repoPath, encoding: "utf-8", timeout: 10000 });
-    return output.trim().split("\n").filter((f) => f && f !== changedFile);
+    for (const f of output.trim().split("\n")) {
+      if (f && f !== changedFile) results.add(f);
+    }
   } catch {
-    return [];
+    // ignore
   }
+
+  // Java: import pattern — extract class name from file (FooBar.java → FooBar)
+  if (changedFile.endsWith(".java")) {
+    const javaClassName = baseName.replace(/\.java$/, "");
+    try {
+      const cmd = `grep -rl "import.*\\.\\(\\*\\|${escapeRegex(javaClassName)}\\)" --include="*.java" src/ 2>/dev/null || true`;
+      const output = execSync(cmd, { cwd: repoPath, encoding: "utf-8", timeout: 10000 });
+      for (const f of output.trim().split("\n")) {
+        if (f && f !== changedFile) results.add(f);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return [...results];
 }
 
 function extractExportsFromFile(filePath: string): string[] {
@@ -106,16 +128,32 @@ function extractExportsFromFile(filePath: string): string[] {
   try {
     const content = fs.readFileSync(filePath, "utf-8");
     const exports: string[] = [];
-    const patterns = [
-      /export\s+(?:async\s+)?function\s+(\w+)/g,
-      /export\s+(?:const|let|var)\s+(\w+)/g,
-      /export\s+interface\s+(\w+)/g,
-      /export\s+type\s+(\w+)/g,
-    ];
-    for (const p of patterns) {
-      p.lastIndex = 0;
-      let match;
-      while ((match = p.exec(content)) !== null) exports.push(match[1]);
+
+    if (filePath.endsWith(".java")) {
+      // Java: extract class, interface, enum names and public method names
+      const javaPatterns = [
+        /(?:public\s+)?(?:abstract\s+)?(?:class|interface|enum)\s+(\w+)/g,
+        /@(?:Service|Repository|Component|Controller|RestController)\s*(?:\([^)]*\))?\s*(?:public\s+)?(?:abstract\s+)?class\s+(\w+)/g,
+        /public\s+(?:static\s+)?(?:\w+(?:<[^>]+>)?)\s+(\w+)\s*\(/g,
+      ];
+      for (const p of javaPatterns) {
+        p.lastIndex = 0;
+        let match;
+        while ((match = p.exec(content)) !== null) exports.push(match[1]);
+      }
+    } else {
+      // Frontend: ESM exports
+      const patterns = [
+        /export\s+(?:async\s+)?function\s+(\w+)/g,
+        /export\s+(?:const|let|var)\s+(\w+)/g,
+        /export\s+interface\s+(\w+)/g,
+        /export\s+type\s+(\w+)/g,
+      ];
+      for (const p of patterns) {
+        p.lastIndex = 0;
+        let match;
+        while ((match = p.exec(content)) !== null) exports.push(match[1]);
+      }
     }
     return exports;
   } catch {

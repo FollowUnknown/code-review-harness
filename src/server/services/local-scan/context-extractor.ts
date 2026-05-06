@@ -17,7 +17,12 @@ export function extractFileContext(content: string, filePath: string, options: E
     return "";
   }
 
-  // TS/JS/Java: truncate to maxLines
+  // Java files: extract class signatures and method signatures
+  if (filePath.endsWith(".java")) {
+    return extractJavaContext(content, maxLines);
+  }
+
+  // TS/JS: truncate to maxLines
   const lines = content.split("\n");
   if (lines.length <= maxLines) {
     return content;
@@ -60,4 +65,35 @@ export function extractVueScript(content: string): string {
   }
 
   return result.trim();
+}
+
+function extractJavaContext(content: string, maxLines: number): string {
+  const lines = content.split("\n");
+  const significantLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Keep: package, import, class/interface/enum declarations, annotations, method signatures
+    if (
+      trimmed.startsWith("package ") ||
+      trimmed.startsWith("import ") ||
+      trimmed.startsWith("@") ||
+      /^(public|private|protected)\s+(?:abstract\s+)?(?:class|interface|enum)\s+/.test(trimmed) ||
+      /^(public|private|protected)\s+(?:static\s+)?(?:final\s+)?(?:synchronized\s+)?(?:\w+(?:<[^>]+>)?)\s+\w+\s*\(/.test(trimmed) ||
+      trimmed === "{" ||
+      trimmed === "}" ||
+      trimmed === ""
+    ) {
+      significantLines.push(line);
+    }
+  }
+
+  // If significant lines fit in budget, return them
+  if (significantLines.length <= maxLines) {
+    return significantLines.join("\n");
+  }
+
+  // Otherwise truncate
+  return significantLines.slice(0, maxLines).join("\n") + "\n\n... [truncated, showing first " + maxLines + " significant lines] ...";
 }

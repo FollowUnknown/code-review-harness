@@ -6,7 +6,7 @@ export function extractChangedSymbols(diffText: string): string[] {
   // Only look at changed lines (starting with + or -)
   const changedLines = diffText.split("\n").filter((l) => l.startsWith("+") || l.startsWith("-"));
 
-  const patterns = [
+  const frontendPatterns = [
     // function declarations
     /(?:export\s+)?(?:async\s+)?function\s+(\w+)/g,
     // const/let/var declarations
@@ -17,8 +17,17 @@ export function extractChangedSymbols(diffText: string): string[] {
     /(?:export\s+)?(?:default\s+)?(?:abstract\s+)?class\s+(\w+)/g,
   ];
 
+  const javaPatterns = [
+    // Java class/interface/enum declarations
+    /(?:public\s+|private\s+|protected\s+)?(?:abstract\s+)?(?:class|interface|enum)\s+(\w+)/g,
+    // Java method declarations
+    /(?:public|private|protected)\s+(?:static\s+)?(?:final\s+)?(?:\w+(?:<[^>]+>)?)\s+(\w+)\s*\(/g,
+    // Spring annotations (extract as context)
+    /@(\w+(?:Service|Repository|Component|Controller|Autowired|Resource|Inject|Bean|Configuration|Value|Override))/g,
+  ];
+
   for (const line of changedLines) {
-    for (const pattern of patterns) {
+    for (const pattern of [...frontendPatterns, ...javaPatterns]) {
       pattern.lastIndex = 0;
       const match = pattern.exec(line);
       if (match) {
@@ -43,7 +52,14 @@ export function classifyFile(filePath: string): FileCategory {
     normalized.endsWith(".config.") ||
     normalized.includes("tsconfig") ||
     normalized.includes(".eslintrc") ||
-    normalized.includes(".prettierrc")
+    normalized.includes(".prettierrc") ||
+    // Java config
+    normalized.endsWith("pom.xml") ||
+    normalized.endsWith("build.gradle") ||
+    normalized.endsWith("application.yml") ||
+    normalized.endsWith("application.properties") ||
+    normalized.endsWith("application-local.yml") ||
+    normalized.endsWith("application-dev.yml")
   ) {
     return "config";
   }
@@ -57,7 +73,10 @@ export function classifyFile(filePath: string): FileCategory {
     normalized.endsWith("main.ts") ||
     normalized.endsWith("main.js") ||
     normalized.includes("/routes/") ||
-    normalized.includes("/router/")
+    normalized.includes("/router/") ||
+    // Java entry points
+    normalized.endsWith("application.java") ||
+    normalized.endsWith("main.java")
   ) {
     return "entry";
   }

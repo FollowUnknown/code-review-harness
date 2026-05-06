@@ -1,5 +1,6 @@
 import { getDb } from "../db";
 import type { IssueDisposition, KnowledgeDisposition, ReviewIssue } from "../../shared/types";
+import type { TechStack } from "./techstack";
 
 // ---- Types ----
 
@@ -394,7 +395,7 @@ function estimateTokens(content: string): number {
 
 // ---- Layered Knowledge Injection ----
 
-export function getKnowledgeForReview(project: string, module?: string, changedFiles?: string[]): KnowledgeEntry[] {
+export function getKnowledgeForReview(project: string, module?: string, changedFiles?: string[], techStack?: TechStack): KnowledgeEntry[] {
   const db = getDb();
 
   // Layer 1: Universal AP (HIGH, all projects)
@@ -407,16 +408,38 @@ export function getKnowledgeForReview(project: string, module?: string, changedF
     `SELECT * FROM knowledge_entries WHERE type = 'AP' AND project = ? AND status = 'CONFIRMED'`
   ).all(project) as KnowledgeEntry[];
 
+  // Layer 2.5: Tech-stack AP (e.g., "java-backend" knowledge for Java projects)
+  const layer2b = techStack && techStack !== "unknown"
+    ? (db.prepare(
+        `SELECT * FROM knowledge_entries WHERE type = 'AP' AND project = ? AND status = 'CONFIRMED'`
+      ).all(techStack) as KnowledgeEntry[])
+    : [];
+
   // Layer 3: Project CONV
   const layer3 = db.prepare(
     `SELECT * FROM knowledge_entries WHERE type = 'CONV' AND project = ? AND status = 'CONFIRMED'`
   ).all(project) as KnowledgeEntry[];
+
+  // Layer 3.5: Tech-stack CONV
+  const layer3b = techStack && techStack !== "unknown"
+    ? (db.prepare(
+        `SELECT * FROM knowledge_entries WHERE type = 'CONV' AND project = ? AND status = 'CONFIRMED'`
+      ).all(techStack) as KnowledgeEntry[])
+    : [];
 
   // Layer 4: Recent EXP (same project, ≤20, module first)
   const layer4 = db.prepare(
     `SELECT * FROM knowledge_entries WHERE type = 'EXP' AND project = ? AND status = 'CONFIRMED'
      ORDER BY created_at DESC LIMIT 20`
   ).all(project) as KnowledgeEntry[];
+
+  // Layer 4.5: Tech-stack EXP
+  const layer4b = techStack && techStack !== "unknown"
+    ? (db.prepare(
+        `SELECT * FROM knowledge_entries WHERE type = 'EXP' AND project = ? AND status = 'CONFIRMED'
+         ORDER BY created_at DESC LIMIT 20`
+      ).all(techStack) as KnowledgeEntry[])
+    : [];
 
   // Layer 5: BN (project + module match)
   let layer5: KnowledgeEntry[] = [];
@@ -454,8 +477,11 @@ export function getKnowledgeForReview(project: string, module?: string, changedF
 
   addUnique(layer1);
   addUnique(layer2);
+  addUnique(layer2b);
   addUnique(layer3);
+  addUnique(layer3b);
   addUnique(layer4);
+  addUnique(layer4b);
   addUnique(layer5);
   addUnique(layer6);
 

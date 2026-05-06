@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import path from "path";
 import { randomUUID } from "crypto";
 import { REVIEW_DIMENSIONS } from "../shared/constants";
+import { JAVA_BACKEND_DIMENSIONS } from "./llm/prompts/defaults";
 
 let db: Database.Database | null = null;
 
@@ -364,17 +365,33 @@ function migrateReviewPlanItemsTable(db: Database.Database): void {
 }
 
 function seedDefaultDimensionSet(db: Database.Database): void {
-  const existing = db.prepare("SELECT COUNT(*) as cnt FROM review_dimension_sets WHERE is_default = 1").get() as { cnt: number };
-  if (existing.cnt > 0) return;
+  // Seed default dimension set (if not exists)
+  const defaultExisting = db.prepare("SELECT COUNT(*) as cnt FROM review_dimension_sets WHERE is_default = 1").get() as { cnt: number };
+  if (defaultExisting.cnt === 0) {
+    db.prepare(
+      `INSERT INTO review_dimension_sets (id, name, project, dimensions, focus_areas, is_default, created_by)
+       VALUES (?, ?, NULL, ?, NULL, 1, 'system')`
+    ).run(
+      "default",
+      "默认维度集",
+      JSON.stringify([...REVIEW_DIMENSIONS])
+    );
+  }
 
-  db.prepare(
-    `INSERT INTO review_dimension_sets (id, name, project, dimensions, focus_areas, is_default, created_by)
-     VALUES (?, ?, NULL, ?, NULL, 1, 'system')`
-  ).run(
-    "default",
-    "默认维度集",
-    JSON.stringify([...REVIEW_DIMENSIONS])
-  );
+  // Seed Java backend dimension set (if not exists)
+  const javaExisting = db.prepare("SELECT COUNT(*) as cnt FROM review_dimension_sets WHERE id = ?").get("java-backend") as { cnt: number };
+  if (javaExisting.cnt === 0) {
+    db.prepare(
+      `INSERT INTO review_dimension_sets (id, name, project, dimensions, focus_areas, is_default, created_by)
+       VALUES (?, ?, ?, ?, ?, 0, 'system')`
+    ).run(
+      "java-backend",
+      "Java 后端维度集",
+      "java-backend",
+      JSON.stringify([...JAVA_BACKEND_DIMENSIONS]),
+      JSON.stringify(["Spring Boot", "MyBatis/JPA", "Maven/Gradle"])
+    );
+  }
 }
 
 export function closeDb(): void {
