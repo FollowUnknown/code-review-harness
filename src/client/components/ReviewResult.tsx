@@ -824,9 +824,11 @@ function CreateKnowledgeButton({ issue, reviewId, project }: {
 }) {
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function handleCreate(type: "BN" | "RULE") {
     setCreating(true);
+    setError(null);
     fetch(`${API_BASE}/api/knowledge`, {
       method: "POST",
       headers: { ...authHeaders(), "Content-Type": "application/json" },
@@ -842,14 +844,20 @@ function CreateKnowledgeButton({ issue, reviewId, project }: {
       }),
     })
       .then((r) => {
-        if (!r.ok) throw new Error("create failed");
+        if (!r.ok) {
+          if (r.status === 401) throw new Error("请先登录");
+          return r.json().then((d: { error?: string }) => { throw new Error(d.error || "创建失败"); }).catch(() => { throw new Error("创建失败"); });
+        }
         return r.json();
       })
       .then(() => {
         setShowModal(false);
         setCreating(false);
       })
-      .catch(() => setCreating(false));
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "创建失败");
+        setCreating(false);
+      });
   }
 
   return (
@@ -878,6 +886,7 @@ function CreateKnowledgeButton({ issue, reviewId, project }: {
             >
               <h4 className="text-sm font-semibold text-slate-200">Create Knowledge from Issue</h4>
               <p className="text-xs text-slate-400 bg-slate-800/40 rounded p-2">{issue.message}</p>
+              {error && <p className="text-xs text-red-400 bg-red-500/10 rounded p-2">{error}</p>}
               <div className="flex gap-3">
                 <button
                   onClick={() => handleCreate("BN")}
