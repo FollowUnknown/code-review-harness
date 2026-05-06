@@ -29,7 +29,7 @@
 | [v1.3.0](../docs/versions/v1.3.0/README.md) | 待定 | Capability 基础 | Phase 5 (基础) | ⚪ 待启动 |
 | [v1.3.5](../docs/versions/v1.3.5/plan.md) | 05/02 | 文件选择过滤器 | Diff Preview + FileSelector | ✅ 已完成 |
 | [v1.3.6](../docs/versions/v1.3.6/README.md) | 05/06 | 知识库闭环 + 评审质量 | Knowledge Loop + Quality | ✅ 已完成 |
-| [v1.3.7](../docs/versions/v1.3.7/README.md) | 待定 | 多技术栈评审 | Tech-stack aware review | ⚪ 待启动 |
+| [v1.3.7](../docs/versions/v1.3.7/README.md) | 05/06 | 多技术栈评审 | Tech-stack aware review | ✅ 已完成 |
 | [v1.4.0](../docs/versions/v1.4.0/README.md) | 待定 | Capability 高级 | Phase 5 (高级) | ⚪ 待启动 |
 
 ### P2 — 一般

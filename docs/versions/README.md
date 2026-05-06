@@ -17,7 +17,7 @@
 | [v1.3.0](./v1.3.0/README.md) | ✅ 完成 | **本地代码扫描** | Local Scan | v1.2.5 | v1.3.5 |
 | [v1.3.5](./v1.3.5/plan.md) | ✅ 完成 | **文件选择过滤器** | Diff Preview + FileSelector | v1.3.0 | v1.3.6 |
 | [v1.3.6](./v1.3.6/README.md) | ✅ 完成 | **知识库闭环 + 评审质量** | Knowledge Loop + Quality | v1.3.5 | v1.3.7 |
-| [v1.3.7](./v1.3.7/README.md) | ⚪ 待规划 | **多技术栈评审** | Tech-stack aware review | v1.3.6 | v1.4.0 |
+| [v1.3.7](./v1.3.7/README.md) | ✅ 完成 | **多技术栈评审** | Tech-stack aware review | v1.3.6 | v1.4.0 |
 | [v1.4.0](./v1.4.0/README.md) | ⚪ 待规划 | **Phase 5 Capability 高级** | Phase 5 Capability (高级) | v1.3.0 | v2.0.0 |
 
 ---
