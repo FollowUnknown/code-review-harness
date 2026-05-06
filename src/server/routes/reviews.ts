@@ -248,6 +248,7 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
 
     const newReviewId = `R-${randomUUID().slice(0, 8)}`;
     const batchReports = [];
+    const failedBatches: number[] = [];
 
     for (let i = 0; i < batchDiffs.length; i++) {
       const level = batchLevels[i];
@@ -268,7 +269,18 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
 
       const userMessage = `${userPromptPrefix}${diffText}`;
       const startTime = Date.now();
-      const result = await callLLM(systemPrompt, userMessage, ctx.llmConfig);
+
+      let result;
+      try {
+        result = await callLLM(systemPrompt, userMessage, ctx.llmConfig);
+      } catch (llmErr) {
+        const errMsg = llmErr instanceof Error ? llmErr.message : "LLM call failed";
+        console.error(`[Review ${newReviewId}] Batch ${i + 1}/${batchDiffs.length} failed: ${errMsg}`);
+        failedBatches.push(i);
+        sendSSE({ step, status: "error", label: `Batch ${i + 1} failed: ${errMsg.slice(0, 100)}` });
+        continue;
+      }
+
       const durationMs = Date.now() - startTime;
 
       batchReports.push(parseReviewResponse(result.text));
@@ -295,6 +307,9 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
     }
 
     const report = mergeReports(batchReports, dimensions);
+    if (failedBatches.length > 0) {
+      report.summary = (report.summary || "") + `\n\n⚠ 注意：${failedBatches.length}/${batchDiffs.length} 个批次评审失败（batch ${failedBatches.map(b => b + 1).join(", ")}），部分文件未被评审。`;
+    }
     const stats = computeReviewStats(report);
 
     saveReviewRecord({
