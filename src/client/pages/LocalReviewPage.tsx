@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FileSelectorDialog } from "../components/FileSelectorDialog";
 import type { DiffPreviewResponse } from "../../shared/types";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+const API_BASE = "";
 
 export function LocalReviewPage() {
   const navigate = useNavigate();

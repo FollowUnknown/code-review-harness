@@ -6,7 +6,7 @@ import { LLMHistoryDrawer } from "../components/LLMHistoryDrawer";
 import { KnowledgeDetailDrawer } from "../components/KnowledgeDetailDrawer";
 import type { ReviewResponse, ReviewRecord, LLMLog, KnowledgeEntrySummary } from "../../shared/types";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+const API_BASE = "";
 
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem("auth_token");

@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ReviewPlanDetail, PlanSummary } from "../../shared/types";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+const API_BASE = "";
 function authHeaders(json = false): Record<string, string> { const t = localStorage.getItem("auth_token"); const h: Record<string, string> = {}; if (t) h["Authorization"] = `Bearer ${t}`; if (json) h["Content-Type"] = "application/json"; return h; }
 
 const ITEM_STATUS: Record<string, string> = { pending: "bg-slate-500/15 text-slate-500", reviewing: "bg-yellow-500/15 text-yellow-400", completed: "bg-emerald-500/15 text-emerald-400", failed: "bg-red-500/15 text-red-400" };

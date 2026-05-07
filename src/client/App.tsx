@@ -20,7 +20,7 @@ import { QualityPage } from "./pages/QualityPage";
 import { MemoryPage } from "./pages/MemoryPage";
 import { LocalReviewPage } from "./pages/LocalReviewPage";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+const API_BASE = "";
 
 // Reusable nav link with active state
 function NavLink({ to, children }: { to: string; children: React.ReactNode }) {

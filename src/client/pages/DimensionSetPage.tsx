@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { DimensionSet } from "../../shared/types";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+const API_BASE = "";
 
 function authHeaders(json = false): Record<string, string> {
   const t = localStorage.getItem("auth_token");

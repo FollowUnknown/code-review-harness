@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ReviewResponse, SeverityLevel, RiskLevel, KnowledgeDisposition, KnowledgeEntrySummary, ReviewIssue } from "../../shared/types";
 import ReactDiffViewer from "react-diff-viewer-continued";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+const API_BASE = "";
 
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem("auth_token");
@@ -551,7 +551,7 @@ function IssuesSection({ issues, reviewId, project }: IssuesSectionProps) {
     const filtered = filteredIssues;
     const groups: Record<string, ReviewIssue[]> = {};
     filtered.forEach((issue) => {
-      const key = issue.file || "Unknown File";
+      const key = issue.file || "通用问题";
       if (!groups[key]) groups[key] = [];
       groups[key].push(issue);
     });
@@ -641,7 +641,7 @@ function IssuesSection({ issues, reviewId, project }: IssuesSectionProps) {
 
     const groups: Record<string, ReviewIssue[]> = {};
     filteredIssues.forEach((issue) => {
-      const key = groupBy === "file" ? (issue.file || "Unknown File") : issue.severity;
+      const key = groupBy === "file" ? (issue.file || "通用问题") : issue.severity;
       if (!groups[key]) groups[key] = [];
       groups[key].push(issue);
     });

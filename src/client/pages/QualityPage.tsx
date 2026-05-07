@@ -16,7 +16,7 @@ interface QualityStats {
   recentConsistency: number | null;
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+const API_BASE = "";
 
 export function QualityPage() {
   const [stats, setStats] = useState<QualityStats | null>(null);

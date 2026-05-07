@@ -5,4 +5,10 @@ dist/
 .DS_Store
 Thumbs.db
 coverage/
-knowledge.db*
+*.db
+*.sqlite
+*.sqlite3
+*.key
+*.pem
+.review-passed
+.claude/review-passed

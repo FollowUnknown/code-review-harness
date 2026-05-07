@@ -31,6 +31,8 @@ function isRetryableError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const msg = err.message;
   // Match HTTP status patterns from providers: "DeepSeek API 429: ...", "API 502: ..."
+  // Also retry on stream/idle timeout (transient network issues)
+  if (/timed out/i.test(msg)) return true;
   return /\b429\b/.test(msg) || /(?:API|HTTP)\s+5[0-9]{2}\b/.test(msg);
 }
 

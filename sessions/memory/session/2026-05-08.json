@@ -1,0 +1,10 @@
+{
+  "date": "2026-05-08",
+  "context": "Auto-generated from session file",
+  "completedCount": 0
+0,
+  "pendingCount": 0
+0,
+  "files": ["docs/contracts/2026-05-06-v137-multi-techstack.md","sessions/2026-05-06.md","sessions/execution/audit.log","sessions/memory/stats.json","src/client/App.tsx","src/client/components/KnowledgeDetailDrawer.tsx","src/client/components/LLMHistoryDrawer.tsx","src/client/components/ProgressStepper.tsx","src/client/components/PromptEditor.tsx","src/client/components/ReviewResult.tsx","src/client/components/SettingsPanel.tsx","src/client/pages/DimensionSetPage.tsx","src/client/pages/KnowledgePage.tsx","src/client/pages/LocalReviewPage.tsx","src/client/pages/LoginPage.tsx","src/client/pages/MemoryPage.tsx","src/client/pages/PlanDetailPage.tsx","src/client/pages/PlanListPage.tsx","src/client/pages/PlanNewPage.tsx","src/client/pages/QualityPage.tsx","src/client/pages/ReviewDetailPage.tsx","src/client/pages/ReviewListPage.tsx","src/client/pages/UserManagementPage.tsx","src/server/llm/index.ts","src/server/llm/prompts/defaults.ts","src/server/llm/providers/deepseek.ts","src/server/services/knowledge.ts","src/server/services/local-scan/git-diff.ts"],
+  "createdAt": "2026-05-07T17:06:30Z"
+}

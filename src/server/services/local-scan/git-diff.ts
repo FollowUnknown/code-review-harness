@@ -19,10 +19,10 @@ export function extractLocalDiff(repoPath: string, targetBranch: string, sourceB
     const diffOpts = { cwd: repoPath, maxBuffer: 10 * 1024 * 1024, timeout: GIT_TIMEOUT };
 
     try {
-      diff = execSync(`git diff origin/${targetBranch}...origin/${sourceBranch} -- .`, diffOpts).toString();
+      diff = execSync(`git diff -U25 origin/${targetBranch}...origin/${sourceBranch} -- .`, diffOpts).toString();
     } catch {
       // Fallback: local branch diff (no origin/ prefix)
-      diff = execSync(`git diff ${targetBranch}..${sourceBranch} -- .`, diffOpts).toString();
+      diff = execSync(`git diff -U25 ${targetBranch}..${sourceBranch} -- .`, diffOpts).toString();
     }
 
     return diff;

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import type { PlanListItem, PaginatedResult, PlanStatus } from "../../shared/types";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+const API_BASE = "";
 function authHeaders(): Record<string, string> { const t = localStorage.getItem("auth_token"); return t ? { Authorization: `Bearer ${t}` } : {}; }
 
 const STATUS_STYLE: Record<PlanStatus, string> = {

@@ -393,15 +393,49 @@ function estimateTokens(content: string): number {
   return Math.ceil(content.length / 4);
 }
 
+// ---- Tech-stack Knowledge Filtering ----
+
+/**
+ * Tech-stack to knowledge project mapping.
+ * Each tech stack only matches its own knowledge + shared/universal entries.
+ */
+const TECHSTACK_KNOWLEDGE_PROJECTS: Record<string, string[]> = {
+  "java-backend": ["java-backend", "shared"],
+  "vue-frontend": ["qiqiao", "qixi", "do1cloud-qiqiao-console-web", "shared"],
+  "mixed": ["shared"], // mixed projects get only shared knowledge in universal layer
+  "unknown": [],       // no filtering — keep backward compat
+};
+
+/**
+ * Filter knowledge entries to only include those relevant to the detected tech stack.
+ * Projects not in the mapping are treated as "shared" (universal).
+ */
+function filterByTechStack(entries: KnowledgeEntry[], techStack?: TechStack): KnowledgeEntry[] {
+  if (!techStack || techStack === "unknown") return entries;
+
+  const allowedProjects = TECHSTACK_KNOWLEDGE_PROJECTS[techStack];
+  if (!allowedProjects) return entries;
+
+  return entries.filter((e) => {
+    // Always include entries with no project (universal)
+    if (!e.project) return true;
+    // Include if project is in the allowed list
+    if (allowedProjects.includes(e.project)) return true;
+    return false;
+  });
+}
+
 // ---- Layered Knowledge Injection ----
 
 export function getKnowledgeForReview(project: string, module?: string, changedFiles?: string[], techStack?: TechStack): KnowledgeEntry[] {
   const db = getDb();
 
-  // Layer 1: Universal AP (HIGH, all projects)
-  const layer1 = db.prepare(
+  // Layer 1: Universal AP (shared + tech-stack matched, not all projects)
+  // Avoid injecting irrelevant knowledge (e.g., Vue AP into Java reviews)
+  const layer1Candidates = db.prepare(
     `SELECT * FROM knowledge_entries WHERE type = 'AP' AND severity IN ('CRITICAL', 'HIGH') AND status = 'CONFIRMED'`
   ).all() as KnowledgeEntry[];
+  const layer1 = filterByTechStack(layer1Candidates, techStack);
 
   // Layer 2: Project AP
   const layer2 = db.prepare(
