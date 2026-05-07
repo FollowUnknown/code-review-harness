@@ -12,6 +12,7 @@ import { saveReviewRecord, computeReviewStats } from "../services/review-store";
 import { saveLLMLog } from "../services/llm-logger";
 import { buildLocalScanContext, buildRelatedFilesPrompt } from "../services/local-scan";
 import { inferModuleFromPaths } from "../services/module-utils";
+import { createJob, findJobById, findActiveJobByUser, updateJob } from "../services/review-job-store";
 import type { LocalReviewRequest } from "../../shared/types";
 
 const router = Router();
@@ -21,13 +22,52 @@ interface ProgressEvent {
   status: "running" | "done" | "error";
   label: string;
   detail?: string;
-  progress?: number;
+  jobId?: string;
 }
 
 function sendSSE(res: Response, event: ProgressEvent) {
   res.write(`data: ${JSON.stringify(event)}\n\n`);
 }
 
+// GET /local/active — find running job for current user
+router.get("/local/active", (req: Request, res: Response) => {
+  const userId = (req as Request & { user?: { id: string } }).user?.id || null;
+  if (!userId) { res.json(null); return; }
+
+  const job = findActiveJobByUser(userId);
+  if (!job) { res.json(null); return; }
+
+  res.json({
+    id: job.id,
+    status: job.status,
+    currentStep: job.currentStep,
+    currentLabel: job.currentLabel,
+    steps: job.stepsJson ? JSON.parse(job.stepsJson) : [],
+    reviewId: job.reviewId,
+    errorMessage: job.errorMessage,
+    project: job.project,
+    sourceBranch: job.sourceBranch,
+    targetBranch: job.targetBranch,
+  });
+});
+
+// GET /local/:jobId — poll job status
+router.get("/local/:jobId", (req: Request, res: Response) => {
+  const job = findJobById(req.params.jobId as string);
+  if (!job) { res.status(404).json({ error: "Job not found" }); return; }
+
+  res.json({
+    id: job.id,
+    status: job.status,
+    currentStep: job.currentStep,
+    currentLabel: job.currentLabel,
+    steps: job.stepsJson ? JSON.parse(job.stepsJson) : [],
+    reviewId: job.reviewId,
+    errorMessage: job.errorMessage,
+  });
+});
+
+// POST /local — start review with job tracking
 router.post("/local", async (req: Request, res: Response) => {
   const { project, sourceBranch, targetBranch }: LocalReviewRequest = req.body;
 
@@ -48,39 +88,76 @@ router.post("/local", async (req: Request, res: Response) => {
     return;
   }
 
+  // Create job record
+  const userId = (req as Request & { user?: { id: string } }).user?.id || null;
+  const excludedFiles = req.body.excludedFiles || [];
+  const job = createJob({
+    project,
+    sourceBranch,
+    targetBranch,
+    excludedFilesJson: excludedFiles.length > 0 ? JSON.stringify(excludedFiles) : null,
+    createdBy: userId,
+  });
+
   // Switch to SSE
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
+  // Send jobId as first event so client can store it for recovery
+  sendSSE(res, { step: 0, status: "done", label: "init", jobId: job.id });
+
+  // Abort detection
+  let aborted = false;
+  res.on("close", () => {
+    aborted = true;
+    updateJob(job.id, { status: "aborted", errorMessage: "Client disconnected" });
+  });
+
+  // Update job to running
+  updateJob(job.id, { status: "running" });
+
   let step = 0;
-  const nextStep = (label: string, detail?: string) => { step++; sendSSE(res, { step, status: "running", label, detail }); };
-  const completeStep = (detail?: string) => { sendSSE(res, { step, status: "done", label: "", detail }); };
+  const accumulatedSteps: string[] = [];
+  const nextStep = (label: string, detail?: string) => {
+    step++;
+    accumulatedSteps.push(`${label}: ${detail || ""}`);
+    updateJob(job.id, { currentStep: step, currentLabel: label, stepsJson: JSON.stringify(accumulatedSteps) });
+    sendSSE(res, { step, status: "running", label, detail });
+  };
+  const completeStep = (detail?: string) => {
+    sendSSE(res, { step, status: "done", label: "", detail });
+  };
 
   try {
     // Step 1: Scan local repo
+    if (aborted) { res.end(); return; }
     nextStep("Scanning local repo", `${mapping.localPath}: ${targetBranch}..${sourceBranch}`);
     const context = await buildLocalScanContext(mapping.localPath, targetBranch, sourceBranch);
     completeStep(`${context.diffs.length} files changed, ${context.relatedFiles.length} related files`);
 
     // Filter excluded files (v1.3.5)
-    const excludedFiles: string[] = req.body.excludedFiles || [];
     const diffs = excludedFiles.length > 0
       ? context.diffs.filter((d: { new_path: string }) => !excludedFiles.includes(d.new_path))
       : context.diffs;
 
     if (diffs.length === 0) {
+      updateJob(job.id, { status: "completed", stepsJson: JSON.stringify(accumulatedSteps) });
       sendSSE(res, { step: step + 1, status: "done", label: "No changes", detail: "No diff found between branches" });
       res.end();
       return;
     }
+
+    if (aborted) { res.end(); return; }
 
     // Step 2: Classify
     nextStep("Classifying files");
     const { summary: classification, batchDiffs } = classify(diffs);
     const batchLevels = classification.batches.map((b) => b.level);
     completeStep();
+
+    if (aborted) { res.end(); return; }
 
     // Step 3: Load knowledge — infer module from diff file paths
     nextStep("Loading knowledge base");
@@ -100,12 +177,15 @@ router.post("/local", async (req: Request, res: Response) => {
     const totalBatches = batchDiffs.length;
 
     if (totalBatches === 0) {
+      updateJob(job.id, { status: "completed", stepsJson: JSON.stringify(accumulatedSteps) });
       sendSSE(res, { step: step + 1, status: "done", label: "No files to review", detail: "All files skipped" });
       res.end();
       return;
     }
 
     for (let i = 0; i < totalBatches; i++) {
+      if (aborted) break;
+
       const level = batchLevels[i];
       nextStep(`Reviewing batch ${i + 1}/${totalBatches}`, `Level ${level}`);
 
@@ -147,6 +227,8 @@ router.post("/local", async (req: Request, res: Response) => {
       completeStep(`${batchDiffs[i].length} files reviewed`);
     }
 
+    if (aborted) { res.end(); return; }
+
     const report = mergeReports(batchReports, dimensions);
     const stats = computeReviewStats(report);
 
@@ -166,7 +248,7 @@ router.post("/local", async (req: Request, res: Response) => {
       avg_score: stats.avgScore,
       issue_count: stats.issueCount,
       critical_count: stats.criticalCount,
-      created_by: (req as Request & { user?: { id: string } }).user?.id || null,
+      created_by: userId,
       knowledge_dispositions_json: JSON.stringify(suggestDispositions(report.issues)),
     });
 
@@ -179,11 +261,17 @@ router.post("/local", async (req: Request, res: Response) => {
     }
 
     const response = { reviewId, report, classification, localScan: { relatedFiles: context.relatedFiles.length, totalTokens: context.totalTokens } };
+
+    // Mark job completed with reviewId
+    updateJob(job.id, { status: "completed", reviewId, stepsJson: JSON.stringify(accumulatedSteps) });
+
     sendSSE(res, { step: step + 1, status: "done", label: "COMPLETE", detail: JSON.stringify(response) });
     res.end();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    sendSSE(res, { step, status: "error", label: message.length > 200 ? message.slice(0, 200) + "..." : message });
+    const shortMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
+    updateJob(job.id, { status: "failed", errorMessage: shortMessage, stepsJson: JSON.stringify(accumulatedSteps) });
+    sendSSE(res, { step, status: "error", label: shortMessage });
     res.end();
   }
 });

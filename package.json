@@ -4,9 +4,10 @@
   "private": true,
   "description": "可视化代码评审 Web 应用",
   "scripts": {
+    "predev": "lsof -ti :3001 -ti :5173 | xargs kill -9 2>/dev/null || true",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "tsx watch src/server/index.ts",
-    "dev:client": "vite",
+    "dev:client": "vite --host",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "tsc -p tsconfig.server.json",

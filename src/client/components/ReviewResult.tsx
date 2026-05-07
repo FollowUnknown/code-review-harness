@@ -546,6 +546,82 @@ function IssuesSection({ issues, reviewId, project }: IssuesSectionProps) {
   const [expandedIssues, setExpandedIssues] = useState<Set<number>>(new Set());
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
+  // Export issues grouped by file as Markdown
+  function exportByFile() {
+    const filtered = filteredIssues;
+    const groups: Record<string, ReviewIssue[]> = {};
+    filtered.forEach((issue) => {
+      const key = issue.file || "Unknown File";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(issue);
+    });
+
+    const date = new Date().toISOString().split("T")[0];
+    const lines: string[] = [
+      `# Code Review Issues — ${project || "Project"}`,
+      "",
+      `> Review ID: ${reviewId || "—"}`,
+      `> Date: ${date}`,
+      `> Total Issues: ${filtered.length}`,
+      "",
+      "---",
+      "",
+    ];
+
+    // Summary table
+    const severityCounts: Record<string, number> = {};
+    filtered.forEach((i) => { severityCounts[i.severity] = (severityCounts[i.severity] || 0) + 1; });
+    lines.push("## Summary", "");
+    lines.push("| Severity | Count |", "|----------|-------|");
+    for (const sev of ["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const) {
+      if (severityCounts[sev]) lines.push(`| ${sev} | ${severityCounts[sev]} |`);
+    }
+    lines.push("", `**Files affected: ${Object.keys(groups).length}**`, "", "---", "");
+
+    // Issues by file
+    const sortedFiles = Object.keys(groups).sort();
+    for (const file of sortedFiles) {
+      const fileIssues = groups[file];
+      lines.push(`## \`${file}\``, "");
+      lines.push(`**${fileIssues.length} issue(s)**`, "");
+
+      for (let i = 0; i < fileIssues.length; i++) {
+        const issue = fileIssues[i];
+        const location = issue.line ? `L${issue.line}` : "";
+        lines.push(`### ${i + 1}. [${issue.severity}] ${issue.message}`);
+        lines.push("");
+        if (location) lines.push(`- **Location**: ${location}`);
+        if (issue.suggestion) lines.push(`- **Suggestion**: ${issue.suggestion}`);
+        // Checkbox for re-review tracking
+        lines.push("", `- [ ] Fixed`, "");
+      }
+
+      lines.push("---", "");
+    }
+
+    // Re-review section
+    lines.push("## Re-review Checklist", "");
+    lines.push("After fixing all issues, fill in this section and re-import for re-review:", "");
+    lines.push("```json");
+    lines.push(JSON.stringify({
+      reviewId,
+      project,
+      fileFixes: sortedFiles.map((f) => ({
+        file: f,
+        fixedIssues: groups[f].map((i) => ({ severity: i.severity, message: i.message, fixed: false })),
+      })),
+    }, null, 2));
+    lines.push("```");
+
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `review-${reviewId || "issues"}-by-file.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   // Filter and search issues
   const filteredIssues = useMemo(() => {
     return issues.filter((issue) => {
@@ -645,6 +721,14 @@ function IssuesSection({ issues, reviewId, project }: IssuesSectionProps) {
               <option value="severity">Group by Severity</option>
             </select>
           </div>
+
+          {/* Export by File */}
+          <button
+            onClick={exportByFile}
+            className="px-3 py-1.5 text-xs border border-slate-700/50 rounded-lg text-slate-400 hover:text-white transition-all"
+          >
+            Export by File
+          </button>
         </div>
 
         {/* Severity Filter Pills */}
@@ -825,33 +909,37 @@ function CreateKnowledgeButton({ issue, reviewId, project }: {
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createdType, setCreatedType] = useState<"BN" | "RULE" | null>(null);
 
   function handleCreate(type: "BN" | "RULE") {
     setCreating(true);
     setError(null);
+    const body = {
+      type,
+      project: project || "unknown",
+      title: issue.message.slice(0, 80),
+      content: issue.suggestion || issue.message,
+      source_review: reviewId,
+      source_type: "交叉评审",
+      source_file: issue.file ? JSON.stringify([issue.file]) : undefined,
+      severity: issue.severity === "CRITICAL" ? "CRITICAL" : "HIGH",
+    };
     fetch(`${API_BASE}/api/knowledge`, {
       method: "POST",
       headers: { ...authHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type,
-        project: project || "unknown",
-        title: issue.message.slice(0, 80),
-        content: issue.suggestion || issue.message,
-        source_review: reviewId,
-        source_type: "交叉评审",
-        source_file: issue.file ? JSON.stringify([issue.file]) : undefined,
-        severity: issue.severity === "CRITICAL" ? "CRITICAL" : "HIGH",
-      }),
+      body: JSON.stringify(body),
     })
-      .then((r) => {
+      .then(async (r) => {
         if (!r.ok) {
           if (r.status === 401) throw new Error("请先登录");
-          return r.json().then((d: { error?: string }) => { throw new Error(d.error || "创建失败"); }).catch(() => { throw new Error("创建失败"); });
+          let msg = "创建失败";
+          try { const d = await r.json(); if (d.error) msg = d.error; } catch { /* ignore */ }
+          throw new Error(msg);
         }
         return r.json();
       })
       .then(() => {
-        setShowModal(false);
+        setCreatedType(type);
         setCreating(false);
       })
       .catch((err) => {
@@ -866,7 +954,7 @@ function CreateKnowledgeButton({ issue, reviewId, project }: {
         onClick={() => setShowModal(true)}
         className="px-1.5 py-0.5 text-[10px] bg-slate-700/30 text-slate-500 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-all"
       >
-        + Knowledge
+        {createdType ? "✓ Knowledge" : "+ Knowledge"}
       </button>
       <AnimatePresence>
         {showModal && (
@@ -887,6 +975,12 @@ function CreateKnowledgeButton({ issue, reviewId, project }: {
               <h4 className="text-sm font-semibold text-slate-200">Create Knowledge from Issue</h4>
               <p className="text-xs text-slate-400 bg-slate-800/40 rounded p-2">{issue.message}</p>
               {error && <p className="text-xs text-red-400 bg-red-500/10 rounded p-2">{error}</p>}
+              {createdType ? (
+                <div className="flex items-center gap-2 px-3 py-2 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  <span>{createdType === "BN" ? "Business Noun" : "Business Rule"} created</span>
+                </div>
+              ) : (
               <div className="flex gap-3">
                 <button
                   onClick={() => handleCreate("BN")}
@@ -903,6 +997,7 @@ function CreateKnowledgeButton({ issue, reviewId, project }: {
                   Business Rule (RULE)
                 </button>
               </div>
+              )}
               <button
                 onClick={() => setShowModal(false)}
                 className="w-full px-3 py-1.5 text-xs text-slate-500 hover:text-slate-300 transition-all"

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileSelectorDialog } from "../components/FileSelectorDialog";
@@ -17,12 +17,77 @@ export function LocalReviewPage() {
   const [steps, setSteps] = useState<string[]>([]);
   const [preview, setPreview] = useState<DiffPreviewResponse | null>(null);
   const [allFilePaths, setAllFilePaths] = useState<string[]>([]);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const jobIdRef = useRef<string | null>(null);
 
   const token = localStorage.getItem("auth_token");
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
+
+  // Poll job status when SSE is disconnected
+  const pollJobStatus = useCallback(async (jobId: string) => {
+    const poll = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/review/local/${jobId}`, { headers });
+        if (!res.ok) { setLoading(false); return; }
+        const job = await res.json();
+
+        setSteps(job.steps || []);
+
+        if (job.status === "completed" && job.reviewId) {
+          setReviewId(job.reviewId);
+          setLoading(false);
+          return;
+        }
+
+        if (job.status === "failed" || job.status === "aborted") {
+          setError(job.errorMessage || "Review failed");
+          setLoading(false);
+          return;
+        }
+
+        // Still running — poll again after 2 seconds
+        pollingRef.current = setTimeout(poll, 2000);
+      } catch {
+        setError("Failed to check job status");
+        setLoading(false);
+      }
+    };
+    poll();
+  }, [headers]);
+
+  // On mount: check for active running job
+  useEffect(() => {
+    async function checkActiveJob() {
+      try {
+        const res = await fetch(`${API_BASE}/api/review/local/active`, { headers });
+        if (!res.ok) return;
+        const job = await res.json();
+        if (!job || job.status !== "running") return;
+
+        // Found an in-progress job — restore UI state
+        setProject(job.project);
+        setSourceBranch(job.sourceBranch);
+        setTargetBranch(job.targetBranch);
+        setSteps(job.steps || []);
+        setCurrentJobId(job.id);
+        jobIdRef.current = job.id;
+        setLoading(true);
+
+        // Start polling for completion
+        pollJobStatus(job.id);
+      } catch { /* ignore */ }
+    }
+    checkActiveJob();
+
+    return () => {
+      if (pollingRef.current) clearTimeout(pollingRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async () => {
     if (!project || !sourceBranch || !targetBranch) {
@@ -117,6 +182,13 @@ export function LocalReviewPage() {
             if (line.startsWith("data: ")) {
               try {
                 const event = JSON.parse(line.slice(6));
+
+                // Capture jobId from first event for recovery
+                if (event.jobId) {
+                  setCurrentJobId(event.jobId);
+                  jobIdRef.current = event.jobId;
+                }
+
                 if (event.status === "running") {
                   setSteps((prev) => [...prev, `${event.label}: ${event.detail || ""}`]);
                 }
@@ -132,6 +204,11 @@ export function LocalReviewPage() {
         }
       }
     } catch (err) {
+      // SSE connection lost — fall back to polling if we have a jobId
+      if (jobIdRef.current) {
+        pollJobStatus(jobIdRef.current);
+        return;
+      }
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);

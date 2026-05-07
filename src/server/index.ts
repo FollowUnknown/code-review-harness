@@ -15,6 +15,7 @@ import memoryRouter from "./routes/memory";
 import reviewLocalRouter from "./routes/review-local";
 import reviewDiffRouter from "./routes/review-diff";
 import reviewPreviewRouter from "./routes/review-preview";
+import { resetStuckJobs } from "./services/review-job-store";
 import repoMappingRouter from "./routes/repo-mapping";
 import llmRouter from "./llm/router";
 
@@ -53,4 +54,8 @@ app.get("/{*splat}", (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  const resetCount = resetStuckJobs();
+  if (resetCount > 0) {
+    console.log(`Reset ${resetCount} stuck review jobs`);
+  }
 });

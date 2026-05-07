@@ -282,6 +282,27 @@ export interface PlanFilter {
   pageSize: number;
 }
 
+// ---- Review Job Types (v1.3.8) ----
+
+export type ReviewJobStatus = "pending" | "running" | "completed" | "failed" | "aborted";
+
+export interface ReviewJob {
+  id: string;
+  project: string;
+  sourceBranch: string;
+  targetBranch: string;
+  excludedFilesJson: string | null;
+  status: ReviewJobStatus;
+  reviewId: string | null;
+  currentStep: number;
+  currentLabel: string | null;
+  stepsJson: string | null;
+  errorMessage: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---- Auth Types ----
 
 export type UserRole = "admin" | "member";

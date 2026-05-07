@@ -212,6 +212,29 @@ function initialize(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_plan_items_plan_id ON review_plan_items(plan_id);
   `);
 
+  // Review jobs (v1.3.8)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS review_jobs (
+      id TEXT PRIMARY KEY,
+      project TEXT NOT NULL,
+      source_branch TEXT NOT NULL,
+      target_branch TEXT NOT NULL,
+      excluded_files_json TEXT,
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(status IN ('pending', 'running', 'completed', 'failed', 'aborted')),
+      review_id TEXT,
+      current_step INTEGER NOT NULL DEFAULT 0,
+      current_label TEXT,
+      steps_json TEXT,
+      error_message TEXT,
+      created_by TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_review_jobs_status ON review_jobs(status);
+    CREATE INDEX IF NOT EXISTS idx_review_jobs_created_by ON review_jobs(created_by);
+  `);
+
   // Migrate review_plan_items table with branch/author/error_message/reviewed_at columns
   migrateReviewPlanItemsTable(db);
 
