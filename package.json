@@ -30,7 +30,11 @@
     "react-diff-viewer-continued": "^4.0.5",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.14.2",
-    "tailwindcss": "^4.2.4"
+    "tailwindcss": "^4.2.4",
+    "tree-sitter-java": "^0.23.5",
+    "tree-sitter-javascript": "^0.25.0",
+    "tree-sitter-typescript": "^0.23.2",
+    "web-tree-sitter": "^0.26.8"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",

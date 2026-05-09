@@ -6,9 +6,13 @@ dist/
 Thumbs.db
 coverage/
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
 *.key
 *.pem
 .review-passed
 .claude/review-passed
+*.rvf
+*.rvf.lock

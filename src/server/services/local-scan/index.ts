@@ -6,6 +6,9 @@ import { extractChangedSymbols, classifyFile } from "./symbol-extractor";
 import { findRelatedFiles } from "./related-finder";
 import { extractFileContext } from "./context-extractor";
 import { estimateTokens, truncateRelatedFiles, type RelatedFileWithContext } from "./token-budget";
+import { analyzeDiffsWithAST, buildASTContextPrompt, type ASTChangeInfo } from "./ast-analyzer";
+
+export { buildASTContextPrompt };
 
 const MAX_RELATED_FILES = 10;
 const TOKEN_BUDGET = 30000;
@@ -27,6 +30,16 @@ export async function buildLocalScanContext(
   // 2. Extract changed symbols
   const allSymbols = diffs.flatMap((d) => extractChangedSymbols(d.diff));
   const changedSymbols = [...new Set(allSymbols)];
+
+  // 2.5 AST analysis (tree-sitter based, gracefully degrades)
+  let astChanges: ASTChangeInfo[] | undefined;
+  try {
+    astChanges = await analyzeDiffsWithAST(diffs, repoPath);
+    console.log(`[AST] analyzed ${diffs.length} diffs, got ${astChanges?.length ?? 0} results`);
+  } catch (e) {
+    console.error("[AST] analysis failed:", e instanceof Error ? e.message : e);
+    // tree-sitter unavailable, continue without AST
+  }
 
   // 3. Find related files per changed file
   const allRelated = new Map<string, RelatedFile>();
@@ -71,6 +84,7 @@ export async function buildLocalScanContext(
     changedSymbols,
     relatedFiles: budgetResult.accepted,
     totalTokens: budgetResult.totalTokensUsed,
+    astChanges,
   };
 }
 

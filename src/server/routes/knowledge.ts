@@ -4,6 +4,7 @@ import {
   updateEntry,
   confirmEntry,
   deprecateEntry,
+  restoreEntry,
   deleteEntry,
   listEntries,
   listPendingEntries,
@@ -72,7 +73,9 @@ router.post("/", (req: Request, res: Response) => {
 // GET / — List knowledge entries with pagination and filters
 router.get("/", (req: Request, res: Response) => {
   const type = req.query.type as EntryType | undefined;
-  const project = req.query.project as string | undefined;
+  const projectRaw = req.query.project;
+  const project = projectRaw ? (Array.isArray(projectRaw) ? projectRaw as string[] : projectRaw as string) : undefined;
+  const title = req.query.title as string | undefined;
   const status = req.query.status as EntryStatus | undefined;
   const review_status = req.query.review_status as ReviewStatus | undefined;
   const suggested_by = req.query.suggested_by as string | undefined;
@@ -97,7 +100,7 @@ router.get("/", (req: Request, res: Response) => {
     return;
   }
 
-  const result = listEntries({ type, project, status, review_status, suggested_by, page, pageSize });
+  const result = listEntries({ type, project, title, status, review_status, suggested_by, page, pageSize });
   res.json(result);
 });
 
@@ -217,7 +220,24 @@ router.put("/:id/deprecate", (req: Request<{ id: string }>, res: Response) => {
   res.json({ success: true });
 });
 
-// DELETE /:id — Delete entry (TEMP only, admin only)
+// PUT /:id/restore — Restore DEPRECATED entry to CONFIRMED (admin only)
+router.put("/:id/restore", (req: Request<{ id: string }>, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  const entry = getEntry(req.params.id);
+  if (!entry) {
+    res.status(404).json({ error: "Knowledge entry not found" });
+    return;
+  }
+
+  if (!restoreEntry(req.params.id)) {
+    res.status(400).json({ error: "Only DEPRECATED entries can be restored" });
+    return;
+  }
+  res.json({ success: true });
+});
+
+// DELETE /:id — Delete entry (TEMP or DEPRECATED, admin only)
 router.delete("/:id", (req: Request<{ id: string }>, res: Response) => {
   if (!requireAdmin(req, res)) return;
 
@@ -227,7 +247,7 @@ router.delete("/:id", (req: Request<{ id: string }>, res: Response) => {
       res.status(404).json({ error: "Knowledge entry not found" });
       return;
     }
-    res.status(400).json({ error: "Only TEMP entries can be deleted" });
+    res.status(400).json({ error: "Only TEMP or DEPRECATED entries can be deleted" });
     return;
   }
   res.json({ success: true });

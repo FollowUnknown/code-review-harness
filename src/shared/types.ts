@@ -454,11 +454,28 @@ export interface RelatedFile {
   reason: string;                  // 为什么关联（import/call/same-dir）
 }
 
+export interface ASTSymbol {
+  name: string;
+  kind: string;
+  signature?: string;
+  changeType: string;
+  enclosingClass?: string;
+  lineRange: { start: number; end: number };
+}
+
+export interface ASTChangeInfo {
+  filePath: string;
+  language: string;
+  changedSymbols: ASTSymbol[];
+  changeSummary: string;
+}
+
 export interface ScanContext {
   diffs: GitLabDiff[];
   changedSymbols: string[];
   relatedFiles: Array<RelatedFile & { content?: string }>;
   totalTokens: number;
+  astChanges?: ASTChangeInfo[];
 }
 
 // ---- Diff Preview (v1.3.5) ----

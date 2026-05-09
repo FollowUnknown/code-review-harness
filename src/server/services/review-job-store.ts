@@ -54,10 +54,17 @@ export function findJobById(id: string): ReviewJob | null {
 
 export function findActiveJobByUser(userId: string): ReviewJob | null {
   const db = getDb();
+  // Prefer running job, fall back to most recent completed/failed job
   const row = db.prepare(
     "SELECT * FROM review_jobs WHERE created_by = ? AND status = 'running' ORDER BY created_at DESC LIMIT 1"
   ).get(userId) as Record<string, unknown> | undefined;
-  return row ? mapRowToJob(row) : null;
+  if (row) return mapRowToJob(row);
+
+  // No running job — return most recent completed job with a review_id
+  const recentRow = db.prepare(
+    "SELECT * FROM review_jobs WHERE created_by = ? AND status = 'completed' AND review_id IS NOT NULL ORDER BY updated_at DESC LIMIT 1"
+  ).get(userId) as Record<string, unknown> | undefined;
+  return recentRow ? mapRowToJob(recentRow) : null;
 }
 
 export function updateJob(id: string, patch: UpdateJobPatch): boolean {

@@ -41,6 +41,8 @@ export function SettingsPanel({ onClose }: Props) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [showKey, setShowKey] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState<{ ok: boolean; latencyMs?: number; error?: string; model?: string; reply?: string } | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/llm/settings/llm`, { headers: authHeaders() })
@@ -89,6 +91,23 @@ export function SettingsPanel({ onClose }: Props) {
       setMessage(err instanceof Error ? err.message : "Save failed");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCheck() {
+    setChecking(true);
+    setCheckResult(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/llm/settings/llm/check`, {
+        method: "POST",
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      setCheckResult(data as { ok: boolean; latencyMs?: number; error?: string; model?: string; reply?: string });
+    } catch (err) {
+      setCheckResult({ ok: false, error: err instanceof Error ? err.message : "Check failed" });
+    } finally {
+      setChecking(false);
     }
   }
 
@@ -169,7 +188,7 @@ export function SettingsPanel({ onClose }: Props) {
         </motion.p>
       )}
 
-      <div className="mt-5">
+      <div className="mt-5 flex items-center gap-3 flex-wrap">
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
@@ -179,6 +198,34 @@ export function SettingsPanel({ onClose }: Props) {
         >
           {saving ? "Saving..." : "Save Configuration"}
         </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleCheck}
+          disabled={checking}
+          className="px-5 py-2.5 text-sm font-medium bg-slate-700/80 border border-slate-600/50 text-slate-200 rounded-lg disabled:opacity-50 hover:bg-slate-600/80 transition-colors"
+        >
+          {checking ? (
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-3 border-2 border-slate-400/30 border-t-slate-300 rounded-full animate-spin" />
+              Checking...
+            </span>
+          ) : "Test Connection"}
+        </motion.button>
+
+        {checkResult && (
+          <div className={`text-xs px-3 py-1.5 rounded-lg ${
+            checkResult.ok
+              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+              : "bg-red-500/10 text-red-400 border border-red-500/20"
+          }`}>
+            {checkResult.ok
+              ? <span>Connected ({checkResult.latencyMs}ms, {checkResult.model}) — <span className="font-mono opacity-80">{checkResult.reply}</span></span>
+              : <span>Failed: {checkResult.error}</span>
+            }
+          </div>
+        )}
       </div>
     </div>
   );

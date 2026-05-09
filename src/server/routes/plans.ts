@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { createPlan, findPlanById, listPlans, updatePlan, deletePlan, addPlanItems, removePlanItem, updatePlanItem, getPlanDetail } from "../services/plan-store";
 import { findReviewById } from "../services/review-store";
 import { computePlanSummary, exportPlanMarkdown } from "../services/exporter";
+import { analyzeDiffsWithAST, buildASTContextPrompt } from "../services/local-scan/ast-analyzer";
 import { getLLMConfig } from "../llm";
 import { callLLM } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
@@ -204,6 +205,15 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
       const knowledgePrompt = knowledge.length > 0 ? buildKnowledgePrompt(knowledge) : "";
       const userPromptPrefix = getReviewUserPrompt();
 
+      // AST analysis for structural context
+      let astPrompt = "";
+      try {
+        const astChanges = await analyzeDiffsWithAST(diffs);
+        astPrompt = buildASTContextPrompt(astChanges);
+      } catch {
+        // tree-sitter unavailable, continue without AST
+      }
+
       const reviewId = `R-${randomUUID().slice(0, 8)}`;
       const batchReports = [];
 
@@ -211,7 +221,7 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
         if (aborted) { console.log(`[Plan ${plan.id}] MR ${mi + 1} batch ${i}: ABORTED, skipping LLM`); break; }
         const diffText = batchDiffs[i].map((d: { old_path: string; new_path: string; diff: string }) => `--- ${d.old_path}\n+++ ${d.new_path}\n${d.diff}`).join("\n\n");
         const systemPrompt = getReviewPrompt({ dimensions, batchIndex: i, totalBatches: batchDiffs.length, riskLevel: batchLevels[i], requirement: reqPrompt, knowledge: knowledgePrompt });
-        const userMessage = `${userPromptPrefix}${diffText}`;
+        const userMessage = `${userPromptPrefix}${astPrompt}${diffText}`;
         const startTime = Date.now();
         const result = await callLLM(systemPrompt, userMessage, llmConfig);
 

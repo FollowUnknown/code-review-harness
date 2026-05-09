@@ -10,7 +10,7 @@ import { getDimensionsForProject } from "../services/dimensions";
 import { inferTechStack } from "../services/techstack";
 import { saveReviewRecord, computeReviewStats } from "../services/review-store";
 import { saveLLMLog } from "../services/llm-logger";
-import { buildLocalScanContext, buildRelatedFilesPrompt } from "../services/local-scan";
+import { buildLocalScanContext, buildRelatedFilesPrompt, buildASTContextPrompt } from "../services/local-scan";
 import { inferModuleFromPaths } from "../services/module-utils";
 import { createJob, findJobById, findActiveJobByUser, updateJob } from "../services/review-job-store";
 import type { LocalReviewRequest } from "../../shared/types";
@@ -76,6 +76,16 @@ router.post("/local", async (req: Request, res: Response) => {
     return;
   }
 
+  // Prevent duplicate reviews: check if user already has a running job
+  const userId = (req as Request & { user?: { id: string } }).user?.id || null;
+  if (userId) {
+    const activeJob = findActiveJobByUser(userId);
+    if (activeJob && activeJob.status === "running") {
+      res.status(409).json({ error: "已有评审正在进行中，请等待完成后再发起", jobId: activeJob.id });
+      return;
+    }
+  }
+
   const llmConfig = getLLMConfig();
   if (!llmConfig.apiKey) {
     res.status(500).json({ error: "LLM API key not configured" });
@@ -89,14 +99,14 @@ router.post("/local", async (req: Request, res: Response) => {
   }
 
   // Create job record
-  const userId = (req as Request & { user?: { id: string } }).user?.id || null;
+  const jobUserId = (req as Request & { user?: { id: string } }).user?.id || null;
   const excludedFiles = req.body.excludedFiles || [];
   const job = createJob({
     project,
     sourceBranch,
     targetBranch,
     excludedFilesJson: excludedFiles.length > 0 ? JSON.stringify(excludedFiles) : null,
-    createdBy: userId,
+    createdBy: jobUserId,
   });
 
   // Switch to SSE
@@ -108,11 +118,22 @@ router.post("/local", async (req: Request, res: Response) => {
   // Send jobId as first event so client can store it for recovery
   sendSSE(res, { step: 0, status: "done", label: "init", jobId: job.id });
 
-  // Abort detection
+  // Abort detection: SSE close doesn't mean client left (polling may continue)
+  // Only mark aborted if no polling happens within 30 seconds after close
   let aborted = false;
+  let sseDisconnected = false;
+  let abortTimeout: ReturnType<typeof setTimeout> | null = null;
   res.on("close", () => {
-    aborted = true;
-    updateJob(job.id, { status: "aborted", errorMessage: "Client disconnected" });
+    sseDisconnected = true;
+    // Wait 30s — if client is polling, the job status endpoint will be hit
+    abortTimeout = setTimeout(() => {
+      // Only abort if job is still running (polling would have seen completed)
+      const currentJob = findJobById(job.id);
+      if (currentJob && currentJob.status === "running") {
+        aborted = true;
+        updateJob(job.id, { status: "aborted", errorMessage: "Client disconnected" });
+      }
+    }, 30_000);
   });
 
   // Update job to running
@@ -171,6 +192,7 @@ router.post("/local", async (req: Request, res: Response) => {
     const dimensions = getDimensionsForProject(project, techStack);
     const knowledgePrompt = knowledge.length > 0 ? buildKnowledgePrompt(knowledge) : "";
     const relatedPrompt = buildRelatedFilesPrompt(context);
+    const astPrompt = buildASTContextPrompt(context.astChanges ?? []);
     const userPromptPrefix = getReviewUserPrompt();
 
     const batchReports = [];
@@ -202,7 +224,7 @@ router.post("/local", async (req: Request, res: Response) => {
         knowledge: knowledgePrompt,
       });
 
-      const userMessage = `${userPromptPrefix}${relatedPrompt}\n\n${diffText}`;
+      const userMessage = `${userPromptPrefix}${astPrompt}${relatedPrompt}\n\n${diffText}`;
       const startTime = Date.now();
       const result = await callLLM(systemPrompt, userMessage, llmConfig);
       const durationMs = Date.now() - startTime;
@@ -266,8 +288,10 @@ router.post("/local", async (req: Request, res: Response) => {
     updateJob(job.id, { status: "completed", reviewId, stepsJson: JSON.stringify(accumulatedSteps) });
 
     sendSSE(res, { step: step + 1, status: "done", label: "COMPLETE", detail: JSON.stringify(response) });
+    if (abortTimeout) clearTimeout(abortTimeout);
     res.end();
   } catch (error) {
+    if (abortTimeout) clearTimeout(abortTimeout);
     const message = error instanceof Error ? error.message : "Unknown error";
     const shortMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
     updateJob(job.id, { status: "failed", errorMessage: shortMessage, stepsJson: JSON.stringify(accumulatedSteps) });

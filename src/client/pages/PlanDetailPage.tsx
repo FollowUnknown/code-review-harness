@@ -17,12 +17,24 @@ export function PlanDetailPage() {
   const [batchRunning, setBatchRunning] = useState(false);
   const [sseSteps, setSseSteps] = useState<Array<{ step: number; status: string; label: string; detail?: string }>>([]);
 
+  const [error, setError] = useState<string | null>(null);
+
   const loadPlan = useCallback(() => {
     if (!id) return;
+    setLoading(true);
+    setError(null);
     fetch(`${API_BASE}/api/plans/${id}`, { headers: authHeaders() })
-      .then((r) => r.json()).then(setPlan).catch(() => setPlan(null)).finally(() => setLoading(false));
+      .then((r) => {
+        if (!r.ok) throw new Error(r.status === 403 ? "无权访问此 Plan" : r.status === 404 ? "Plan 不存在" : "加载失败");
+        return r.json();
+      })
+      .then(setPlan)
+      .catch((err) => { setError(err.message); setPlan(null); })
+      .finally(() => setLoading(false));
     fetch(`${API_BASE}/api/plans/${id}/summary`, { headers: authHeaders() })
-      .then((r) => r.json()).then(setSummary).catch(() => setSummary(null));
+      .then((r) => { if (r.ok) return r.json(); throw new Error(""); })
+      .then(setSummary)
+      .catch(() => setSummary(null));
   }, [id]);
 
   useEffect(() => { loadPlan(); }, [loadPlan]);
@@ -100,6 +112,7 @@ export function PlanDetailPage() {
   }
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" /></div>;
+  if (error) return <div className="py-8 text-center"><p className="text-sm text-red-400">{error}</p><Link to="/plans" className="text-xs text-slate-500 hover:text-blue-400 mt-2 inline-block">&larr; Back to plans</Link></div>;
   if (!plan) return <div className="py-8 text-center"><p className="text-sm text-red-400">Plan not found</p><Link to="/plans" className="text-xs text-slate-500 hover:text-blue-400 mt-2 inline-block">Back to plans</Link></div>;
 
   const pendingCount = plan.items.filter((i) => i.status === "pending").length;

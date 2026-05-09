@@ -106,13 +106,14 @@ function severityBadge(severity: Severity | null) {
 }
 
 function statusBadge(status: KnowledgeStatus) {
-  const map: Record<KnowledgeStatus, string> = {
-    TEMP: "bg-yellow-500/15 text-yellow-400",
-    CONFIRMED: "bg-emerald-500/15 text-emerald-400",
-    DEPRECATED: "bg-slate-500/15 text-slate-400",
+  const config: Record<KnowledgeStatus, { cls: string; hint: string }> = {
+    CONFIRMED: { cls: "bg-emerald-500/15 text-emerald-400", hint: "参与评审" },
+    TEMP: { cls: "bg-yellow-500/15 text-yellow-400", hint: "待确认，不参与评审" },
+    DEPRECATED: { cls: "bg-slate-500/15 text-slate-400", hint: "已废弃，不参与评审" },
   };
+  const { cls, hint } = config[status];
   return (
-    <span className={`px-1.5 py-0.5 text-[10px] rounded ${map[status]}`}>
+    <span className={`px-1.5 py-0.5 text-[10px] rounded ${cls}`} title={hint}>
       {status}
     </span>
   );
@@ -451,7 +452,9 @@ export function KnowledgePage() {
   const [page, setPage] = useState(1);
   const [type, setType] = useState<KnowledgeType>("AP");
   const [statusFilter, setStatusFilter] = useState<KnowledgeStatus | "">("");
-  const [projectFilter, setProjectFilter] = useState("");
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
+  const [titleSearch, setTitleSearch] = useState("");
   const [selected, setSelected] = useState<KnowledgeItem | null>(null);
   const [viewTab, setViewTab] = useState<"browse" | "review" | "suggest">("browse");
 
@@ -495,14 +498,28 @@ export function KnowledgePage() {
       pageSize: String(PAGE_SIZE),
     });
     if (statusFilter) params.set("status", statusFilter);
-    if (projectFilter) params.set("project", projectFilter);
+    if (selectedProjects.length > 0) {
+      for (const p of selectedProjects) params.append("project", p);
+    }
+    if (titleSearch) params.set("title", titleSearch);
 
     fetch(`${API_BASE}/api/knowledge?${params}`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setData(d))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, [type, page, statusFilter, projectFilter]);
+  }, [type, page, statusFilter, selectedProjects, titleSearch]);
+
+  // Close project dropdown on outside click
+  useEffect(() => {
+    if (!projectDropdownOpen) return;
+    function handleClick(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (!target.closest(".project-dropdown-container")) setProjectDropdownOpen(false);
+    }
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, [projectDropdownOpen]);
 
   useEffect(() => {
     fetchData();
@@ -565,6 +582,19 @@ export function KnowledgePage() {
       fetchData();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Failed to deprecate");
+    }
+  }
+
+  async function restoreItem(id: string) {
+    try {
+      const res = await fetch(`${API_BASE}/api/knowledge/${id}/restore`, {
+        method: "PUT",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || "restore failed"); }
+      fetchData();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to restore");
     }
   }
 
@@ -652,11 +682,30 @@ export function KnowledgePage() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold text-slate-200">Knowledge Base</h2>
-          {stats && (
-            <span className="text-[10px] text-slate-500">
-              {stats.reduce((sum, s) => sum + s.count, 0)} entries
-            </span>
-          )}
+          {stats && (() => {
+            const confirmed = stats.filter((s) => s.status === "CONFIRMED").reduce((sum, s) => sum + s.count, 0);
+            const temp = stats.filter((s) => s.status === "TEMP").reduce((sum, s) => sum + s.count, 0);
+            const deprecated = stats.filter((s) => s.status === "DEPRECATED").reduce((sum, s) => sum + s.count, 0);
+            return (
+              <div className="flex items-center gap-3 text-[10px]">
+                <button
+                  onClick={() => { setStatusFilter(statusFilter === "CONFIRMED" ? "" : "CONFIRMED"); setPage(1); }}
+                  className={`transition-colors ${statusFilter === "CONFIRMED" ? "text-emerald-300 underline" : "text-emerald-400 hover:text-emerald-300"} font-medium`}
+                  title="参与评审"
+                >&#10003; {confirmed} Active</button>
+                <button
+                  onClick={() => { setStatusFilter(statusFilter === "TEMP" ? "" : "TEMP"); setPage(1); }}
+                  className={`transition-colors ${statusFilter === "TEMP" ? "text-yellow-300 underline" : "text-yellow-400 hover:text-yellow-300"}`}
+                  title="待确认，不参与评审"
+                >&#9203; {temp} Pending</button>
+                <button
+                  onClick={() => { setStatusFilter(statusFilter === "DEPRECATED" ? "" : "DEPRECATED"); setPage(1); }}
+                  className={`transition-colors ${statusFilter === "DEPRECATED" ? "text-slate-300 underline" : "text-slate-500 hover:text-slate-300"}`}
+                  title="已废弃，不参与评审"
+                >&#8722; {deprecated} Deprecated</button>
+              </div>
+            );
+          })()}
         </div>
 
         {/* View tabs */}
@@ -891,17 +940,84 @@ export function KnowledgePage() {
               className="px-2 py-1 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-400"
             >
               <option value="">All status</option>
-              <option value="TEMP">TEMP</option>
-              <option value="CONFIRMED">CONFIRMED</option>
-              <option value="DEPRECATED">DEPRECATED</option>
+              {stats && (() => {
+                const confirmed = stats.filter((s) => s.status === "CONFIRMED").reduce((sum, s) => sum + s.count, 0);
+                const temp = stats.filter((s) => s.status === "TEMP").reduce((sum, s) => sum + s.count, 0);
+                const deprecated = stats.filter((s) => s.status === "DEPRECATED").reduce((sum, s) => sum + s.count, 0);
+                return (
+                  <>
+                    <option value="CONFIRMED">CONFIRMED — {confirmed} (参与评审)</option>
+                    <option value="TEMP">TEMP — {temp} (待确认)</option>
+                    <option value="DEPRECATED">DEPRECATED — {deprecated} (已废弃)</option>
+                  </>
+                );
+              })()}
+              {!stats && (
+                <>
+                  <option value="CONFIRMED">CONFIRMED</option>
+                  <option value="TEMP">TEMP</option>
+                  <option value="DEPRECATED">DEPRECATED</option>
+                </>
+              )}
             </select>
 
+            {/* Project multi-select dropdown */}
+            <div className="relative project-dropdown-container">
+              <button
+                onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
+                className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-400 hover:border-slate-600 transition-colors"
+              >
+                Project{selectedProjects.length > 0 && <span className="text-emerald-400 ml-1">({selectedProjects.length})</span>}
+                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              {projectDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1 z-50 min-w-[200px] max-h-[240px] overflow-y-auto bg-slate-800 border border-slate-700/50 rounded-lg shadow-xl py-1">
+                  {(() => {
+                    const projects = stats ? [...new Set(stats.map((s) => s.project))].sort() : [];
+                    if (projects.length === 0) return <span className="block px-3 py-1.5 text-xs text-slate-500">No projects</span>;
+                    return (
+                      <>
+                        <button
+                          onClick={() => { setSelectedProjects([]); setPage(1); }}
+                          className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-700/50 transition-colors ${selectedProjects.length === 0 ? "text-white" : "text-slate-400"}`}
+                        >
+                          All projects
+                        </button>
+                        <div className="border-t border-slate-700/50 my-1" />
+                        {projects.map((p) => {
+                          const selected = selectedProjects.includes(p);
+                          const count = stats!.filter((s) => s.project === p).reduce((sum, s) => sum + s.count, 0);
+                          return (
+                            <button
+                              key={p}
+                              onClick={() => {
+                                setSelectedProjects((prev) =>
+                                  prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+                                );
+                                setPage(1);
+                              }}
+                              className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-slate-700/50 transition-colors ${selected ? "text-white" : "text-slate-400"}`}
+                            >
+                              <span className={`w-3 h-3 rounded border flex-shrink-0 flex items-center justify-center text-[8px] ${selected ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-600"}`}>
+                                {selected && "✓"}
+                              </span>
+                              <span className="truncate flex-1">{p}</span>
+                              <span className="text-slate-600">{count}</span>
+                            </button>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
             <input
               type="text"
-              placeholder="Filter by project..."
-              value={projectFilter}
+              placeholder="Search title..."
+              value={titleSearch}
               onChange={(e) => {
-                setProjectFilter(e.target.value);
+                setTitleSearch(e.target.value);
                 setPage(1);
               }}
               className="px-2 py-1 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-300 placeholder-slate-600 w-48"
@@ -978,6 +1094,22 @@ export function KnowledgePage() {
                         >
                           Deprecate
                         </button>
+                      )}
+                      {item.status === "DEPRECATED" && (
+                        <>
+                          <button
+                            onClick={() => restoreItem(item.id)}
+                            className="px-2 py-0.5 text-[10px] rounded border border-emerald-700/50 text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                          >
+                            Restore
+                          </button>
+                          <button
+                            onClick={() => { if (confirm("Delete this entry permanently?")) deleteItem(item.id); }}
+                            className="px-2 py-0.5 text-[10px] rounded border border-red-700/50 text-red-400 hover:bg-red-500/10 transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </>
                       )}
                     </td>
                   </tr>

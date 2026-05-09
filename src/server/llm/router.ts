@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { LLMConfig } from "../../shared/types";
 import { getLLMConfig, saveLLMConfig } from "./config";
+import { callLLM } from "../llm";
 import {
   listPromptTemplates,
   getPromptTemplate,
@@ -44,6 +45,39 @@ router.put("/settings/llm", (req: Request, res: Response) => {
     baseUrl: config.baseUrl,
     model: config.model,
   });
+});
+
+// ---- LLM Connectivity Check ----
+
+router.post("/settings/llm/check", async (_req: Request, res: Response) => {
+  const config = getLLMConfig();
+  if (!config.apiKey) {
+    res.json({ ok: false, error: "API key not configured" });
+    return;
+  }
+
+  try {
+    const startTime = Date.now();
+    const result = await callLLM(
+      "You are a connectivity test. Reply with exactly: OK",
+      "ping",
+      config
+    );
+    const latencyMs = Date.now() - startTime;
+    const reply = result.text.trim().slice(0, 100);
+
+    res.json({
+      ok: true,
+      latencyMs,
+      model: config.model,
+      provider: config.provider,
+      reply,
+      usage: result.usage,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    res.json({ ok: false, error: message, provider: config.provider, model: config.model });
+  }
 });
 
 // ---- Prompt Templates ----

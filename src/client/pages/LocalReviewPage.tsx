@@ -66,19 +66,24 @@ export function LocalReviewPage() {
         const res = await fetch(`${API_BASE}/api/review/local/active`, { headers });
         if (!res.ok) return;
         const job = await res.json();
-        if (!job || job.status !== "running") return;
+        if (!job) return;
 
-        // Found an in-progress job — restore UI state
-        setProject(job.project);
-        setSourceBranch(job.sourceBranch);
-        setTargetBranch(job.targetBranch);
-        setSteps(job.steps || []);
-        setCurrentJobId(job.id);
-        jobIdRef.current = job.id;
-        setLoading(true);
+        if (job.status === "running") {
+          // Found an in-progress job — restore UI state
+          setProject(job.project);
+          setSourceBranch(job.sourceBranch);
+          setTargetBranch(job.targetBranch);
+          setSteps(job.steps || []);
+          setCurrentJobId(job.id);
+          jobIdRef.current = job.id;
+          setLoading(true);
 
-        // Start polling for completion
-        pollJobStatus(job.id);
+          // Start polling for completion
+          pollJobStatus(job.id);
+        } else if (job.status === "completed" && job.reviewId) {
+          // Found a recently completed job — show the result link
+          setReviewId(job.reviewId);
+        }
       } catch { /* ignore */ }
     }
     checkActiveJob();
@@ -160,6 +165,13 @@ export function LocalReviewPage() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({ error: "Request failed" }));
+        if (response.status === 409 && data.jobId) {
+          // Already have a running job — switch to polling it
+          setCurrentJobId(data.jobId);
+          jobIdRef.current = data.jobId;
+          pollJobStatus(data.jobId);
+          return;
+        }
         setError(data.error || "Unknown error");
         setLoading(false);
         return;
@@ -220,6 +232,16 @@ export function LocalReviewPage() {
       <h1 className="text-2xl font-bold text-white">Local Code Review</h1>
       <p className="text-slate-400 text-sm">Scan a local git repository branch diff for AI review</p>
 
+      {loading && project && (
+        <div className="bg-blue-900/20 border border-blue-800/50 rounded-xl p-4 flex items-center gap-3">
+          <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+          <div>
+            <span className="text-blue-400 text-sm font-medium">Review in progress</span>
+            <span className="text-slate-400 text-xs ml-2">{project} ({sourceBranch} → {targetBranch})</span>
+          </div>
+        </div>
+      )}
+
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 space-y-4">
         <div>
           <label className="block text-sm text-slate-400 mb-1">Project</label>
@@ -227,8 +249,9 @@ export function LocalReviewPage() {
             type="text"
             value={project}
             onChange={(e) => setProject(e.target.value)}
-            placeholder="e.g. qiqiao-console"
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+            disabled={loading}
+            placeholder="e.g. my-project"
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm disabled:opacity-50"
           />
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -238,8 +261,9 @@ export function LocalReviewPage() {
               type="text"
               value={sourceBranch}
               onChange={(e) => setSourceBranch(e.target.value)}
+              disabled={loading}
               placeholder="e.g. feature/login"
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm disabled:opacity-50"
             />
           </div>
           <div>
@@ -248,8 +272,9 @@ export function LocalReviewPage() {
               type="text"
               value={targetBranch}
               onChange={(e) => setTargetBranch(e.target.value)}
+              disabled={loading}
               placeholder="e.g. main"
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm disabled:opacity-50"
             />
           </div>
         </div>
