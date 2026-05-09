@@ -210,18 +210,28 @@ export function deprecateEntry(id: string): boolean {
   return result.changes > 0;
 }
 
+export function restoreEntry(id: string): boolean {
+  const db = getDb();
+  const result = db.prepare(
+    "UPDATE knowledge_entries SET status = 'CONFIRMED', updated_at = ? WHERE id = ? AND status = 'DEPRECATED'"
+  ).run(new Date().toISOString(), id);
+  return result.changes > 0;
+}
+
 export function deleteEntry(id: string): boolean {
   const db = getDb();
-  // Only TEMP entries can be deleted
   const entry = getEntry(id);
-  if (!entry || entry.status !== "TEMP") return false;
-  const result = db.prepare("DELETE FROM knowledge_entries WHERE id = ? AND status = 'TEMP'").run(id);
+  if (!entry) return false;
+  // TEMP and DEPRECATED entries can be deleted
+  if (entry.status !== "TEMP" && entry.status !== "DEPRECATED") return false;
+  const result = db.prepare("DELETE FROM knowledge_entries WHERE id = ?").run(id);
   return result.changes > 0;
 }
 
 export interface ListEntriesFilters {
   type?: EntryType;
-  project?: string;
+  project?: string | string[];
+  title?: string;
   status?: EntryStatus;
   review_status?: ReviewStatus;
   suggested_by?: string;
@@ -235,7 +245,17 @@ export function listEntries(filters: ListEntriesFilters = {}): { items: Knowledg
   const params: unknown[] = [];
 
   if (filters.type) { clauses.push("type = ?"); params.push(filters.type); }
-  if (filters.project) { clauses.push("project = ?"); params.push(filters.project); }
+  if (filters.project) {
+    const projects = Array.isArray(filters.project) ? filters.project : [filters.project];
+    if (projects.length === 1) {
+      clauses.push("project = ?");
+      params.push(projects[0]);
+    } else if (projects.length > 1) {
+      clauses.push(`project IN (${projects.map(() => "?").join(", ")})`);
+      params.push(...projects);
+    }
+  }
+  if (filters.title) { clauses.push("title LIKE ?"); params.push(`%${filters.title}%`); }
   if (filters.status) { clauses.push("status = ?"); params.push(filters.status); }
   if (filters.review_status) { clauses.push("review_status = ?"); params.push(filters.review_status); }
   if (filters.suggested_by) { clauses.push("suggested_by = ?"); params.push(filters.suggested_by); }
