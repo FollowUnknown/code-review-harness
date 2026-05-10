@@ -18,6 +18,7 @@ type KnowledgeType = "AP" | "EXP" | "CONV" | "BN" | "RULE" | "TERM";
 type KnowledgeStatus = "TEMP" | "CONFIRMED" | "DEPRECATED";
 type ReviewStatus = "pending" | "approved" | "rejected";
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+type ScopeLevel = "foundation" | "product" | "integration" | "project";
 
 interface KnowledgeItem {
   id: string;
@@ -51,6 +52,7 @@ interface KnowledgeItem {
   reviewed_by: string | null;
   review_status: ReviewStatus;
   review_comment: string | null;
+  scope_level: ScopeLevel | null;
   created_at: string;
   updated_at: string;
 }
@@ -132,6 +134,22 @@ function reviewStatusBadge(reviewStatus: ReviewStatus | null) {
   );
 }
 
+function scopeBadge(scopeLevel: ScopeLevel | null) {
+  const scope = scopeLevel ?? "project";
+  const config: Record<ScopeLevel, { cls: string; label: string }> = {
+    foundation: { cls: "bg-blue-500/15 text-blue-400", label: "基础" },
+    product: { cls: "bg-purple-500/15 text-purple-400", label: "产品线" },
+    integration: { cls: "bg-orange-500/15 text-orange-400", label: "集成" },
+    project: { cls: "bg-emerald-500/15 text-emerald-400", label: "项目" },
+  };
+  const { cls, label } = config[scope] ?? config.project;
+  return (
+    <span className={`px-1.5 py-0.5 text-[10px] rounded ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Detail Drawer
 // ---------------------------------------------------------------------------
@@ -184,6 +202,7 @@ function DetailDrawer({
           default_value: form.default_value,
           first_seen_in: form.first_seen_in,
           derivation: form.derivation,
+          scope_level: form.scope_level,
         }),
       });
       if (!res.ok) {
@@ -305,8 +324,24 @@ function DetailDrawer({
             {field("Type", "type")}
             {field("Project", "project")}
             {field("Module", "module")}
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase tracking-wider text-slate-500">Scope Level</span>
+              {editing ? (
+                <select
+                  value={form.scope_level ?? "project"}
+                  onChange={(e) => updateField("scope_level", e.target.value as ScopeLevel)}
+                  className="w-full px-2 py-1 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-300"
+                >
+                  <option value="foundation">foundation (基础)</option>
+                  <option value="product">product (产品线)</option>
+                  <option value="integration">integration (集成)</option>
+                  <option value="project">project (项目)</option>
+                </select>
+              ) : (
+                <p className="text-xs text-slate-300">{scopeBadge(item.scope_level)}</p>
+              )}
+            </div>
             {field("Product Line", "product_line")}
-            {field("Engineering", "engineering")}
           </div>
 
           {/* Type-specific fields */}
@@ -455,6 +490,7 @@ export function KnowledgePage() {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const [titleSearch, setTitleSearch] = useState("");
+  const [scopeFilter, setScopeFilter] = useState<ScopeLevel | "">("");
   const [selected, setSelected] = useState<KnowledgeItem | null>(null);
   const [viewTab, setViewTab] = useState<"browse" | "review" | "suggest">("browse");
 
@@ -502,13 +538,14 @@ export function KnowledgePage() {
       for (const p of selectedProjects) params.append("project", p);
     }
     if (titleSearch) params.set("title", titleSearch);
+    if (scopeFilter) params.set("scope_level", scopeFilter);
 
     fetch(`${API_BASE}/api/knowledge?${params}`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setData(d))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, [type, page, statusFilter, selectedProjects, titleSearch]);
+  }, [type, page, statusFilter, selectedProjects, titleSearch, scopeFilter]);
 
   // Close project dropdown on outside click
   useEffect(() => {
@@ -1012,6 +1049,20 @@ export function KnowledgePage() {
                 </div>
               )}
             </div>
+            <select
+              value={scopeFilter}
+              onChange={(e) => {
+                setScopeFilter(e.target.value as ScopeLevel | "");
+                setPage(1);
+              }}
+              className="px-2 py-1 text-xs bg-slate-800 border border-slate-700/50 rounded text-slate-400"
+            >
+              <option value="">All scopes</option>
+              <option value="foundation">Foundation (基础)</option>
+              <option value="product">Product (产品线)</option>
+              <option value="integration">Integration (集成)</option>
+              <option value="project">Project (项目)</option>
+            </select>
             <input
               type="text"
               placeholder="Search title..."
@@ -1059,7 +1110,12 @@ export function KnowledgePage() {
                       {item.title || "--"}
                     </td>
                     <td className="px-3 py-2.5 text-center">{severityBadge(item.severity)}</td>
-                    <td className="px-3 py-2.5 text-slate-400">{item.project || "--"}</td>
+                    <td className="px-3 py-2.5 text-slate-400">
+                      <span className="flex items-center gap-1.5">
+                        {item.project || "--"}
+                        {scopeBadge(item.scope_level)}
+                      </span>
+                    </td>
                     <td className="px-3 py-2.5 text-center text-slate-400">{item.hit_count}</td>
                     <td className="px-3 py-2.5 text-center">
                         <span className="flex items-center justify-center gap-1">

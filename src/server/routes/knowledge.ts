@@ -79,6 +79,7 @@ router.get("/", (req: Request, res: Response) => {
   const status = req.query.status as EntryStatus | undefined;
   const review_status = req.query.review_status as ReviewStatus | undefined;
   const suggested_by = req.query.suggested_by as string | undefined;
+  const scope_level = req.query.scope_level as string | undefined;
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20));
 
@@ -100,7 +101,7 @@ router.get("/", (req: Request, res: Response) => {
     return;
   }
 
-  const result = listEntries({ type, project, title, status, review_status, suggested_by, page, pageSize });
+  const result = listEntries({ type, project, title, status, review_status, suggested_by, scope_level: scope_level as any, page, pageSize });
   res.json(result);
 });
 
@@ -171,11 +172,13 @@ router.put("/:id", (req: Request<{ id: string }>, res: Response) => {
 
   const { title, pattern, impact, fix_suggestion, content, module, severity, parent_id,
           product_line, engineering, source_story, source_type, review_pass,
-          scope, data_structure, default_value, first_seen_in, derivation } = req.body;
+          scope, data_structure, default_value, first_seen_in, derivation,
+          scope_level } = req.body;
   const updated = updateEntry(req.params.id, {
     title, pattern, impact, fix_suggestion, content, module, severity, parent_id,
     product_line, engineering, source_story, source_type, review_pass,
     scope, data_structure, default_value, first_seen_in, derivation,
+    scope_level,
   });
   res.json(updated);
 });

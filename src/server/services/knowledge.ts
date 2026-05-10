@@ -164,7 +164,7 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<string> = new Set([
   "scope_level",
 ]);
 
-export function updateEntry(id: string, updates: Partial<Pick<KnowledgeEntry, "title" | "pattern" | "impact" | "fix_suggestion" | "content" | "module" | "severity" | "parent_id" | "product_line" | "engineering" | "source_story" | "source_type" | "review_pass" | "scope" | "data_structure" | "default_value" | "first_seen_in" | "derivation">>): KnowledgeEntry | undefined {
+export function updateEntry(id: string, updates: Partial<Pick<KnowledgeEntry, "title" | "pattern" | "impact" | "fix_suggestion" | "content" | "module" | "severity" | "parent_id" | "product_line" | "engineering" | "source_story" | "source_type" | "review_pass" | "scope" | "data_structure" | "default_value" | "first_seen_in" | "derivation" | "scope_level">>): KnowledgeEntry | undefined {
   const db = getDb();
   const fields: string[] = [];
   const params: unknown[] = [];
@@ -237,6 +237,7 @@ export interface ListEntriesFilters {
   status?: EntryStatus;
   review_status?: ReviewStatus;
   suggested_by?: string;
+  scope_level?: ScopeLevel;
   page?: number;
   pageSize?: number;
 }
@@ -261,6 +262,7 @@ export function listEntries(filters: ListEntriesFilters = {}): { items: Knowledg
   if (filters.status) { clauses.push("status = ?"); params.push(filters.status); }
   if (filters.review_status) { clauses.push("review_status = ?"); params.push(filters.review_status); }
   if (filters.suggested_by) { clauses.push("suggested_by = ?"); params.push(filters.suggested_by); }
+  if (filters.scope_level) { clauses.push("scope_level = ?"); params.push(filters.scope_level); }
 
   const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
   const page = filters.page ?? 1;
