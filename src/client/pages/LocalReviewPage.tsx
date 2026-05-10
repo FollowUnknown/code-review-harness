@@ -20,6 +20,7 @@ export function LocalReviewPage() {
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const jobIdRef = useRef<string | null>(null);
+  const [projects, setProjects] = useState<Array<{ project: string; localPath: string }>>([]);
 
   const token = localStorage.getItem("auth_token");
   const headers: Record<string, string> = {
@@ -58,6 +59,18 @@ export function LocalReviewPage() {
     };
     poll();
   }, [headers]);
+
+  // On mount: load projects from repo-mappings
+  useEffect(() => {
+    fetch(`${API_BASE}/api/repo-mappings`, { headers })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        const list = Array.isArray(data) ? data : data?.items ?? [];
+        setProjects(list.map((m: any) => ({ project: m.project, localPath: m.local_path })));
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // On mount: check for active running job
   useEffect(() => {
@@ -245,14 +258,22 @@ export function LocalReviewPage() {
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 space-y-4">
         <div>
           <label className="block text-sm text-slate-400 mb-1">Project</label>
-          <input
-            type="text"
+          <select
             value={project}
             onChange={(e) => setProject(e.target.value)}
             disabled={loading}
-            placeholder="e.g. my-project"
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm disabled:opacity-50"
-          />
+          >
+            <option value="">-- 选择项目 --</option>
+            {projects.map((p) => (
+              <option key={p.project} value={p.project}>
+                {p.project}
+              </option>
+            ))}
+          </select>
+          {projects.length === 0 && (
+            <p className="text-xs text-slate-600 mt-1">暂无项目，请先在 Settings 中添加</p>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
