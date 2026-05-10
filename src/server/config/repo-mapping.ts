@@ -1,10 +1,12 @@
 import { getDb } from "../db";
-import type { RepoMapping } from "../../shared/types";
+import type { RepoMapping, TechStack } from "../../shared/types";
 
 interface RepoMappingRow {
   id: number;
   project: string;
   local_path: string;
+  product_line_id: string | null;
+  tech_stack: string | null;
   created_at: string;
 }
 
@@ -13,6 +15,8 @@ function mapRow(row: RepoMappingRow): RepoMapping {
     id: row.id,
     project: row.project,
     localPath: row.local_path,
+    productLineId: row.product_line_id ?? null,
+    techStack: (row.tech_stack as TechStack) ?? "unknown",
     createdAt: row.created_at,
   };
 }
@@ -53,4 +57,24 @@ export function ensureRepoMappingsTable(): void {
     local_path TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
   )`);
+}
+
+export function getRepoMappingsByProductLine(productLineId: string): RepoMapping[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT * FROM repo_mappings WHERE product_line_id = ? ORDER BY project")
+    .all(productLineId) as RepoMappingRow[];
+  return rows.map(mapRow);
+}
+
+export function setRepoMappingTechStack(project: string, techStack: TechStack): void {
+  const db = getDb();
+  db.prepare("UPDATE repo_mappings SET tech_stack = ? WHERE project = ?")
+    .run(techStack, project);
+}
+
+export function setRepoMappingProductLine(project: string, productLineId: string | null): void {
+  const db = getDb();
+  db.prepare("UPDATE repo_mappings SET product_line_id = ? WHERE project = ?")
+    .run(productLineId, project);
 }

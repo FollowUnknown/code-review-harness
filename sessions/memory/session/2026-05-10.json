@@ -1,0 +1,8 @@
+{
+  "date": "2026-05-10",
+  "context": "Auto-generated from session file",
+  "completedCount": 7,
+  "pendingCount": 7,
+  "files": [".claude/settings.local.json","sessions/execution/audit.log","src/server/config/repo-mapping.ts","src/server/db.ts","src/server/index.ts","src/server/services/review-job-store.ts","src/shared/types.ts"],
+  "createdAt": "2026-05-10T11:45:57Z"
+}

@@ -60,6 +60,8 @@ export interface ReviewIssue {
   file: string;
   line?: number;
   suggestion?: string;
+  project?: string;               // v1.4.0: originating project in multi-project review
+  crossProjectImpact?: string[];  // v1.4.0: affected downstream projects
 }
 
 export interface ReviewScore {
@@ -299,6 +301,8 @@ export interface ReviewJob {
   stepsJson: string | null;
   errorMessage: string | null;
   createdBy: string | null;
+  reviewType: "single" | "requirement";
+  productLineId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -422,6 +426,34 @@ export interface ProjectMemory {
 
 // ---- Local Scan (v1.3.0) ----
 
+// ---- Product Line (v1.4.0) ----
+
+export type TechStack = "java-backend" | "vue-frontend" | "mixed" | "unknown";
+
+export interface ProductLine {
+  id: string;
+  name: string;
+  description: string | null;
+  knowledgeScope: string | null;
+  defaultDimensionSetId: string | null;
+  configJson: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---- Knowledge Layered Query (v1.4.0) ----
+
+export type ScopeLevel = 'foundation' | 'product' | 'integration' | 'project';
+
+export interface KnowledgeQuery {
+  project: string;
+  productLine?: string;
+  techStack?: TechStack;
+  module?: string;
+  changedFiles?: string[];
+}
+
 export interface LocalReviewRequest {
   project: string;
   sourceBranch: string;
@@ -442,6 +474,8 @@ export interface RepoMapping {
   id: number;
   project: string;
   localPath: string;
+  productLineId: string | null;
+  techStack: TechStack;
   createdAt: string;
 }
 
@@ -517,4 +551,65 @@ export interface DiffPreviewResponse {
   batchEstimate: number;
   tokenEstimate: number;
   triggerThreshold: boolean;
+}
+
+// ---- Requirement Review (v1.4.0) ----
+
+export interface RequirementReviewRequest {
+  productLine: string;
+  sourceBranch: string;
+  targetBranch: string;
+  excludedProjects?: string[];
+  excludedFiles?: string[];
+  requirement?: string;
+  requirementId?: string;
+}
+
+export interface ProjectScanResult {
+  project: string;
+  repoPath: string;
+  techStack: TechStack;
+  diffCount: number;
+  diffChars: number;
+  diffPreview: Array<{ path: string; newFile: boolean; diffChars: number }>;
+}
+
+export interface TechStackGroupReport {
+  techStack: TechStack;
+  dimensionSetName: string;
+  projectCount: number;
+  totalFiles: number;
+  totalIssues: number;
+  criticalCount: number;
+  groupScore: number;
+  groupPassed: boolean;
+  projectReports: Array<{
+    project: string;
+    report: ReviewReport;
+    classification: ClassificationSummary;
+    crossProjectImpacts?: string[];
+    error?: string;
+  }>;
+}
+
+export interface RequirementReviewReport {
+  reviewId: string;
+  productLine: string;
+  sourceBranch: string;
+  targetBranch: string;
+  requirement?: string;
+  requirementId?: string;
+  totalProjects: number;
+  totalFiles: number;
+  totalIssues: number;
+  criticalCount: number;
+  overallPassed: boolean;
+  overallScore: number;
+  techStackReports: TechStackGroupReport[];
+  crossStackIssues?: Array<{
+    description: string;
+    backendProject?: string;
+    frontendProject?: string;
+    severity: SeverityLevel;
+  }>;
 }

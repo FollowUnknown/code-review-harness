@@ -7,6 +7,8 @@ export interface CreateJobParams {
   targetBranch: string;
   excludedFilesJson: string | null;
   createdBy: string | null;
+  reviewType?: "single" | "requirement";
+  productLineId?: string;
 }
 
 export interface UpdateJobPatch {
@@ -22,11 +24,12 @@ export function createJob(params: CreateJobParams): ReviewJob {
   const db = getDb();
   const id = `JOB-${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
+  const reviewType = params.reviewType ?? "single";
 
   db.prepare(
-    `INSERT INTO review_jobs (id, project, source_branch, target_branch, excluded_files_json, status, current_step, steps_json, created_by, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 'pending', 0, '[]', ?, ?, ?)`
-  ).run(id, params.project, params.sourceBranch, params.targetBranch, params.excludedFilesJson, params.createdBy, now, now);
+    `INSERT INTO review_jobs (id, project, source_branch, target_branch, excluded_files_json, status, current_step, steps_json, created_by, review_type, product_line_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, 'pending', 0, '[]', ?, ?, ?, ?, ?)`
+  ).run(id, params.project, params.sourceBranch, params.targetBranch, params.excludedFilesJson, params.createdBy, reviewType, params.productLineId ?? null, now, now);
 
   return {
     id,
@@ -41,6 +44,8 @@ export function createJob(params: CreateJobParams): ReviewJob {
     stepsJson: "[]",
     errorMessage: null,
     createdBy: params.createdBy,
+    reviewType,
+    productLineId: params.productLineId ?? null,
     createdAt: now,
     updatedAt: now,
   };
@@ -114,6 +119,8 @@ function mapRowToJob(row: Record<string, unknown>): ReviewJob {
     stepsJson: row.steps_json as string | null,
     errorMessage: row.error_message as string | null,
     createdBy: row.created_by as string | null,
+    reviewType: (row.review_type as "single" | "requirement") ?? "single",
+    productLineId: (row.product_line_id as string | null) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };

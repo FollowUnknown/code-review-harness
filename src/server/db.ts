@@ -72,6 +72,42 @@ function initialize(db: Database.Database): void {
     created_at TEXT DEFAULT (datetime('now'))
   )`);
 
+  // Product lines (v1.4.0)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS product_lines (
+      id                        TEXT PRIMARY KEY,
+      name                      TEXT NOT NULL,
+      description               TEXT,
+      knowledge_scope           TEXT,
+      default_dimension_set_id  TEXT,
+      config_json               TEXT,
+      created_by                TEXT,
+      created_at                TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at                TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Project dependencies (v1.4.0)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS project_dependencies (
+      id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+      upstream_project    TEXT NOT NULL,
+      downstream_project  TEXT NOT NULL,
+      dep_type            TEXT NOT NULL DEFAULT 'compile'
+        CHECK(dep_type IN ('compile', 'runtime', 'test', 'provided')),
+      dep_details         TEXT,
+      source              TEXT NOT NULL DEFAULT 'manual'
+        CHECK(source IN ('manual', 'pom-scan', 'auto-detect')),
+      created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at          TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (upstream_project) REFERENCES repo_mappings(project),
+      FOREIGN KEY (downstream_project) REFERENCES repo_mappings(project),
+      UNIQUE(upstream_project, downstream_project)
+    );
+    CREATE INDEX IF NOT EXISTS idx_pd_upstream ON project_dependencies(upstream_project);
+    CREATE INDEX IF NOT EXISTS idx_pd_downstream ON project_dependencies(downstream_project)
+  `);
+
   // Knowledge entries (replacing legacy `entries` table)
   db.exec(`
     CREATE TABLE IF NOT EXISTS knowledge_entries (
@@ -235,6 +271,12 @@ function initialize(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_review_jobs_created_by ON review_jobs(created_by);
   `);
 
+  // Migrate repo_mappings table with product_line_id, tech_stack (v1.4.0)
+  migrateRepoMappingsTable(db);
+
+  // Migrate review_jobs table with review_type, product_line_id (v1.4.0)
+  migrateReviewJobsTable(db);
+
   // Migrate review_plan_items table with branch/author/error_message/reviewed_at columns
   migrateReviewPlanItemsTable(db);
 
@@ -295,12 +337,28 @@ function migrateKnowledgeEntriesTable(db: Database.Database): void {
     { name: "confidence", def: "REAL NOT NULL DEFAULT 0.5" },
     // v1.2.0: Lifecycle management
     { name: "last_verified_at", def: "TEXT" },
+    // v1.4.0: Knowledge layered scope
+    { name: "scope_level", def: "TEXT DEFAULT 'project' CHECK(scope_level IN ('foundation', 'product', 'integration', 'project'))" },
   ];
 
   for (const col of newColumns) {
     if (!colNames.has(col.name)) {
       db.exec(`ALTER TABLE knowledge_entries ADD COLUMN ${col.name} ${col.def}`);
     }
+  }
+
+  // v1.4.0: Create index for scope_level (idempotent)
+  db.exec("CREATE INDEX IF NOT EXISTS idx_ke_scope_level ON knowledge_entries(scope_level)");
+
+  // v1.4.0: Data migration — mark shared/techstack entries as foundation
+  // Only run once: check if any rows still have scope_level = 'project' in shared/techstack projects
+  const needsMigration = db.prepare(
+    "SELECT COUNT(*) as cnt FROM knowledge_entries WHERE project IN ('shared', 'java-backend', 'vue-frontend') AND scope_level = 'project'"
+  ).get() as { cnt: number };
+  if (needsMigration.cnt > 0) {
+    db.prepare(
+      "UPDATE knowledge_entries SET scope_level = 'foundation' WHERE project IN ('shared', 'java-backend', 'vue-frontend') AND scope_level = 'project'"
+    ).run();
   }
 }
 
@@ -414,6 +472,36 @@ function seedDefaultDimensionSet(db: Database.Database): void {
       JSON.stringify([...JAVA_BACKEND_DIMENSIONS]),
       JSON.stringify(["Spring Boot", "MyBatis/JPA", "Maven/Gradle"])
     );
+  }
+}
+
+function migrateRepoMappingsTable(db: Database.Database): void {
+  const columns = db.prepare("PRAGMA table_info(repo_mappings)").all() as Array<{ name: string }>;
+  const colNames = new Set(columns.map((c) => c.name));
+
+  if (!colNames.has("product_line_id")) {
+    db.exec("ALTER TABLE repo_mappings ADD COLUMN product_line_id TEXT");
+  }
+  if (!colNames.has("tech_stack")) {
+    db.exec("ALTER TABLE repo_mappings ADD COLUMN tech_stack TEXT DEFAULT 'unknown' CHECK(tech_stack IN ('java-backend', 'vue-frontend', 'mixed', 'unknown'))");
+  }
+
+  // Add index for product_line_id if not exists
+  const indexes = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_rm_product_line'").get();
+  if (!indexes) {
+    db.exec("CREATE INDEX idx_rm_product_line ON repo_mappings(product_line_id)");
+  }
+}
+
+function migrateReviewJobsTable(db: Database.Database): void {
+  const columns = db.prepare("PRAGMA table_info(review_jobs)").all() as Array<{ name: string }>;
+  const colNames = new Set(columns.map((c) => c.name));
+
+  if (!colNames.has("review_type")) {
+    db.exec("ALTER TABLE review_jobs ADD COLUMN review_type TEXT DEFAULT 'single' CHECK(review_type IN ('single', 'requirement'))");
+  }
+  if (!colNames.has("product_line_id")) {
+    db.exec("ALTER TABLE review_jobs ADD COLUMN product_line_id TEXT");
   }
 }
 

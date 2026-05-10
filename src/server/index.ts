@@ -15,6 +15,8 @@ import memoryRouter from "./routes/memory";
 import reviewLocalRouter from "./routes/review-local";
 import reviewDiffRouter from "./routes/review-diff";
 import reviewPreviewRouter from "./routes/review-preview";
+import reviewRequirementRouter from "./routes/review-requirement";
+import productLinesRouter from "./routes/product-lines";
 import { resetStuckJobs } from "./services/review-job-store";
 import repoMappingRouter from "./routes/repo-mapping";
 import llmRouter from "./llm/router";
@@ -44,7 +46,9 @@ app.use("/api/memory", memoryRouter);
 app.use("/api/review", reviewLocalRouter);
 app.use("/api/review", reviewDiffRouter);
 app.use("/api/review", reviewPreviewRouter);
+app.use("/api/review", reviewRequirementRouter);
 app.use("/api/repo-mappings", repoMappingRouter);
+app.use("/api/product-lines", productLinesRouter);
 app.use("/api/llm", llmRouter);
 
 // SPA fallback for client-side routing (must be last)

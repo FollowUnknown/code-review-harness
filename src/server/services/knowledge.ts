@@ -1,5 +1,5 @@
 import { getDb } from "../db";
-import type { IssueDisposition, KnowledgeDisposition, ReviewIssue } from "../../shared/types";
+import type { IssueDisposition, KnowledgeDisposition, KnowledgeQuery, ReviewIssue, ScopeLevel } from "../../shared/types";
 import type { TechStack } from "./techstack";
 
 // ---- Types ----
@@ -44,6 +44,7 @@ export interface KnowledgeEntry {
   fingerprint?: string;
   confidence: number;
   last_verified_at?: string;
+  scope_level?: ScopeLevel;
   created_at: string;
   updated_at: string;
 }
@@ -160,6 +161,7 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<string> = new Set([
   "title", "pattern", "impact", "fix_suggestion", "content", "module", "severity", "parent_id",
   "product_line", "engineering", "source_story", "source_type", "review_pass",
   "scope", "data_structure", "default_value", "first_seen_in", "derivation",
+  "scope_level",
 ]);
 
 export function updateEntry(id: string, updates: Partial<Pick<KnowledgeEntry, "title" | "pattern" | "impact" | "fix_suggestion" | "content" | "module" | "severity" | "parent_id" | "product_line" | "engineering" | "source_story" | "source_type" | "review_pass" | "scope" | "data_structure" | "default_value" | "first_seen_in" | "derivation">>): KnowledgeEntry | undefined {
@@ -413,111 +415,103 @@ function estimateTokens(content: string): number {
   return Math.ceil(content.length / 4);
 }
 
-// ---- Tech-stack Knowledge Filtering ----
+// ---- Layered Knowledge Injection (v1.4.0: four-layer scope) ----
 
-/**
- * Tech-stack to knowledge project mapping.
- * Each tech stack only matches its own knowledge + shared/universal entries.
- */
-const TECHSTACK_KNOWLEDGE_PROJECTS: Record<string, string[]> = {
-  "java-backend": ["java-backend", "shared"],
-  "vue-frontend": ["qiqiao", "qixi", "do1cloud-qiqiao-console-web", "shared"],
-  "mixed": ["shared"], // mixed projects get only shared knowledge in universal layer
-  "unknown": [],       // no filtering — keep backward compat
+/** Token budget per scope layer */
+const SCOPE_TOKEN_BUDGETS: Record<ScopeLevel, number> = {
+  foundation: 800,
+  product: 800,
+  integration: 500,
+  project: 1500,
 };
 
 /**
- * Filter knowledge entries to only include those relevant to the detected tech stack.
- * Projects not in the mapping are treated as "shared" (universal).
+ * Backward-compatible overload: old 4-parameter signature still works.
+ * @deprecated Use KnowledgeQuery overload instead.
  */
-function filterByTechStack(entries: KnowledgeEntry[], techStack?: TechStack): KnowledgeEntry[] {
-  if (!techStack || techStack === "unknown") return entries;
+export function getKnowledgeForReview(
+  project: string, module?: string, changedFiles?: string[], techStack?: TechStack
+): KnowledgeEntry[];
+export function getKnowledgeForReview(query: KnowledgeQuery): KnowledgeEntry[];
+export function getKnowledgeForReview(
+  queryOrProject: KnowledgeQuery | string,
+  module?: string,
+  changedFiles?: string[],
+  techStack?: TechStack
+): KnowledgeEntry[] {
+  const query: KnowledgeQuery = typeof queryOrProject === 'string'
+    ? { project: queryOrProject, module, changedFiles, techStack }
+    : queryOrProject;
 
-  const allowedProjects = TECHSTACK_KNOWLEDGE_PROJECTS[techStack];
-  if (!allowedProjects) return entries;
-
-  return entries.filter((e) => {
-    // Always include entries with no project (universal)
-    if (!e.project) return true;
-    // Include if project is in the allowed list
-    if (allowedProjects.includes(e.project)) return true;
-    return false;
-  });
-}
-
-// ---- Layered Knowledge Injection ----
-
-export function getKnowledgeForReview(project: string, module?: string, changedFiles?: string[], techStack?: TechStack): KnowledgeEntry[] {
   const db = getDb();
 
-  // Layer 1: Universal AP (shared + tech-stack matched, not all projects)
-  // Avoid injecting irrelevant knowledge (e.g., Vue AP into Java reviews)
-  const layer1Candidates = db.prepare(
-    `SELECT * FROM knowledge_entries WHERE type = 'AP' AND severity IN ('CRITICAL', 'HIGH') AND status = 'CONFIRMED'`
-  ).all() as KnowledgeEntry[];
-  const layer1 = filterByTechStack(layer1Candidates, techStack);
+  // Layer 0 (foundation): scope_level='foundation', project IN ('shared', techStack)
+  const foundationProjects = ['shared'];
+  if (query.techStack && query.techStack !== 'unknown') {
+    foundationProjects.push(query.techStack);
+  }
+  const foundationPlaceholders = foundationProjects.map(() => '?').join(',');
+  const layer0 = db.prepare(
+    `SELECT * FROM knowledge_entries
+     WHERE scope_level = 'foundation' AND status = 'CONFIRMED'
+       AND project IN (${foundationPlaceholders})`
+  ).all(...foundationProjects) as KnowledgeEntry[];
 
-  // Layer 2: Project AP
-  const layer2 = db.prepare(
-    `SELECT * FROM knowledge_entries WHERE type = 'AP' AND project = ? AND status = 'CONFIRMED'`
-  ).all(project) as KnowledgeEntry[];
-
-  // Layer 2.5: Tech-stack AP (e.g., "java-backend" knowledge for Java projects)
-  const layer2b = techStack && techStack !== "unknown"
+  // Layer 1 (product): scope_level='product', project=productLine
+  const layer1 = query.productLine
     ? (db.prepare(
-        `SELECT * FROM knowledge_entries WHERE type = 'AP' AND project = ? AND status = 'CONFIRMED'`
-      ).all(techStack) as KnowledgeEntry[])
+        `SELECT * FROM knowledge_entries
+         WHERE scope_level = 'product' AND project = ? AND status = 'CONFIRMED'`
+      ).all(query.productLine) as KnowledgeEntry[])
     : [];
 
-  // Layer 3: Project CONV
+  // Layer 2 (integration): scope_level='integration', project=productLine
+  const layer2 = query.productLine
+    ? (db.prepare(
+        `SELECT * FROM knowledge_entries
+         WHERE scope_level = 'integration' AND project = ? AND status = 'CONFIRMED'`
+      ).all(query.productLine) as KnowledgeEntry[])
+    : [];
+
+  // Layer 3 (project): scope_level='project', project=project
+  // When productLine is not provided, fall back to legacy behavior:
+  // also include entries with scope_level = 'project' matching techStack
   const layer3 = db.prepare(
-    `SELECT * FROM knowledge_entries WHERE type = 'CONV' AND project = ? AND status = 'CONFIRMED'`
-  ).all(project) as KnowledgeEntry[];
+    `SELECT * FROM knowledge_entries
+     WHERE scope_level = 'project' AND project = ? AND status = 'CONFIRMED'`
+  ).all(query.project) as KnowledgeEntry[];
 
-  // Layer 3.5: Tech-stack CONV
-  const layer3b = techStack && techStack !== "unknown"
+  // BN (business nouns) with module match — project-level and product-line-level
+  const bnProjects = query.productLine
+    ? [query.project, query.productLine]
+    : [query.project];
+  const bnPlaceholders = bnProjects.map(() => '?').join(',');
+  const layerBN = query.module
     ? (db.prepare(
-        `SELECT * FROM knowledge_entries WHERE type = 'CONV' AND project = ? AND status = 'CONFIRMED'`
-      ).all(techStack) as KnowledgeEntry[])
-    : [];
+        `SELECT * FROM knowledge_entries
+         WHERE type = 'BN' AND status = 'CONFIRMED'
+           AND project IN (${bnPlaceholders})
+           AND (module = ? OR module IS NULL)`
+      ).all(...bnProjects, query.module) as KnowledgeEntry[])
+    : (db.prepare(
+        `SELECT * FROM knowledge_entries
+         WHERE type = 'BN' AND status = 'CONFIRMED'
+           AND project IN (${bnPlaceholders})`
+      ).all(...bnProjects) as KnowledgeEntry[]);
 
-  // Layer 4: Recent EXP (same project, ≤20, module first)
-  const layer4 = db.prepare(
-    `SELECT * FROM knowledge_entries WHERE type = 'EXP' AND project = ? AND status = 'CONFIRMED'
-     ORDER BY created_at DESC LIMIT 20`
-  ).all(project) as KnowledgeEntry[];
-
-  // Layer 4.5: Tech-stack EXP
-  const layer4b = techStack && techStack !== "unknown"
-    ? (db.prepare(
-        `SELECT * FROM knowledge_entries WHERE type = 'EXP' AND project = ? AND status = 'CONFIRMED'
-         ORDER BY created_at DESC LIMIT 20`
-      ).all(techStack) as KnowledgeEntry[])
-    : [];
-
-  // Layer 5: BN (project + module match)
-  let layer5: KnowledgeEntry[] = [];
-  if (module) {
-    layer5 = db.prepare(
-      `SELECT * FROM knowledge_entries WHERE type = 'BN' AND project = ? AND (module = ? OR module IS NULL) AND status = 'CONFIRMED'`
-    ).all(project, module) as KnowledgeEntry[];
-  } else {
-    layer5 = db.prepare(
-      `SELECT * FROM knowledge_entries WHERE type = 'BN' AND project = ? AND status = 'CONFIRMED'`
-    ).all(project) as KnowledgeEntry[];
-  }
-
-  // Layer 6: RULE (parent matches Layer 5 BNs)
-  const bnIds = layer5.map((e) => e.id);
-  let layer6: KnowledgeEntry[] = [];
+  // RULE (children of matched BNs)
+  const bnIds = layerBN.map((e) => e.id);
+  const layerRULE: KnowledgeEntry[] = [];
   if (bnIds.length > 0) {
-    const placeholders = bnIds.map(() => "?").join(",");
-    layer6 = db.prepare(
-      `SELECT * FROM knowledge_entries WHERE type = 'RULE' AND parent_id IN (${placeholders}) AND status = 'CONFIRMED'`
+    const rulePlaceholders = bnIds.map(() => '?').join(',');
+    const rules = db.prepare(
+      `SELECT * FROM knowledge_entries
+       WHERE type = 'RULE' AND parent_id IN (${rulePlaceholders}) AND status = 'CONFIRMED'`
     ).all(...bnIds) as KnowledgeEntry[];
+    layerRULE.push(...rules);
   }
 
-  // Combine all layers, deduplicate
+  // Combine and deduplicate, respecting layer priority
   const allEntries: KnowledgeEntry[] = [];
   const seen = new Set<string>();
   const addUnique = (items: KnowledgeEntry[]) => {
@@ -529,32 +523,187 @@ export function getKnowledgeForReview(project: string, module?: string, changedF
     }
   };
 
+  // Priority order: foundation > product > integration > project > BN > RULE
+  addUnique(layer0);
   addUnique(layer1);
   addUnique(layer2);
-  addUnique(layer2b);
   addUnique(layer3);
-  addUnique(layer3b);
-  addUnique(layer4);
-  addUnique(layer4b);
-  addUnique(layer5);
-  addUnique(layer6);
+  addUnique(layerBN);
+  addUnique(layerRULE);
 
-  // Sort by relevance score (descending)
-  allEntries.sort((a, b) =>
-    scoreKnowledgeRelevance(b, project, changedFiles) - scoreKnowledgeRelevance(a, project, changedFiles)
-  );
+  // Fallback: when no productLine and no scope_level rows exist yet,
+  // include legacy entries (scope_level IS NULL or missing) for backward compat
+  const legacyFallback = db.prepare(
+    `SELECT * FROM knowledge_entries
+     WHERE status = 'CONFIRMED'
+       AND (scope_level IS NULL OR scope_level = 'project')
+       AND type IN ('AP', 'EXP', 'CONV')
+       AND project IN (${['shared', query.project, query.techStack ?? ''].filter(Boolean).map(() => '?').join(',')})`
+  ).all(...['shared', query.project, query.techStack].filter((s): s is string => Boolean(s))) as KnowledgeEntry[];
+  addUnique(legacyFallback);
 
-  // Apply token budget: keep high-scoring entries, truncate low-scoring ones
-  let totalTokens = 0;
-  const result: KnowledgeEntry[] = [];
-  for (const item of allEntries) {
-    const tokens = estimateTokens(item.content);
-    if (totalTokens + tokens > KNOWLEDGE_TOKEN_BUDGET) break;
-    totalTokens += tokens;
-    result.push(item);
+  // Apply per-layer token budgets
+  const budgeted: KnowledgeEntry[] = [];
+  const usedTokens: Record<ScopeLevel, number> = { foundation: 0, product: 0, integration: 0, project: 0 };
+  let bnRuleTokens = 0;
+
+  for (const entry of allEntries) {
+    const tokens = estimateTokens(entry.content);
+    const scope = entry.scope_level ?? 'project';
+
+    if (entry.type === 'BN' || entry.type === 'RULE') {
+      // BN/RULE share the leftover budget
+      const remaining = KNOWLEDGE_TOKEN_BUDGET - Object.values(usedTokens).reduce((a, b) => a + b, 0) - bnRuleTokens;
+      if (remaining <= 0 || bnRuleTokens + tokens > 400) continue;
+      bnRuleTokens += tokens;
+      budgeted.push(entry);
+    } else if (usedTokens[scope] + tokens <= SCOPE_TOKEN_BUDGETS[scope]) {
+      usedTokens[scope] += tokens;
+      budgeted.push(entry);
+    }
   }
 
-  return result;
+  // Sort by relevance score (descending)
+  budgeted.sort((a, b) =>
+    scoreKnowledgeRelevance(b, query.project, query.changedFiles) -
+    scoreKnowledgeRelevance(a, query.project, query.changedFiles)
+  );
+
+  return budgeted;
+}
+
+// ---- Shared Knowledge Cache (for batch review) ----
+
+export interface SharedKnowledgeCache {
+  foundation: KnowledgeEntry[];
+  product: KnowledgeEntry[];
+  integration: KnowledgeEntry[];
+}
+
+/**
+ * Preload shared knowledge layers (foundation, product, integration)
+ * for reuse across multiple projects in the same product line.
+ */
+export function preloadSharedKnowledge(
+  productLine: string,
+  techStacks: string[]
+): SharedKnowledgeCache {
+  const db = getDb();
+
+  // Foundation: shared + all tech stacks in use
+  const foundationProjects = ['shared', ...techStacks.filter((t) => t !== 'unknown')];
+  const foundationPlaceholders = foundationProjects.map(() => '?').join(',');
+  const foundation = db.prepare(
+    `SELECT * FROM knowledge_entries
+     WHERE scope_level = 'foundation' AND status = 'CONFIRMED'
+       AND project IN (${foundationPlaceholders})`
+  ).all(...foundationProjects) as KnowledgeEntry[];
+
+  // Product line knowledge
+  const product = db.prepare(
+    `SELECT * FROM knowledge_entries
+     WHERE scope_level = 'product' AND project = ? AND status = 'CONFIRMED'`
+  ).all(productLine) as KnowledgeEntry[];
+
+  // Integration knowledge (front-end / back-end contracts)
+  const integration = db.prepare(
+    `SELECT * FROM knowledge_entries
+     WHERE scope_level = 'integration' AND project = ? AND status = 'CONFIRMED'`
+  ).all(productLine) as KnowledgeEntry[];
+
+  return { foundation, product, integration };
+}
+
+/**
+ * Get project-level knowledge and combine with preloaded shared cache.
+ * Used in multi-project review to avoid redundant DB queries.
+ */
+export function getProjectKnowledge(
+  query: KnowledgeQuery,
+  cache: SharedKnowledgeCache
+): KnowledgeEntry[] {
+  const db = getDb();
+
+  // Project-level entries only
+  const projectEntries = db.prepare(
+    `SELECT * FROM knowledge_entries
+     WHERE scope_level = 'project' AND project = ? AND status = 'CONFIRMED'`
+  ).all(query.project) as KnowledgeEntry[];
+
+  // BN with module match
+  const bnProjects = query.productLine ? [query.project, query.productLine] : [query.project];
+  const bnPlaceholders = bnProjects.map(() => '?').join(',');
+  const bnEntries = query.module
+    ? (db.prepare(
+        `SELECT * FROM knowledge_entries
+         WHERE type = 'BN' AND status = 'CONFIRMED'
+           AND project IN (${bnPlaceholders})
+           AND (module = ? OR module IS NULL)`
+      ).all(...bnProjects, query.module) as KnowledgeEntry[])
+    : (db.prepare(
+        `SELECT * FROM knowledge_entries
+         WHERE type = 'BN' AND status = 'CONFIRMED'
+           AND project IN (${bnPlaceholders})`
+      ).all(...bnProjects) as KnowledgeEntry[]);
+
+  // RULE children
+  const bnIds = bnEntries.map((e) => e.id);
+  const ruleEntries: KnowledgeEntry[] = [];
+  if (bnIds.length > 0) {
+    const rulePlaceholders = bnIds.map(() => '?').join(',');
+    const rules = db.prepare(
+      `SELECT * FROM knowledge_entries
+       WHERE type = 'RULE' AND parent_id IN (${rulePlaceholders}) AND status = 'CONFIRMED'`
+    ).all(...bnIds) as KnowledgeEntry[];
+    ruleEntries.push(...rules);
+  }
+
+  // Combine: cached layers + project-level + BN/RULE, deduplicate
+  const allEntries: KnowledgeEntry[] = [];
+  const seen = new Set<string>();
+  const addUnique = (items: KnowledgeEntry[]) => {
+    for (const item of items) {
+      if (!seen.has(item.id)) {
+        seen.add(item.id);
+        allEntries.push(item);
+      }
+    }
+  };
+
+  addUnique(cache.foundation);
+  addUnique(cache.product);
+  addUnique(cache.integration);
+  addUnique(projectEntries);
+  addUnique(bnEntries);
+  addUnique(ruleEntries);
+
+  // Apply per-layer token budgets
+  const budgeted: KnowledgeEntry[] = [];
+  const usedTokens: Record<ScopeLevel, number> = { foundation: 0, product: 0, integration: 0, project: 0 };
+  let bnRuleTokens = 0;
+
+  for (const entry of allEntries) {
+    const tokens = estimateTokens(entry.content);
+    const scope = entry.scope_level ?? 'project';
+
+    if (entry.type === 'BN' || entry.type === 'RULE') {
+      const remaining = KNOWLEDGE_TOKEN_BUDGET - Object.values(usedTokens).reduce((a, b) => a + b, 0) - bnRuleTokens;
+      if (remaining <= 0 || bnRuleTokens + tokens > 400) continue;
+      bnRuleTokens += tokens;
+      budgeted.push(entry);
+    } else if (usedTokens[scope] + tokens <= SCOPE_TOKEN_BUDGETS[scope]) {
+      usedTokens[scope] += tokens;
+      budgeted.push(entry);
+    }
+  }
+
+  // Sort by relevance
+  budgeted.sort((a, b) =>
+    scoreKnowledgeRelevance(b, query.project, query.changedFiles) -
+    scoreKnowledgeRelevance(a, query.project, query.changedFiles)
+  );
+
+  return budgeted;
 }
 
 // ---- Hit Tracking ----

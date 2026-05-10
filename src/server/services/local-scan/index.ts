@@ -1,12 +1,13 @@
 import fs from "fs";
 import path from "path";
-import type { GitLabDiff, ScanContext, RelatedFile } from "../../../shared/types";
+import type { GitLabDiff, ScanContext, RelatedFile, ProjectScanResult, TechStack } from "../../../shared/types";
 import { extractLocalDiff, parseDiffToGitLabDiffs } from "./git-diff";
 import { extractChangedSymbols, classifyFile } from "./symbol-extractor";
 import { findRelatedFiles } from "./related-finder";
 import { extractFileContext } from "./context-extractor";
 import { estimateTokens, truncateRelatedFiles, type RelatedFileWithContext } from "./token-budget";
 import { analyzeDiffsWithAST, buildASTContextPrompt, type ASTChangeInfo } from "./ast-analyzer";
+import { inferTechStack } from "../techstack";
 
 export { buildASTContextPrompt };
 
@@ -99,4 +100,117 @@ export function buildRelatedFilesPrompt(context: ScanContext): string {
   }
 
   return prompt;
+}
+
+// ---- Multi-Project Scan (v1.4.0) ----
+
+export interface MultiProjectScanContext {
+  projects: Array<{
+    project: string;
+    repoPath: string;
+    context: ScanContext;
+    techStack: TechStack;
+    diffCount: number;
+    diffChars: number;
+    diffPreview: Array<{ path: string; newFile: boolean; diffChars: number }>;
+  }>;
+  totalFiles: number;
+  totalTokens: number;
+  projectCount: number;
+}
+
+/**
+ * Per-repoPath lock for git operations to avoid index.lock conflicts.
+ * Uses Promise chain: same repoPath operations serialize, different paths run in parallel.
+ */
+const gitLocks = new Map<string, Promise<void>>();
+
+async function withGitLock<T>(repoPath: string, fn: () => Promise<T>): Promise<T> {
+  // Wait for any in-flight operation on the same repo
+  const prev = gitLocks.get(repoPath);
+  let resolveChain: () => void;
+  const chain = new Promise<void>((r) => { resolveChain = r; });
+
+  // Register our slot before awaiting the previous one
+  gitLocks.set(repoPath, chain);
+
+  if (prev) {
+    await prev;
+  }
+
+  try {
+    return await fn();
+  } finally {
+    resolveChain!();
+    // Clean up only if our chain is still the current one
+    if (gitLocks.get(repoPath) === chain) {
+      gitLocks.delete(repoPath);
+    }
+  }
+}
+
+/**
+ * Scan multiple projects concurrently (max 3 parallel).
+ * Projects without diff are skipped.
+ * Git operations on the same repoPath are serialized via a lock.
+ */
+export async function buildMultiProjectScanContext(
+  projects: Array<{ project: string; repoPath: string }>,
+  targetBranch: string,
+  sourceBranch: string,
+  options?: { maxConcurrent?: number }
+): Promise<MultiProjectScanContext> {
+  const concurrency = options?.maxConcurrent ?? 3;
+  const results: MultiProjectScanContext["projects"] = [];
+
+  const queue = [...projects];
+  const executing = new Set<Promise<void>>();
+
+  const scanOne = async (item: { project: string; repoPath: string }): Promise<void> => {
+    const ctx = await withGitLock(item.repoPath, () =>
+      buildLocalScanContext(item.repoPath, targetBranch, sourceBranch)
+    );
+
+    if (ctx.diffs.length === 0) return;
+
+    const techStack = inferTechStack(ctx.diffs.map((d) => d.new_path));
+    const diffChars = ctx.diffs.reduce((sum, d) => sum + d.diff.length, 0);
+    const diffPreview = ctx.diffs.map((d) => ({
+      path: d.new_path,
+      newFile: d.new_file,
+      diffChars: d.diff.length,
+    }));
+
+    results.push({
+      project: item.project,
+      repoPath: item.repoPath,
+      context: ctx,
+      techStack,
+      diffCount: ctx.diffs.length,
+      diffChars,
+      diffPreview,
+    });
+  };
+
+  while (queue.length > 0 || executing.size > 0) {
+    while (queue.length > 0 && executing.size < concurrency) {
+      const item = queue.shift()!;
+      const p = scanOne(item)
+        .catch((err) => {
+          console.error(`[MultiScan] ${item.project} failed: ${err instanceof Error ? err.message : err}`);
+        })
+        .finally(() => executing.delete(p));
+      executing.add(p);
+    }
+    if (executing.size > 0) {
+      await Promise.race(executing);
+    }
+  }
+
+  return {
+    projects: results,
+    totalFiles: results.reduce((sum, r) => sum + r.diffCount, 0),
+    totalTokens: results.reduce((sum, r) => sum + r.context.totalTokens, 0),
+    projectCount: results.length,
+  };
 }
