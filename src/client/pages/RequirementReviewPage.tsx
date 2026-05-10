@@ -266,8 +266,14 @@ export function RequirementReviewPage() {
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Requirement Review</h1>
-          <p className="text-slate-400 text-sm">Multi-project cross-stack review by product line</p>
+          <h1 className="text-2xl font-bold text-white">需求评审</h1>
+          <p className="text-slate-400 text-sm">按产品线多项目并行评审，自动分组、知识注入、跨项目检测</p>
+          <div className="mt-2 text-xs text-slate-500 space-y-0.5">
+            <p>1. 选产品线 + 填分支 → 预览变更（按技术栈分组、显示 diff 统计、可勾选排除项目）</p>
+            <p>2. 开始需求评审 → 自动按技术栈分组评审（Java 用 Java 维度集，Vue 用 Vue 维度集）</p>
+            <p>3. 每组注入 4 层知识（基础 + 产品线 + 前后端契约 + 项目级），pom.xml 依赖自动检测跨项目影响</p>
+            <p>4. 评审完成 → 跳转产品级合并报告</p>
+          </div>
         </div>
         <Link to="/local-review" className="text-blue-400 text-xs hover:underline">
           Switch to Local Review &rarr;

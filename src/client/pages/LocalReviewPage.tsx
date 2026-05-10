@@ -242,13 +242,19 @@ export function LocalReviewPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-white">Local Code Review</h1>
+      <h1 className="text-2xl font-bold text-white">单项目评审</h1>
       <p className="text-slate-400 text-sm">
-        Scan a local git repository branch diff for AI review
+        评审单个本地 Git 仓库的分支变更
         <Link to="/requirement-review" className="text-blue-400 text-xs hover:underline ml-3">
-          Switch to Requirement Review &rarr;
+          切换到需求评审 →
         </Link>
       </p>
+      <div className="text-xs text-slate-500 space-y-0.5">
+        <p>1. 选项目（从已配置的项目中选择）+ 填源分支 / 目标分支</p>
+        <p>2. 预览变更 → 确认文件范围 → 开始评审</p>
+        <p>3. 自动注入 4 层知识（基础 + 产品线 + 前后端契约 + 项目级）+ AST 语义分析</p>
+        <p>4. 评审完成 → 查看报告</p>
+      </div>
 
       {loading && project && (
         <div className="bg-blue-900/20 border border-blue-800/50 rounded-xl p-4 flex items-center gap-3">
