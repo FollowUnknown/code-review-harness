@@ -76,6 +76,139 @@ function groupByTechStack(projects: RepoMapping[]): Record<string, RepoMapping[]
 const TECH_STACK_ORDER: TechStack[] = ["java-backend", "vue-frontend", "mixed", "unknown"];
 
 // ---------------------------------------------------------------------------
+// ProjectRow — editable path with validation
+// ---------------------------------------------------------------------------
+
+function ProjectRow({ project, onPathChanged, onRemove }: {
+  project: RepoMapping;
+  onPathChanged: () => void;
+  onRemove: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [path, setPath] = useState(project.localPath);
+  const [saving, setSaving] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [pathStatus, setPathStatus] = useState<"ok" | "not_found" | "not_git" | null>(null);
+
+  useEffect(() => { setPath(project.localPath); }, [project.localPath]);
+
+  async function handleSave() {
+    if (!path.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/repo-mappings`, {
+        method: "POST",
+        headers: authHeaders(true),
+        body: JSON.stringify({ project: project.project, localPath: path.trim() }),
+      });
+      if (res.ok) {
+        setEditing(false);
+        onPathChanged();
+      }
+    } catch { /* ignore */ } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleValidate() {
+    setValidating(true);
+    setPathStatus(null);
+    try {
+      // Check if path is a git repo by trying to preview
+      const res = await fetch(`${API_BASE}/api/review/preview`, {
+        method: "POST",
+        headers: authHeaders(true),
+        body: JSON.stringify({ project: project.project, sourceBranch: "HEAD", targetBranch: "HEAD~1" }),
+      });
+      if (res.ok) {
+        setPathStatus("ok");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        const msg = data.error || "";
+        if (msg.includes("not found") || msg.includes("ENOENT")) {
+          setPathStatus("not_found");
+        } else if (msg.includes("not a git") || msg.includes("git")) {
+          setPathStatus("not_git");
+        } else {
+          setPathStatus("ok"); // other errors may just mean no diff, path is valid
+        }
+      }
+    } catch {
+      setPathStatus("not_found");
+    } finally {
+      setValidating(false);
+    }
+  }
+
+  const statusColor = pathStatus === "ok"
+    ? "text-emerald-400"
+    : pathStatus === "not_found"
+      ? "text-red-400"
+      : pathStatus === "not_git"
+        ? "text-orange-400"
+        : "text-slate-500";
+
+  return (
+    <div className="px-2.5 py-1.5 bg-slate-900/50 border border-slate-700/30 rounded text-xs space-y-1">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-slate-300 font-medium">{project.project}</span>
+          {techStackBadge(project.techStack)}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => setEditing(!editing)}
+            className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            {editing ? "cancel" : "edit path"}
+          </button>
+          <button
+            onClick={onRemove}
+            className="text-[10px] text-red-400/60 hover:text-red-400 transition-colors"
+          >
+            remove
+          </button>
+        </div>
+      </div>
+      {editing ? (
+        <div className="flex items-center gap-1.5">
+          <input
+            type="text"
+            value={path}
+            onChange={(e) => setPath(e.target.value)}
+            placeholder="/path/to/project"
+            className="flex-1 px-2 py-1 text-[11px] bg-slate-800 border border-slate-700/50 rounded text-slate-300 font-mono"
+          />
+          <button
+            onClick={handleSave}
+            disabled={saving || !path.trim()}
+            className="px-2 py-1 text-[10px] bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50"
+          >
+            {saving ? "..." : "save"}
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-slate-600 font-mono truncate">{project.localPath}</span>
+          <button
+            onClick={handleValidate}
+            disabled={validating}
+            className="shrink-0 text-[10px] text-slate-500 hover:text-slate-300 transition-colors disabled:opacity-50"
+          >
+            {validating ? "checking..." : "verify"}
+          </button>
+          {pathStatus && (
+            <span className={`text-[10px] ${statusColor}`}>
+              {pathStatus === "ok" ? "path valid" : pathStatus === "not_found" ? "path not found" : "not a git repo"}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // ProductLineManagePage
 // ---------------------------------------------------------------------------
 
@@ -217,6 +350,16 @@ export function ProductLineManagePage() {
     } finally {
       setDetailLoading(false);
     }
+  }
+
+  async function refreshDetail() {
+    if (!expandedId) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/product-lines/${expandedId}`, { headers: authHeaders() });
+      if (!res.ok) return;
+      const data: ProductLineWithProjects = await res.json();
+      setDetail(data);
+    } catch { /* ignore */ }
   }
 
   // -----------------------------------------------------------------------
@@ -525,21 +668,12 @@ export function ProductLineManagePage() {
                                     </div>
                                     <div className="space-y-1 ml-1">
                                       {projects.map((p) => (
-                                        <div
+                                        <ProjectRow
                                           key={p.project}
-                                          className="flex items-center justify-between px-2.5 py-1.5 bg-slate-900/50 border border-slate-700/30 rounded text-xs"
-                                        >
-                                          <div className="flex items-center gap-2 min-w-0">
-                                            <span className="text-slate-300 truncate">{p.project}</span>
-                                            <span className="text-[10px] text-slate-600 truncate">{p.localPath}</span>
-                                          </div>
-                                          <button
-                                            onClick={() => handleRemoveProject(p.project)}
-                                            className="shrink-0 ml-2 text-[10px] text-red-400/60 hover:text-red-400 transition-colors"
-                                          >
-                                            remove
-                                          </button>
-                                        </div>
+                                          project={p}
+                                          onPathChanged={refreshDetail}
+                                          onRemove={() => handleRemoveProject(p.project)}
+                                        />
                                       ))}
                                     </div>
                                   </div>
