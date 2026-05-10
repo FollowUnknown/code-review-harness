@@ -14,7 +14,7 @@ interface ProductLineOption {
 interface PreviewData {
   projects: ProjectScanResult[];
   totalFiles: number;
-  totalDiffChars: number;
+  totalTokens: number;
 }
 
 interface SSEEvent {
@@ -41,7 +41,7 @@ export function RequirementReviewPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
-  const [excludedProjects, setExcludedProjects] = useState<Set<string>>(new Set());
+  const [includedProjects, setIncludedProjects] = useState<Set<string>>(new Set());
   const [steps, setSteps] = useState<string[]>([]);
   const [reviewId, setReviewId] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -142,7 +142,7 @@ export function RequirementReviewPage() {
     setError(null);
     setPreviewData(null);
     setReviewId(null);
-    setExcludedProjects(new Set());
+    setIncludedProjects(new Set());
 
     fetch(`${API_BASE}/api/review/requirement/preview`, {
       method: "POST",
@@ -163,6 +163,8 @@ export function RequirementReviewPage() {
           setError("No changed projects found between the branches");
         } else {
           setPreviewData(preview);
+          // Default: include all projects
+          setIncludedProjects(new Set(preview.projects.map((p) => p.project)));
         }
       })
       .catch((err: unknown) => {
@@ -171,8 +173,8 @@ export function RequirementReviewPage() {
       .finally(() => setLoading(false));
   }
 
-  function toggleProjectExclusion(project: string) {
-    setExcludedProjects((prev) => {
+  function toggleProjectInclusion(project: string) {
+    setIncludedProjects((prev) => {
       const next = new Set(prev);
       if (next.has(project)) next.delete(project);
       else next.add(project);
@@ -188,11 +190,15 @@ export function RequirementReviewPage() {
     setSteps([]);
     setReviewId(null);
 
+    // Compute excluded projects: all projects NOT in includedProjects
+    const allProjectNames = previewData.projects.map((p) => p.project);
+    const excludedProjects = allProjectNames.filter((p) => !includedProjects.has(p));
+
     const body = {
       productLine,
       sourceBranch,
       targetBranch,
-      excludedProjects: excludedProjects.size > 0 ? Array.from(excludedProjects) : undefined,
+      excludedProjects: excludedProjects.length > 0 ? excludedProjects : undefined,
     };
 
     startSSEStream(body);
@@ -362,7 +368,7 @@ export function RequirementReviewPage() {
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium text-slate-200">Changed Projects</h3>
               <span className="text-xs text-slate-500">
-                {previewData.totalFiles} files, {previewData.totalDiffChars.toLocaleString()} chars changed
+                {previewData.totalFiles} files, {previewData.totalTokens.toLocaleString()} tokens estimated
               </span>
             </div>
 
@@ -370,7 +376,7 @@ export function RequirementReviewPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-700/50">
-                    <th className="text-left py-2 px-3 text-xs text-slate-500 font-medium w-10">Exclude</th>
+                    <th className="text-left py-2 px-3 text-xs text-slate-500 font-medium w-10">Include</th>
                     <th className="text-left py-2 px-3 text-xs text-slate-500 font-medium">Project</th>
                     <th className="text-left py-2 px-3 text-xs text-slate-500 font-medium">Tech Stack</th>
                     <th className="text-right py-2 px-3 text-xs text-slate-500 font-medium">Files</th>
@@ -379,17 +385,17 @@ export function RequirementReviewPage() {
                 </thead>
                 <tbody>
                   {previewData.projects.map((proj) => {
-                    const isExcluded = excludedProjects.has(proj.project);
+                    const isIncluded = includedProjects.has(proj.project);
                     return (
                       <tr
                         key={proj.project}
-                        className={`border-b border-slate-700/30 transition-colors ${isExcluded ? "opacity-40" : ""}`}
+                        className={`border-b border-slate-700/30 transition-colors ${!isIncluded ? "opacity-40" : ""}`}
                       >
                         <td className="py-2 px-3">
                           <input
                             type="checkbox"
-                            checked={isExcluded}
-                            onChange={() => toggleProjectExclusion(proj.project)}
+                            checked={isIncluded}
+                            onChange={() => toggleProjectInclusion(proj.project)}
                             disabled={loading}
                             className="rounded border-slate-600 bg-slate-900"
                           />
@@ -407,9 +413,9 @@ export function RequirementReviewPage() {
               </table>
             </div>
 
-            {excludedProjects.size > 0 && (
+            {previewData && includedProjects.size < previewData.projects.length && (
               <p className="text-xs text-yellow-400/80">
-                {excludedProjects.size} project(s) will be excluded from review
+                {previewData.projects.length - includedProjects.size} project(s) will be excluded from review
               </p>
             )}
 

@@ -248,7 +248,7 @@ export function ReviewResult({ data, project, onReset, onKnowledgeClick }: Props
         </div>
 
         {/* Score Circles */}
-        {report.scores.length > 0 && (
+        {(report.scores?.length ?? 0) > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {report.scores.map((s) => (
               <ScoreCircle key={s.dimension} score={s.score} label={s.dimension} />
@@ -257,7 +257,7 @@ export function ReviewResult({ data, project, onReset, onKnowledgeClick }: Props
         )}
 
         {/* Enhanced Issues Section */}
-        {report.issues.length > 0 && (
+        {(report.issues?.length ?? 0) > 0 && (
           <IssuesSection
             issues={report.issues}
             reviewId={data.reviewId}
@@ -877,9 +877,9 @@ function IssuesSection({ issues, reviewId, project }: IssuesSectionProps) {
                                   {/* Action buttons */}
                                   <div className="flex items-center justify-between pt-2">
                                     <div className="text-xs text-slate-500">
-                                      Click &quot;+ Knowledge&quot; to add this issue to the knowledge base
+                                      Add this issue as a knowledge entry
                                     </div>
-                                    {/* Note: CreateKnowledgeButton would go here if needed */}
+                                    <CreateKnowledgeButton issue={issue} reviewId={reviewId} project={project || undefined} />
                                   </div>
                                 </div>
                               </motion.div>

@@ -4,9 +4,27 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ReviewResult } from "../components/ReviewResult";
 import { LLMHistoryDrawer } from "../components/LLMHistoryDrawer";
 import { KnowledgeDetailDrawer } from "../components/KnowledgeDetailDrawer";
-import type { ReviewResponse, ReviewRecord, LLMLog, KnowledgeEntrySummary } from "../../shared/types";
+import type { ReviewResponse, ReviewRecord, KnowledgeEntrySummary, RequirementReviewReport } from "../../shared/types";
 
 const API_BASE = "";
+
+/** Flatten a RequirementReviewReport into a ReviewReport so ReviewResult can render it */
+function flattenRequirementReport(report: RequirementReviewReport): ReviewResponse["report"] {
+  const allIssues = report.techStackReports.flatMap((tsr) =>
+    tsr.projectReports.flatMap((pr) => pr.report.issues)
+  );
+  const allScores = report.techStackReports.flatMap((tsr) =>
+    tsr.projectReports.flatMap((pr) => pr.report.scores)
+  );
+  return {
+    contractTitle: `Requirement Review — ${report.productLine}`,
+    timestamp: new Date().toISOString(),
+    passed: report.overallPassed,
+    scores: allScores,
+    issues: allIssues,
+    summary: `${report.totalProjects} projects, ${report.totalFiles} files, ${report.totalIssues} issues (score: ${report.overallScore})`,
+  };
+}
 
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem("auth_token");
@@ -34,6 +52,12 @@ export function ReviewDetailPage() {
       })
       .then((data: { record: ReviewRecord; response: ReviewResponse }) => {
         setRecord(data.record);
+        // Flatten requirement review reports so ReviewResult can render them
+        const report = data.response.report as unknown as Record<string, unknown>;
+        if (report && "techStackReports" in report) {
+          const reqReport = report as unknown as RequirementReviewReport;
+          data.response.report = flattenRequirementReport(reqReport);
+        }
         setResponse(data.response);
       })
       .catch(() => setError("Review not found"))

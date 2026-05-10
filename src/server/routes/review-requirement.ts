@@ -10,6 +10,7 @@ import {
   determineAdoptedKnowledge,
   preloadSharedKnowledge,
   getProjectKnowledge,
+  suggestDispositions,
 } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
 import { callLLM, getLLMConfig } from "../llm";
@@ -119,13 +120,13 @@ router.post("/requirement/preview", async (req: Request, res: Response) => {
     const previewProjects: Array<{
       project: string;
       techStack: TechStack;
-      fileCount: number;
+      diffCount: number;
       diffChars: number;
       diffPreview: Array<{ path: string; newFile: boolean; diffChars: number }>;
     }> = multiCtx.projects.map((p) => ({
       project: p.project,
       techStack: p.techStack,
-      fileCount: p.diffCount,
+      diffCount: p.diffCount,
       diffChars: p.diffChars,
       diffPreview: p.diffPreview,
     }));
@@ -546,7 +547,7 @@ router.post("/requirement", async (req: Request, res: Response) => {
       issue_count: allIssues.length,
       critical_count: totalCritical,
       created_by: userId,
-      knowledge_dispositions_json: "",
+      knowledge_dispositions_json: JSON.stringify(suggestDispositions(allIssues)),
     });
 
     completeStep();
