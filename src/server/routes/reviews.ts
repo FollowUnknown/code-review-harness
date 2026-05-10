@@ -9,6 +9,7 @@ import { parseMRUrl, fetchMRMeta, fetchMRDiffs, fetchMRHeadSha, fetchCompareDiff
 import { classify } from "../services/classifier";
 import { understandRequirement } from "../services/requirement";
 import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnowledgeHits, determineAdoptedKnowledge, getKnowledgeUsedByReview, getKnowledgeProducedByReview } from "../services/knowledge";
+import { getRepoMapping } from "../config/repo-mapping";
 import { buildRequirementPrompt } from "../services/requirement";
 import { buildKnowledgePrompt } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
@@ -241,7 +242,13 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
       ctx.existing.mr_meta_json ? JSON.parse(ctx.existing.mr_meta_json) : {},
       ctx.diffs
     );
-    const knowledge = getKnowledgeForReview(project, requirement.module, undefined, techStack);
+    const reviewMapping = getRepoMapping(ctx.parsed.projectPath);
+    const knowledge = getKnowledgeForReview({
+      project,
+      module: requirement.module,
+      techStack,
+      productLine: reviewMapping?.productLineId ?? undefined,
+    });
     const reqPrompt = requirement ? buildRequirementPrompt(requirement) : "";
     const knowledgePrompt = knowledge.length > 0 ? buildKnowledgePrompt(knowledge) : "";
     const userPromptPrefix = getReviewUserPrompt();

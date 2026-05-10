@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileSelectorDialog } from "../components/FileSelectorDialog";
 import type { DiffPreviewResponse } from "../../shared/types";
@@ -243,7 +243,12 @@ export function LocalReviewPage() {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold text-white">Local Code Review</h1>
-      <p className="text-slate-400 text-sm">Scan a local git repository branch diff for AI review</p>
+      <p className="text-slate-400 text-sm">
+        Scan a local git repository branch diff for AI review
+        <Link to="/requirement-review" className="text-blue-400 text-xs hover:underline ml-3">
+          Switch to Requirement Review &rarr;
+        </Link>
+      </p>
 
       {loading && project && (
         <div className="bg-blue-900/20 border border-blue-800/50 rounded-xl p-4 flex items-center gap-3">

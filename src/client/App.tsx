@@ -19,6 +19,8 @@ import { UserManagementPage } from "./pages/UserManagementPage";
 import { QualityPage } from "./pages/QualityPage";
 import { MemoryPage } from "./pages/MemoryPage";
 import { LocalReviewPage } from "./pages/LocalReviewPage";
+import { RequirementReviewPage } from "./pages/RequirementReviewPage";
+import { ProductLineManagePage } from "./pages/ProductLineManagePage";
 
 const API_BASE = "";
 
@@ -170,6 +172,7 @@ export default function App() {
             {/* Primary actions */}
             <NavLink to="/reviews">History</NavLink>
             <NavLink to="/local-review">Local</NavLink>
+            <NavLink to="/requirement-review">Requirement</NavLink>
 
             {/* Divider */}
             <div className="w-px h-5 bg-slate-700/60" />
@@ -211,6 +214,7 @@ export default function App() {
                       exit={{ opacity: 0, y: -4 }}
                       className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 z-50"
                     >
+                      <AdminMenuLink to="/product-lines" onClick={() => setShowAdminMenu(false)}>Product Lines</AdminMenuLink>
                       <AdminMenuLink to="/dimensions" onClick={() => setShowAdminMenu(false)}>Dimensions</AdminMenuLink>
                       <AdminMenuLink to="/users" onClick={() => setShowAdminMenu(false)}>Users</AdminMenuLink>
                       <button
@@ -304,6 +308,8 @@ export default function App() {
           <Route path="/quality" element={<QualityPage />} />
           <Route path="/memory" element={<MemoryPage />} />
           <Route path="/local-review" element={<LocalReviewPage />} />
+          <Route path="/requirement-review" element={<RequirementReviewPage />} />
+          <Route path="/product-lines" element={<ProductLineManagePage />} />
         </Routes>
       </div>
     </div>

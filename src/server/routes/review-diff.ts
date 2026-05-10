@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { classify } from "../services/classifier";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
 import { getKnowledgeForReview, buildKnowledgePrompt, extractLearnings, trackKnowledgeHits, determineAdoptedKnowledge, suggestDispositions } from "../services/knowledge";
+import { getRepoMapping } from "../config/repo-mapping";
 import { callLLM, getLLMConfig } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { getDimensionsForProject } from "../services/dimensions";
@@ -49,7 +50,13 @@ router.post("/diff", async (req: Request, res: Response) => {
     const reviewId = `R-${randomUUID().slice(0, 8)}`;
 
     // Load knowledge for this project
-    const knowledge = getKnowledgeForReview(project || "diff-upload", undefined, diffs.map((d: { new_path: string }) => d.new_path), techStack);
+    const diffMapping = getRepoMapping(project || "");
+    const knowledge = getKnowledgeForReview({
+      project: project || "diff-upload",
+      changedFiles: diffs.map((d: { new_path: string }) => d.new_path),
+      techStack,
+      productLine: diffMapping?.productLineId ?? undefined,
+    });
     const knowledgePrompt = knowledge.length > 0 ? buildKnowledgePrompt(knowledge) : "";
 
     const batchReports = [];

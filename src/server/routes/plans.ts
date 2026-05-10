@@ -11,6 +11,7 @@ import { parseMRUrl, fetchMRMeta, fetchMRDiffs } from "../services/gitlab";
 import { classify } from "../services/classifier";
 import { understandRequirement } from "../services/requirement";
 import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnowledgeHits, determineAdoptedKnowledge } from "../services/knowledge";
+import { getRepoMapping } from "../config/repo-mapping";
 import { buildRequirementPrompt } from "../services/requirement";
 import { buildKnowledgePrompt } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
@@ -200,7 +201,13 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
 
       const batchLevels = classification.batches.map((b) => b.level);
       const requirement = await understandRequirement(mr, diffs);
-      const knowledge = getKnowledgeForReview(project, requirement.module, undefined, techStack);
+      const planMapping = getRepoMapping(parsed.projectPath);
+      const knowledge = getKnowledgeForReview({
+        project,
+        module: requirement.module,
+        techStack,
+        productLine: planMapping?.productLineId ?? undefined,
+      });
       const reqPrompt = requirement ? buildRequirementPrompt(requirement) : "";
       const knowledgePrompt = knowledge.length > 0 ? buildKnowledgePrompt(knowledge) : "";
       const userPromptPrefix = getReviewUserPrompt();

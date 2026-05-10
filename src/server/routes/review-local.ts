@@ -184,7 +184,13 @@ router.post("/local", async (req: Request, res: Response) => {
     nextStep("Loading knowledge base");
     const inferredModule = inferModuleFromPaths(diffs.map((d: { new_path: string }) => d.new_path));
     const techStack = inferTechStack(diffs.map((d: { new_path: string }) => d.new_path));
-    const knowledge = getKnowledgeForReview(project, inferredModule, diffs.map((d: { new_path: string }) => d.new_path), techStack);
+    const knowledge = getKnowledgeForReview({
+      project,
+      module: inferredModule,
+      changedFiles: diffs.map((d: { new_path: string }) => d.new_path),
+      techStack,
+      productLine: mapping.productLineId ?? undefined,
+    });
     completeStep(`${knowledge.length} entries loaded`);
 
     // Step 4: Review batches
