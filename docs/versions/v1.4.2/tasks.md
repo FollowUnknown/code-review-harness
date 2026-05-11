@@ -38,10 +38,10 @@
 - [x] V142-031: v1.3.7 README 关联 Contract 段规范化（替换旧「文档」段）(P1)
 - [x] V142-032: v1.3.9（已在 Phase 3 创建时完成）, v1.4.1（修复 contract status confirmed→completed）(P1)
 
-## Phase 5: v1.4.0 文档精简
+## Phase 5: v1.4.0 文档精简（已完成）
 
-- [ ] V142-040: 合并 scenario-analysis.md + business-scenarios.md → user-scenarios.md (P2)
-- [ ] V142-041: 保留 change-impact-map.md 独立（架构决策 2），删除原 scenario-analysis + business-scenarios (P2)
+- [x] V142-040: 合并 scenario-analysis.md + business-scenarios.md → user-scenarios.md（124 行，5 个场景）(P2)
+- [x] V142-041: 保留 change-impact-map.md 独立（架构决策 2），v1.4.0 目录 5→4 文件 (P2)
 
 ## Phase 6: 规则沉淀
 
