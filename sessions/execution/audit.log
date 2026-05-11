@@ -1426,3 +1426,52 @@
 [2026-05-11T03:01:03Z] Edit docs/versions/README.md session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
 [2026-05-11T03:01:53Z] Edit .gitignore session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
 [AUDIT] Edit on .gitignore - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:19:51Z] Write docs/versions/v1.4.1/README.md session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[2026-05-11T03:21:21Z] Edit docs/versions/README.md session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[2026-05-11T03:21:34Z] Edit docs/versions/README.md session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[2026-05-11T03:23:06Z] Write docs/versions/v1.4.2/README.md session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[2026-05-11T03:23:41Z] Write docs/versions/v1.4.2/tasks.md session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[2026-05-11T03:24:04Z] Edit sessions/2026-05-11.md session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[2026-05-11T03:24:18Z] Edit sessions/2026-05-11.md session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[2026-05-11T03:49:04Z] Edit src/shared/types.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/shared/types.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:49:18Z] Edit src/server/db.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:49:37Z] Edit src/server/services/review-store.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/services/review-store.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:49:47Z] Edit src/server/services/review-store.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/services/review-store.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:49:57Z] Edit src/server/services/review-store.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/services/review-store.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:50:29Z] Edit src/server/services/review-store.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/services/review-store.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:50:43Z] Edit src/server/routes/reviews.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/routes/reviews.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:50:57Z] Edit src/server/services/knowledge.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:51:33Z] Edit src/server/services/knowledge.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:51:44Z] Edit src/server/routes/knowledge.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/routes/knowledge.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:51:52Z] Edit src/server/routes/knowledge.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/routes/knowledge.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:53:01Z] Edit src/server/routes/review-requirement.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:53:19Z] Edit src/server/routes/reviews.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/routes/reviews.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:53:19Z] Edit src/server/routes/review.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/routes/review.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:53:33Z] Edit src/server/routes/review-local.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:53:49Z] Edit src/server/routes/plans.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/routes/plans.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:53:49Z] Edit src/server/routes/review-diff.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/routes/review-diff.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T03:54:11Z] Edit src/server/routes/review-local.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T04:00:37Z] Edit src/server/db.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T04:00:52Z] Edit src/server/services/knowledge.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
+[2026-05-11T04:01:38Z] Edit src/server/routes/plans.ts session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[AUDIT] Edit on src/server/routes/plans.ts - allowed (contract: 2026-05-06-v137-multi-techstack.md)
