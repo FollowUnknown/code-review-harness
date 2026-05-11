@@ -18,3 +18,4 @@ coverage/
 *.rvf.lock
 .claude-flow/
 .swarm/
+.mcp.json
