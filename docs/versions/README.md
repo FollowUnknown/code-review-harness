@@ -79,7 +79,7 @@ v2.0.0 (平台化)
 
 | 版本 | 说明 |
 |------|------|
-| [v1.4.0-archived](./v1.4.0-archived/README.md) | 原 Capability Superpower 规划（偏理论，已归档，可能移至 v2.0） |
+| ~~v1.4.0-archived~~ | 原 Capability Superpower 规划（Skill 版本管理 + Provider 路由 + 依赖治理）。2026-05-11 审计：平台级基础设施概念对 v2.0.0「平台化/能力治理」有参考价值，内容已在版本历史中保留，目录已删除 |
 
 ---
 

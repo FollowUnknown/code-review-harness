@@ -24,13 +24,13 @@
 - [x] V142-013: 统一 13 个 contract 的 `status` 为受控词汇 → 13/13 受控 (P0)
 - [x] V142-014: 关闭已完成但 status 未更新的 contract → 12 completed + 1 in_progress(v2.0.0) (P0)
 
-## Phase 3: 清理与一致化
+## Phase 3: 清理与一致化（已完成）
 
-- [ ] V142-020: v1.3.8 contract 归入 v1.3.9（local-review-job-persistence 版本号改为 v1.3.9）(P0)
-- [ ] V142-021: 创建 v1.3.9 最小目录（README + 关联 Contract 表）(P0)
-- [ ] V142-022: 审计 v1.4.0-archived/ 内容，提取摘要后删除目录 (P1)
-- [ ] V142-023: 修正 v1.3.0 README 状态矛盾：`待规划` → `✅ 完成` (P0)
-- [ ] V142-024: 统一子目录 README 中与总表矛盾的自我状态描述 (P1)
+- [x] V142-020: v1.3.8 contract 归入 v1.3.9（local-review-job-persistence → v1.3.9，Phase 2 已完成）(P0)
+- [x] V142-021: 创建 v1.3.9 最小目录（README + 关联 Contract 表，5 个 contract）(P0)
+- [x] V142-022: 审计 v1.4.0-archived/ 内容（Capability Superpower 概念对 v2.0.0 有用），提取摘要后删除目录 (P1)
+- [x] V142-023: 修正 v1.3.0 README 状态矛盾：`待规划` → `✅ 完成` (P0)
+- [x] V142-024: 统一子目录 README 中与总表矛盾的自我状态描述 → 5 处修复（v1.1.0/v1.1.5/v1.2.0/v1.2.5/v1.4.0）(P1)
 
 ## Phase 4: 版本反向引用
 

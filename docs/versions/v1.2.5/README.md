@@ -1,7 +1,7 @@
 # v1.2.5 - Harness Memory 分层系统
 
 > 版本周期: 2026-04-30
-> 状态: 已完成
+> 状态: ✅ 完成
 > 前置: v1.2.0（CodeReview 侧 Knowledge 精准召回）
 > 后置: v1.3.0（Capability Superpower 基础）
 

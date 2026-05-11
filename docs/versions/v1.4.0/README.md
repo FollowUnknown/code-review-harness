@@ -1,6 +1,6 @@
 # v1.4.0 -- 按需求评审 + 产品线 + 多工程集成
 
-> 状态: ✅ 已完成
+> 状态: ✅ 完成
 > 前置: v1.3.9 (AST + knowledge improvements)
 > 后置: v1.5.0
 > 详细设计: [design.md](./design.md)
