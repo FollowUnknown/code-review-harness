@@ -1,7 +1,7 @@
 # Contract: 知识库抽屉弹窗加宽
 
 > 日期: 2026-05-11
-> 状态: review_pending
+> 状态: completed
 > 类型: Business Task
 > 版本: v1.4.3
 
