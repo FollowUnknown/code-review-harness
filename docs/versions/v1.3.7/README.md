@@ -85,12 +85,11 @@ v1.3.6 真实 MR 验证暴露了 3 层差距（详见 [gap-analysis](../v1.3.6/g
 | 测试覆盖 | 核心 Service 有单测、边界条件覆盖 |
 | 密钥管理 | 无硬编码密钥、走环境变量 |
 
-## 文档
+## 关联 Contract
 
-| 文件 | 内容 |
-|------|------|
-| [gap-analysis](../v1.3.6/gap-analysis.md) | 差距分析与建设方案（v1.3.6 产出） |
-| [contract](../../contracts/2026-05-06-v137-multi-techstack.md) | Sprint Contract（completed） |
+| Contract | 日期 | 状态 | 范围 |
+|----------|------|------|------|
+| [2026-05-06-v137-multi-techstack](../../contracts/2026-05-06-v137-multi-techstack.md) | 2026-05-06 | completed | v1.3.7 多技术栈评审 |
 
 ## 提交记录
 

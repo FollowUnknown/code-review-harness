@@ -19,7 +19,7 @@ v1.4.0 初版上线后，实际使用中暴露出若干问题：需求评审页�
 
 | Contract | 日期 | 状态 | 范围 |
 |----------|------|------|------|
-| [2026-05-11-fix-requirement-page-crash](../../contracts/2026-05-11-fix-requirement-page-crash.md) | 2026-05-11 | confirmed | 需求评审页面崩溃修复 |
+| [2026-05-11-fix-requirement-page-crash](../../contracts/2026-05-11-fix-requirement-page-crash.md) | 2026-05-11 | completed | 需求评审页面崩溃修复 |
 
 ## 提交
 

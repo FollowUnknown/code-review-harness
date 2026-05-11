@@ -32,11 +32,11 @@
 - [x] V142-023: 修正 v1.3.0 README 状态矛盾：`待规划` → `✅ 完成` (P0)
 - [x] V142-024: 统一子目录 README 中与总表矛盾的自我状态描述 → 5 处修复（v1.1.0/v1.1.5/v1.2.0/v1.2.5/v1.4.0）(P1)
 
-## Phase 4: 版本反向引用
+## Phase 4: 版本反向引用（已完成）
 
-- [ ] V142-030: v1.4.0 README 底部增加「关联 Contract」段（作为模板示范）(P1)
-- [ ] V142-031: v1.3.7 README 关联 Contract 段规范化 (P1)
-- [ ] V142-032: v1.3.9, v1.4.1 README 增加关联 Contract 段 (P1)
+- [x] V142-030: v1.4.0 README 底部增加「关联 Contract」段（作为模板示范）(P1)
+- [x] V142-031: v1.3.7 README 关联 Contract 段规范化（替换旧「文档」段）(P1)
+- [x] V142-032: v1.3.9（已在 Phase 3 创建时完成）, v1.4.1（修复 contract status confirmed→completed）(P1)
 
 ## Phase 5: v1.4.0 文档精简
 
