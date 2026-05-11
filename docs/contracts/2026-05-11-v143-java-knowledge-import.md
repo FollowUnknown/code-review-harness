@@ -1,7 +1,7 @@
 # Contract: 导入后端 Java 评审经验规则到知识库
 
 > 日期: 2026-05-11
-> 状态: in_progress
+> 状态: completed
 > 类型: Business Task
 > 版本: v1.4.3
 
