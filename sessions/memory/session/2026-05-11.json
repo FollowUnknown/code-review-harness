@@ -1,0 +1,9 @@
+{
+  "date": "2026-05-11",
+  "context": "Auto-generated from session file",
+  "completedCount": 0
+0,
+  "pendingCount": 1,
+  "files": [".claude/settings.local.json","sessions/2026-05-10.md","sessions/execution/audit.log","src/client/pages/RequirementReviewPage.tsx","src/server/routes/review-requirement.ts"],
+  "createdAt": "2026-05-10T16:03:19Z"
+}

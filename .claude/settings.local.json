@@ -12,7 +12,21 @@
       "Bash(git commit:*)",
       "Bash(node:*)",
       "Bash(npx tsc:*)",
-      "Bash(md5)"
+      "Bash(md5)",
+      "Bash(rm -f ~/.claude/agents/iteration-lead.md)",
+      "Bash(npx @claude-flow/cli@latest hooks pre-edit --file \"src/server/routes/product-lines.ts\")",
+      "Bash(npx @claude-flow/cli@latest hooks post-edit --file \"/Users/tzknow/Documents/do1/project/codeReview/src/shared/types.ts\" --success true)",
+      "Bash(npx @claude-flow/cli@latest hooks pre-edit --file \"/Users/tzknow/Documents/do1/project/codeReview/src/server/services/local-scan/index.ts\")",
+      "Bash(npx @claude-flow/cli@latest hooks post-edit --file \"src/server/services/dependency-scanner.ts\" --success true)",
+      "Bash(npx @claude-flow/cli@latest hooks post-edit --file \"src/server/routes/product-lines.ts\" --success true)",
+      "Bash(npx @claude-flow/cli@latest memory store --key \"pattern-requirement-review-sse-route\" --value \"Multi-project requirement review: scan projects -> groupByTechStack -> preloadSharedKnowledge -> per-project classify+review with shared cache -> merge TechStackGroupReport -> RequirementReviewReport -> SSE with job tracking\" --namespace patterns)",
+      "Bash(npm run:*)",
+      "Bash(xargs kill:*)",
+      "Bash(npm start:*)",
+      "Bash(curl -s http://localhost:5173/api/product-lines)",
+      "Bash(npx tsx:*)",
+      "Bash(curl -s http://localhost:3001/api/product-lines)",
+      "Bash(curl:*)"
     ],
     "deny": [
       "Bash(rm -rf*)",
