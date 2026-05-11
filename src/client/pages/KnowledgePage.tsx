@@ -53,6 +53,8 @@ interface KnowledgeItem {
   review_status: ReviewStatus;
   review_comment: string | null;
   scope_level: ScopeLevel | null;
+  bad_code: string | null;
+  good_code: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -203,6 +205,8 @@ function DetailDrawer({
           first_seen_in: form.first_seen_in,
           derivation: form.derivation,
           scope_level: form.scope_level,
+          bad_code: form.bad_code,
+          good_code: form.good_code,
         }),
       });
       if (!res.ok) {
@@ -379,6 +383,48 @@ function DetailDrawer({
           {item.type === "TERM" && (
             <div className="space-y-4">
               {field("Scope", "scope")}
+            </div>
+          )}
+
+          {/* Bad/Good Code examples (v1.4.3) */}
+          {(item.bad_code || item.good_code || editing) && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase tracking-wider text-red-400">❌ Bad Code</span>
+                {editing ? (
+                  <textarea
+                    value={form.bad_code ?? ""}
+                    onChange={(e) => updateField("bad_code", e.target.value as never)}
+                    rows={6}
+                    placeholder="反例代码..."
+                    className="w-full px-2 py-1 text-xs bg-slate-800 border border-red-500/20 rounded text-slate-300 font-mono resize-y"
+                  />
+                ) : item.bad_code ? (
+                  <pre className="text-xs text-slate-300 whitespace-pre-wrap break-words font-mono bg-red-500/5 border border-red-500/10 rounded p-3 max-h-52 overflow-y-auto">
+                    {item.bad_code}
+                  </pre>
+                ) : (
+                  <p className="text-xs text-slate-600">--</p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase tracking-wider text-emerald-400">✅ Good Code</span>
+                {editing ? (
+                  <textarea
+                    value={form.good_code ?? ""}
+                    onChange={(e) => updateField("good_code", e.target.value as never)}
+                    rows={6}
+                    placeholder="正例代码..."
+                    className="w-full px-2 py-1 text-xs bg-slate-800 border border-emerald-500/20 rounded text-slate-300 font-mono resize-y"
+                  />
+                ) : item.good_code ? (
+                  <pre className="text-xs text-slate-300 whitespace-pre-wrap break-words font-mono bg-emerald-500/5 border border-emerald-500/10 rounded p-3 max-h-52 overflow-y-auto">
+                    {item.good_code}
+                  </pre>
+                ) : (
+                  <p className="text-xs text-slate-600">--</p>
+                )}
+              </div>
             </div>
           )}
 
