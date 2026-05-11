@@ -87,6 +87,7 @@ export interface ReviewRecord {
   id: string;
   mr_url: string;
   project: string | null;
+  product_line_id: string | null;
   author: string | null;
   status: ReviewStatus;
   report_json: string;
@@ -108,6 +109,7 @@ export interface ReviewListItem {
   id: string;
   mr_url: string;
   project: string | null;
+  product_line_id: string | null;
   author: string | null;
   status: ReviewStatus;
   passed: boolean | null;
@@ -120,6 +122,7 @@ export interface ReviewListItem {
 
 export interface ReviewFilter {
   project?: string;
+  product_line_id?: string;
   createdBy?: string;
   status?: ReviewStatus;
   page: number;

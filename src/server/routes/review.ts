@@ -236,6 +236,7 @@ router.post("/review", async (req: Request, res: Response) => {
       id: reviewId,
       mr_url: mrUrl,
       project,
+      product_line_id: null,
       author: mr.author?.name || null,
       status: "completed",
       report_json: JSON.stringify(report),

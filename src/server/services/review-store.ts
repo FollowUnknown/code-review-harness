@@ -5,13 +5,13 @@ export function saveReviewRecord(record: Omit<ReviewRecord, "created_at" | "upda
   const db = getDb();
   db.prepare(`
     INSERT INTO reviews (
-      id, mr_url, project, author, status,
+      id, mr_url, project, product_line_id, author, status,
       report_json, classification_json, requirement_json, mr_meta_json,
       reviewed_commit_sha, passed, avg_score, issue_count, critical_count,
       created_by, knowledge_dispositions_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    record.id, record.mr_url, record.project, record.author, record.status,
+    record.id, record.mr_url, record.project, record.product_line_id ?? null, record.author, record.status,
     record.report_json, record.classification_json, record.requirement_json, record.mr_meta_json,
     record.reviewed_commit_sha, record.passed ? 1 : 0, record.avg_score, record.issue_count,
     record.critical_count, record.created_by, record.knowledge_dispositions_json ?? null
@@ -32,6 +32,7 @@ export function listReviews(filter: ReviewFilter): PaginatedResult<ReviewListIte
   const params: unknown[] = [];
 
   if (filter.project) { conditions.push("project = ?"); params.push(filter.project); }
+  if (filter.product_line_id) { conditions.push("product_line_id = ?"); params.push(filter.product_line_id); }
   if (filter.createdBy) { conditions.push("created_by = ?"); params.push(filter.createdBy); }
   if (filter.status) { conditions.push("status = ?"); params.push(filter.status); }
 
@@ -42,7 +43,7 @@ export function listReviews(filter: ReviewFilter): PaginatedResult<ReviewListIte
 
   const offset = (filter.page - 1) * filter.pageSize;
   const rows = db.prepare(
-    `SELECT id, mr_url, project, author, status, passed, avg_score, issue_count, critical_count, created_by, created_at
+    `SELECT id, mr_url, project, product_line_id, author, status, passed, avg_score, issue_count, critical_count, created_by, created_at
      FROM reviews ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
   ).all(...params, filter.pageSize, offset) as Record<string, unknown>[];
 
@@ -105,6 +106,7 @@ function mapRowToRecord(row: Record<string, unknown>): ReviewRecord {
     id: row.id as string,
     mr_url: row.mr_url as string,
     project: row.project as string | null,
+    product_line_id: row.product_line_id as string | null,
     author: row.author as string | null,
     status: row.status as "completed" | "draft",
     report_json: row.report_json as string,
@@ -128,6 +130,7 @@ function mapRowToListItem(row: Record<string, unknown>): ReviewListItem {
     id: row.id as string,
     mr_url: row.mr_url as string,
     project: row.project as string | null,
+    product_line_id: row.product_line_id as string | null,
     author: row.author as string | null,
     status: row.status as "completed" | "draft",
     passed: row.passed === null ? null : row.passed === 1,

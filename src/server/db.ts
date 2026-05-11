@@ -372,6 +372,12 @@ function migrateReviewsTable(db: Database.Database): void {
     db.exec("ALTER TABLE reviews ADD COLUMN knowledge_dispositions_json TEXT");
   }
 
+  // v1.4.2: Add product_line_id for data isolation
+  if (!columns.some((c) => c.name === "product_line_id")) {
+    db.exec("ALTER TABLE reviews ADD COLUMN product_line_id TEXT");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_reviews_product_line ON reviews(product_line_id)");
+  }
+
   if (hasReportJson) return; // Already migrated
 
   const migrate = db.transaction(() => {
@@ -382,6 +388,7 @@ function migrateReviewsTable(db: Database.Database): void {
         id TEXT PRIMARY KEY,
         mr_url TEXT NOT NULL,
         project TEXT,
+        product_line_id TEXT,
         author TEXT,
         status TEXT NOT NULL DEFAULT 'completed' CHECK(status IN ('completed', 'draft')),
         report_json TEXT NOT NULL,

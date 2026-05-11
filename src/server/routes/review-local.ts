@@ -265,6 +265,7 @@ router.post("/local", async (req: Request, res: Response) => {
       id: reviewId,
       mr_url: `local://${project}/${sourceBranch}..${targetBranch}`,
       project,
+      product_line_id: mapping.productLineId ?? null,
       author: null,
       status: "completed",
       report_json: JSON.stringify(report),

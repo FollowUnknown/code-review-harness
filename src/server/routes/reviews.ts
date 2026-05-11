@@ -25,6 +25,7 @@ const router = Router();
 router.get("/", (req: Request, res: Response) => {
   const filter: ReviewFilter = {
     project: req.query.project as string | undefined,
+    product_line_id: req.query.product_line_id as string | undefined,
     createdBy: req.query.createdBy as string | undefined,
     status: req.query.status as ReviewFilter["status"],
     page: Math.max(1, parseInt(req.query.page as string) || 1),
@@ -323,6 +324,7 @@ async function runContinueReviewSSE(res: Response, ctx: ContinueSSEContext): Pro
       id: newReviewId,
       mr_url: ctx.existing.mr_url,
       project,
+      product_line_id: null,
       author: ctx.existing.author,
       status: "completed",
       report_json: JSON.stringify(report),

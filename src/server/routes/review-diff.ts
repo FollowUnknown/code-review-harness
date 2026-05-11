@@ -104,6 +104,7 @@ router.post("/diff", async (req: Request, res: Response) => {
       id: reviewId,
       mr_url: `diff://${reviewId}`,
       project: project || "diff-upload",
+      product_line_id: null,
       author: null,
       status: "completed",
       report_json: JSON.stringify(report),

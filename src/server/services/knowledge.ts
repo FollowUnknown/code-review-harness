@@ -233,6 +233,7 @@ export function deleteEntry(id: string): boolean {
 export interface ListEntriesFilters {
   type?: EntryType;
   project?: string | string[];
+  product_line_id?: string;
   title?: string;
   status?: EntryStatus;
   review_status?: ReviewStatus;
@@ -247,6 +248,18 @@ export function listEntries(filters: ListEntriesFilters = {}): { items: Knowledg
   const clauses: string[] = [];
   const params: unknown[] = [];
 
+  // Resolve product_line_id to project list via repo_mappings
+  if (filters.product_line_id) {
+    const rmProjects = (db.prepare(
+      "SELECT project FROM repo_mappings WHERE product_line_id = ?"
+    ).all(filters.product_line_id) as Array<{ project: string }>).map((r) => r.project);
+    if (rmProjects.length === 0) {
+      // Product line has no projects — return empty, don't leak all data
+      return { items: [], total: 0, page: filters.page ?? 1, pageSize: filters.pageSize ?? 20, totalPages: 0 };
+    }
+    clauses.push(`project IN (${rmProjects.map(() => "?").join(", ")})`);
+    params.push(...rmProjects);
+  }
   if (filters.type) { clauses.push("type = ?"); params.push(filters.type); }
   if (filters.project) {
     const projects = Array.isArray(filters.project) ? filters.project : [filters.project];

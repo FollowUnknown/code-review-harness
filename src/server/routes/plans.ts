@@ -250,7 +250,7 @@ router.post("/:id/start", async (req: Request<{ id: string }>, res: Response) =>
       } else {
         const stats = computeReviewStats(report);
 
-        saveReviewRecord({ id: reviewId, mr_url: item.mr_url, project, author: mr.author?.name || null, status: "completed", report_json: JSON.stringify(report), classification_json: JSON.stringify(classification), requirement_json: JSON.stringify({ type: requirement.type, module: requirement.module, features: requirement.features, conflicts: requirement.conflicts, source: requirement.source }), mr_meta_json: JSON.stringify(mr), reviewed_commit_sha: null, passed: report.passed, avg_score: stats.avgScore, issue_count: stats.issueCount, critical_count: stats.criticalCount, created_by: userId, knowledge_dispositions_json: JSON.stringify(suggestDispositions(report.issues)) });
+        saveReviewRecord({ id: reviewId, mr_url: item.mr_url, project, product_line_id: planMapping?.productLineId ?? null, author: mr.author?.name || null, status: "completed", report_json: JSON.stringify(report), classification_json: JSON.stringify(classification), requirement_json: JSON.stringify({ type: requirement.type, module: requirement.module, features: requirement.features, conflicts: requirement.conflicts, source: requirement.source }), mr_meta_json: JSON.stringify(mr), reviewed_commit_sha: null, passed: report.passed, avg_score: stats.avgScore, issue_count: stats.issueCount, critical_count: stats.criticalCount, created_by: userId, knowledge_dispositions_json: JSON.stringify(suggestDispositions(report.issues)) });
         extractLearnings(report, project, reviewId);
         if (knowledge.length > 0) {
           const adoptedIds = determineAdoptedKnowledge(report.issues, knowledge);

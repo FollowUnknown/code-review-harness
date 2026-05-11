@@ -524,6 +524,7 @@ router.post("/requirement", async (req: Request, res: Response) => {
       id: reviewId,
       mr_url: `requirement://${productLine}/${sourceBranch}..${targetBranch}`,
       project: productLine,
+      product_line_id: productLine,
       author: null,
       status: "completed",
       report_json: JSON.stringify(finalReport),
