@@ -103,6 +103,35 @@ in_progress → review_pending  →  code-reviewer agent 自动触发
 
 **验证**：v1.4.0 目录下只有 4 个文件 → v1.3.9 目录存在且内容完整 → 无幽灵版本目录
 
+### 场景覆盖验证
+
+5 个需求场景 vs 6 个结构问题：
+
+| 结构问题 | 覆盖场景 |
+|----------|----------|
+| 1. 双向链路断裂（31% contract缺版本号，15% version缺反向引用） | 场景 1 + 场景 3 |
+| 2. 状态三层打架（总表 vs 子目录 README 矛盾） | 场景 4 |
+| 3. 幽灵版本（v1.3.9 无目录，v1.3.8 只存在于 contract） | 场景 5 |
+| 4. Contract 状态无受控词汇（in_progress/in-progress/draft 混用） | 场景 1 + 场景 2 |
+| 5. 文档密度严重不均（v1.4.0 ~5000行 vs 部分版本 1 文件） | 场景 5 |
+| 6. 废弃目录未清理（v1.4.0-archived/） | 场景 5 |
+
+**结论：6/6 结构问题被至少一个场景覆盖。**
+
+### 验收标准 → 场景对照
+
+| 验收标准 | 验证场景 | 度量方式 |
+|----------|----------|----------|
+| 13 个 contract 的 `version` 字段非空 | 场景 1 | `grep -L "版本:" docs/contracts/*.md` 返回空 |
+| 13 个 contract 的 `status` 在受控词汇集合内 | 场景 1 | 逐一检查 status 值 ∈ {draft, confirmed, in_progress, review_pending, completed} |
+| 活跃 version README 底部有关联 Contract 列表 | 场景 3 | v1.3.9/v1.4.0/v1.4.1 README 含「关联 Contract」段 |
+| v1.4.0-archived/ 已删除 | 场景 5 | `ls docs/versions/v1.4.0-archived/` 不存在 |
+| v1.3.9 目录存在，关联 contract 正确 | 场景 5 | 目录含 README.md + 关联表覆盖 4 个 contract |
+| v1.3.0 README 状态与总表一致 | 场景 4 | 子目录 status = `✅ 完成` = 总表 status |
+| v1.4.0 文档 5 → 4 个 | 场景 5 | `ls docs/versions/v1.4.0/` 文件数 = 4 |
+| CLAUDE.md 包含 contract 创建/结项/review_pending 规则 | 场景 1 + 场景 2 | 新增 3 条规则可被 grep 定位 |
+| 无 CRITICAL 或 HIGH 级别的遗漏 | 全部 | code-reviewer 审查通过 |
+
 ## Contract 规范 Schema
 
 ```markdown
