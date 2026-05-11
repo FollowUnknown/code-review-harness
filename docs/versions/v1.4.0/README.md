@@ -2,7 +2,7 @@
 
 > 状态: ✅ 完成
 > 前置: v1.3.9 (AST + knowledge improvements)
-> 后置: v1.5.0
+> 后置: v1.4.1
 > 详细设计: [design.md](./design.md)
 
 ## 背景

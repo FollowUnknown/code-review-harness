@@ -233,10 +233,7 @@ in_progress → review_pending  →  code-reviewer agent 自动触发
 
 | Contract | 范围 | 状态 |
 |----------|------|------|
-| (待创建) | Contract 规范化：frontmatter 统一 + 补齐 version/status | — |
-| (待创建) | 清理：v1.3.9 目录 + v1.4.0-archived 删除 + v1.3.0 状态修正 | — |
-| (待创建) | v1.4.0 文档精简：5 → 4 个文件 | — |
-| (待创建) | CLAUDE.md 规则沉淀 + review_pending 实操 | — |
+| [2026-05-11-v142-governance](../../contracts/2026-05-11-v142-governance.md) | v1.4.2 版本/Contract 关系治理 | completed |
 
 ---
 
