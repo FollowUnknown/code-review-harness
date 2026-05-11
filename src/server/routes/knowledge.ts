@@ -44,7 +44,8 @@ router.post("/", (req: Request, res: Response) => {
   const { type, project, module, severity, title, pattern, impact, fix_suggestion, content,
           source_review, source_mr, source_file, parent_id,
           product_line, engineering, source_story, source_type, review_pass,
-          scope, data_structure, default_value, first_seen_in, derivation } = req.body;
+          scope, data_structure, default_value, first_seen_in, derivation,
+          bad_code, good_code } = req.body;
 
   if (!type || !project || !title || !content) {
     res.status(400).json({ error: "type, project, title, and content are required" });
@@ -63,6 +64,7 @@ router.post("/", (req: Request, res: Response) => {
     source_review, source_mr, source_file, parent_id,
     product_line, engineering, source_story, source_type, review_pass,
     scope, data_structure, default_value, first_seen_in, derivation,
+    bad_code, good_code,
     suggested_by: user.id,
     review_status: isAdmin ? "approved" : "pending",
   });
@@ -174,12 +176,12 @@ router.put("/:id", (req: Request<{ id: string }>, res: Response) => {
   const { title, pattern, impact, fix_suggestion, content, module, severity, parent_id,
           product_line, engineering, source_story, source_type, review_pass,
           scope, data_structure, default_value, first_seen_in, derivation,
-          scope_level } = req.body;
+          scope_level, bad_code, good_code } = req.body;
   const updated = updateEntry(req.params.id, {
     title, pattern, impact, fix_suggestion, content, module, severity, parent_id,
     product_line, engineering, source_story, source_type, review_pass,
     scope, data_structure, default_value, first_seen_in, derivation,
-    scope_level,
+    scope_level, bad_code, good_code,
   });
   res.json(updated);
 });

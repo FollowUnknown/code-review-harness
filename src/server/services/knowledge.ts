@@ -45,6 +45,8 @@ export interface KnowledgeEntry {
   confidence: number;
   last_verified_at?: string;
   scope_level?: ScopeLevel;
+  bad_code?: string;
+  good_code?: string;
   created_at: string;
   updated_at: string;
 }
@@ -106,6 +108,8 @@ export function addEntry(input: {
   suggested_by?: string;
   review_status?: ReviewStatus;
   fingerprint?: string;
+  bad_code?: string;
+  good_code?: string;
 }): KnowledgeEntry {
   const db = getDb();
   const now = new Date().toISOString();
@@ -125,8 +129,9 @@ export function addEntry(input: {
         product_line, engineering, source_story, source_type, review_pass,
         scope, data_structure, default_value, first_seen_in, derivation,
         suggested_by, review_status, fingerprint, confidence, last_verified_at,
+        bad_code, good_code,
         created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'TEMP', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'TEMP', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id, input.type, input.project, input.module ?? null,
       input.severity ?? null, input.title, input.pattern ?? null,
@@ -143,6 +148,7 @@ export function addEntry(input: {
       fingerprint,
       confidence,
       now,
+      input.bad_code ?? null, input.good_code ?? null,
       now, now
     );
 
@@ -161,10 +167,10 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<string> = new Set([
   "title", "pattern", "impact", "fix_suggestion", "content", "module", "severity", "parent_id",
   "product_line", "engineering", "source_story", "source_type", "review_pass",
   "scope", "data_structure", "default_value", "first_seen_in", "derivation",
-  "scope_level",
+  "scope_level", "bad_code", "good_code",
 ]);
 
-export function updateEntry(id: string, updates: Partial<Pick<KnowledgeEntry, "title" | "pattern" | "impact" | "fix_suggestion" | "content" | "module" | "severity" | "parent_id" | "product_line" | "engineering" | "source_story" | "source_type" | "review_pass" | "scope" | "data_structure" | "default_value" | "first_seen_in" | "derivation" | "scope_level">>): KnowledgeEntry | undefined {
+export function updateEntry(id: string, updates: Partial<Pick<KnowledgeEntry, "title" | "pattern" | "impact" | "fix_suggestion" | "content" | "module" | "severity" | "parent_id" | "product_line" | "engineering" | "source_story" | "source_type" | "review_pass" | "scope" | "data_structure" | "default_value" | "first_seen_in" | "derivation" | "scope_level" | "bad_code" | "good_code">>): KnowledgeEntry | undefined {
   const db = getDb();
   const fields: string[] = [];
   const params: unknown[] = [];

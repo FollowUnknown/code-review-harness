@@ -339,6 +339,9 @@ function migrateKnowledgeEntriesTable(db: Database.Database): void {
     { name: "last_verified_at", def: "TEXT" },
     // v1.4.0: Knowledge layered scope
     { name: "scope_level", def: "TEXT DEFAULT 'project' CHECK(scope_level IN ('foundation', 'product', 'integration', 'project'))" },
+    // v1.4.3: Code examples for anti-patterns
+    { name: "bad_code", def: "TEXT" },
+    { name: "good_code", def: "TEXT" },
   ];
 
   for (const col of newColumns) {
