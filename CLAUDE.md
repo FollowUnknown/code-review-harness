@@ -13,18 +13,19 @@
 5. **隐性约定必须记录** — 发现口头约定或业务隐含规则，立即写入 `docs/architecture/implicit-contracts.md`
 6. **禁止硬编码密钥** — 密码、token、API key 必须走环境变量或密钥管理
 7. **数据库变更红线** — 禁止 DROP TABLE、DELETE 无 WHERE、TRUNCATE 等破坏性 SQL；禁止删除 .db 文件；ALTER TABLE 必须经过审查；数据库路径必须用环境变量，不允许依赖 cwd
+8. **Agent 流程不可跳过** — 任何 `src/` 下的代码变更，无论大小，必须走完整三阶段：Planner(创建Contract → 停等确认) → Generator(TDD实现 → 停等确认) → Evaluator(对照Contract评审 → 停等确认)。跳过任何阶段直接写代码视为违规
 
 ---
-## 当前阶段：Phase 1
+## 当前阶段：Phase 2
 
-> 轻流程、强留痕。保持对话式开发效率，同时把关键决策和改动边界沉淀下来。
+> 强制 Agent 流程 + PreEdit 拦截。任何 src/ 变更不可绕过 Contract → 实现 → 评审。
 
-- 以对话式开发为主，按需进入 OpenSpec 轻量流程
-- 改动前先明确目标、范围、风险和不改动边界
-- 关键决策、隐性约定、实现结论持续沉淀到 `docs/`
+- **强制**走 Planner → Generator → Evaluator 三阶段，不允许跳过
+- 改动前 Planner 先创建 Contract，明确范围、验收标准、不改边界
+- PreEdit hook 拦截直接编辑 `src/` 的行为，检查是否有 confirmed/in_progress 状态的 Contract
+- 每个阶段完成后**必须暂停**，等用户说"继续"才能进入下一阶段
+- 关键决策、隐性约定持续沉淀到 `docs/`
 - 会话过程写入 `sessions/`，保证任务、上下文和结论可追溯
-- 涉及 SQL、配置、权限、密钥等高风险改动时，必须单独审查
-- 当项目复杂度继续上升或进入多人协作时，再升级到 Phase 2 / Phase 3
 ---
 
 ## 会话机制
@@ -342,11 +343,14 @@ docs/                            # 项目知识（参考型）
 
 ## 自检（每次变更后快速过一遍）
 
+- [ ] 改之前有没有走 Planner → Contract → 停等确认？
 - [ ] 改之前有没有说清楚范围？
 - [ ] 有没有碰到高风险路径？碰了有没有专项审查？
+- [ ] 改完有没有走 Evaluator 评审？
 - [ ] 改完有没有验证实现和意图一致？
 - [ ] 有没有混入非本次变更范围的改动？
 - [ ] 有没有发现新的隐性约定需要记录？
+- [ ] Contract 状态是否正确流转到 completed？
 - [ ] 版本相关文档改动后，`docs/versions/README.md` 是否同步更新？
 
 ---

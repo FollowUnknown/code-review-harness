@@ -301,7 +301,7 @@ function DetailDrawer({
         animate={{ x: 0 }}
         exit={{ x: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 250 }}
-        className="fixed top-0 right-0 z-50 h-full w-[520px] max-w-[90vw] bg-slate-900 border-l border-slate-700/50 shadow-2xl flex flex-col"
+        className="fixed top-0 right-0 z-50 h-full w-[720px] max-w-[90vw] bg-slate-900 border-l border-slate-700/50 shadow-2xl flex flex-col"
       >
         {/* Header */}
         <div className="flex justify-between items-center px-5 py-3 border-b border-slate-700/50 shrink-0">

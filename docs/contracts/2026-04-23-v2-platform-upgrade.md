@@ -1,7 +1,8 @@
 # Sprint Contract: V2 平台化升级
 
 > 日期: 2026-04-23
-> 状态: in_progress
+> 状态: draft
+> <!-- 2026-05-11 清理，原状态为进行中，降级为 draft -->
 > 类型: Platform Task
 > 版本: v2.0.0
 > 预计工期: 4 个迭代周期

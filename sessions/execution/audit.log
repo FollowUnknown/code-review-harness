@@ -1539,3 +1539,59 @@
 [2026-05-11T08:07:14Z] Edit docs/versions/v1.4.2/README.md session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
 [2026-05-11T08:07:14Z] Edit docs/contracts/2026-05-11-v142-governance.md session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
 [2026-05-11T08:07:21Z] Edit docs/contracts/2026-05-11-v142-governance.md session=34c37a9c-bb50-4dbe-a676-b294723e7dcc
+[2026-05-11T10:03:45Z] Write docs/contracts/2026-05-11-v143-java-knowledge-import.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T10:07:15Z] Edit docs/contracts/2026-05-11-v143-java-knowledge-import.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T10:08:11Z] Edit src/server/db.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T10:08:11Z] Edit src/server/services/knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T10:08:57Z] Edit src/server/services/knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T10:08:57Z] Edit src/server/services/knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T10:09:31Z] Edit src/server/services/knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T10:10:04Z] Edit src/server/routes/knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/server/routes/knowledge.ts - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T10:10:04Z] Edit src/server/routes/knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/server/routes/knowledge.ts - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T10:10:04Z] Edit src/server/routes/knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/server/routes/knowledge.ts - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T10:10:18Z] Edit src/server/services/knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T10:47:09Z] Write scripts/seed-java-knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T10:47:26Z] Edit docs/contracts/2026-05-11-v143-java-knowledge-import.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T10:47:58Z] Edit docs/versions/README.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T10:47:58Z] Write docs/versions/v1.4.3/README.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T10:48:14Z] Edit docs/versions/README.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T10:50:24Z] Edit scripts/seed-java-knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T10:53:24Z] Edit src/server/services/knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T10:54:10Z] Edit src/server/services/knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/server/services/knowledge.ts - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T11:00:03Z] Edit docs/contracts/2026-05-11-v143-java-knowledge-import.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T11:00:03Z] Edit sessions/2026-05-11.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T11:13:19Z] Edit scripts/seed-java-knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T11:14:24Z] Edit scripts/seed-java-knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T11:16:52Z] Edit scripts/seed-java-knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T11:18:36Z] Edit scripts/seed-java-knowledge.ts session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T11:23:43Z] Edit src/client/pages/KnowledgePage.tsx session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T11:24:12Z] Edit src/client/pages/KnowledgePage.tsx session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T11:24:30Z] Edit src/client/pages/KnowledgePage.tsx session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T12:22:30Z] Edit CLAUDE.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on CLAUDE.md - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T12:22:44Z] Edit CLAUDE.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on CLAUDE.md - allowed (contract: 2026-04-23-v2-platform-upgrade.md)
+[2026-05-11T12:24:23Z] Edit docs/contracts/2026-04-23-v2-platform-upgrade.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T12:24:38Z] Edit docs/contracts/2026-04-23-v2-platform-upgrade.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T12:40:29Z] Write /Users/tzknow/.claude/plans/spicy-singing-hoare.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T12:40:41Z] Write docs/contracts/2026-05-11-drawer-wider.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T12:49:25Z] Edit docs/contracts/2026-05-11-drawer-wider.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[2026-05-11T12:49:40Z] Edit src/client/pages/KnowledgePage.tsx session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/client/pages/KnowledgePage.tsx - allowed (contract: 2026-05-11-drawer-wider.md)
+[2026-05-11T12:49:40Z] Edit src/client/components/KnowledgeDetailDrawer.tsx session=89106a7c-658a-44b9-b7f8-df93dbb57225
+[AUDIT] Edit on src/client/components/KnowledgeDetailDrawer.tsx - allowed (contract: 2026-05-11-drawer-wider.md)
+[2026-05-11T12:49:54Z] Edit docs/contracts/2026-05-11-drawer-wider.md session=89106a7c-658a-44b9-b7f8-df93dbb57225
