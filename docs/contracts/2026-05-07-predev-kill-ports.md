@@ -1,9 +1,9 @@
 # Contract: npm run dev 启动前自动杀端口
 
-- **ID**: 2026-05-07-predev-kill-ports
-- **Status**: confirmed
-- **Type**: bugfix
-- **Created**: 2026-05-07
+> 日期: 2026-05-07
+> 状态: completed
+> 类型: Business Task
+> 版本: v1.3.9
 
 ## 背景
 

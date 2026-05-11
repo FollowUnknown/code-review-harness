@@ -1,7 +1,9 @@
 # Sprint Contract: V2 平台化升级
 
-> 创建时间: 2026-04-23
-> 状态: in-progress (Phase 1-4 完成, Phase 5 待启动)
+> 日期: 2026-04-23
+> 状态: in_progress
+> 类型: Platform Task
+> 版本: v2.0.0
 > 预计工期: 4 个迭代周期
 > 最近更新: 2026-04-23 21:00
 

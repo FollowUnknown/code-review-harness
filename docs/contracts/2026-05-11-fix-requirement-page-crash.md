@@ -1,11 +1,9 @@
----
-name: fix-requirement-page-crash
-status: confirmed
-type: hotfix
-date: 2026-05-11
----
-
 # Fix: RequirementReviewPage 崩溃
+
+> 日期: 2026-05-11
+> 状态: completed
+> 类型: Business Task
+> 版本: v1.4.1
 
 ## 问题
 `/requirement-review` 页面空白，React 报错 "An error occurred in the RequirementReviewPage component"

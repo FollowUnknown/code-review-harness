@@ -1,9 +1,9 @@
 # Contract: AI 评审质量提升 — 知识注入过滤 + 根因分析增强
 
-- **ID**: 2026-05-07-review-quality-gap
-- **Status**: confirmed
-- **Type**: feature
-- **Created**: 2026-05-07
+> 日期: 2026-05-07
+> 状态: completed
+> 类型: Business Task
+> 版本: v1.3.9
 
 ## 背景
 

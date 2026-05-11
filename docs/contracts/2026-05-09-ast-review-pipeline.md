@@ -1,8 +1,9 @@
 # Contract: 知识库 UI 优化 + AST 方案规划
 
 > 日期: 2026-05-09
-> 状态: confirmed
+> 状态: completed
 > 类型: Business Task
+> 版本: v1.3.9
 
 ## 改动
 1. 知识库 DEPRECATED 条目支持 Restore 和 Delete

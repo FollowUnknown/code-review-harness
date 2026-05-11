@@ -3,7 +3,7 @@
 > 日期: 2026-05-10
 > 状态: completed
 > 类型: Business Task
-> 版本: v1.4.0 Phase 1
+> 版本: v1.4.0
 
 ## 背景
 

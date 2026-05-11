@@ -16,13 +16,13 @@
 - [x] V142-002: 确认场景覆盖所有 6 个结构问题（链路断裂、状态打架、幽灵版本、受控词汇、密度不均、废弃目录）→ 覆盖矩阵见 README (P0)
 - [x] V142-003: 验收标准逐条对照场景，可度量 → 验收→场景映射表见 README (P0)
 
-## Phase 2: Contract 规范化
+## Phase 2: Contract 规范化（已完成）
 
-- [ ] V142-010: 扫描 13 个 contract，列出当前 status 与实际完成情况不一致清单 (P0)
-- [ ] V142-011: 统一 13 个 contract 的 frontmatter 为 blockquote 风格（Schema 见 README）(P0)
-- [ ] V142-012: 补齐 13 个 contract 的 `version` 字段 (P0)
-- [ ] V142-013: 统一 13 个 contract 的 `status` 为受控词汇 (P0)
-- [ ] V142-014: 关闭已完成但 status 未更新的 contract (P0)
+- [x] V142-010: 扫描 13 个 contract，当前 status 与实际完成情况不一致清单 (P0)
+- [x] V142-011: 统一 13 个 contract 的 frontmatter 为 blockquote 风格（Schema 见 README）(P0)
+- [x] V142-012: 补齐 13 个 contract 的 `version` 字段 → 13/13 非空 (P0)
+- [x] V142-013: 统一 13 个 contract 的 `status` 为受控词汇 → 13/13 受控 (P0)
+- [x] V142-014: 关闭已完成但 status 未更新的 contract → 12 completed + 1 in_progress(v2.0.0) (P0)
 
 ## Phase 3: 清理与一致化
 

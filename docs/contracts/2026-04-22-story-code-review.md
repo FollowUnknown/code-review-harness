@@ -1,7 +1,9 @@
 # Sprint Contract: Story Code Review 可视化评审
 
-> 创建时间: 2026-04-22
+> 日期: 2026-04-22
 > 状态: completed
+> 类型: Business Task
+> 版本: v1.0.0
 
 ## 需求描述
 
