@@ -177,6 +177,45 @@ AI 在以下场景**自动**写入 `sessions/execution/` 记录：
 - `review_pending -> in_progress`（评审不通过，回到修复）
 - `review_pending -> completed`
 
+**Contract 创建规范（v1.4.2 沉淀）**：
+
+创建新 Contract 时必须：
+- 文件名：`docs/contracts/YYYY-MM-DD-<slug>.md`
+- 采用 blockquote 风格 frontmatter，必须包含以下字段：
+
+```markdown
+# Contract: <简短描述>
+
+> 日期: YYYY-MM-DD
+> 状态: draft | confirmed | in_progress | review_pending | completed
+> 类型: Business Task | Platform Task
+> 版本: vX.Y.Z
+```
+
+- `版本` 必填，hotfix 可用 `> 版本: —`
+- `状态` 必须使用受控词汇（`draft` / `confirmed` / `in_progress` / `review_pending` / `completed`）
+
+**review_pending → pre-commit hook 联动规则（v1.4.2 沉淀）**：
+
+```
+in_progress → review_pending  →  code-reviewer agent 自动触发
+                                    ↓
+                              审查通过 → .claude/review-passed 写入 hash
+                                    ↓
+                              completed → git commit（hook 验证 hash）
+```
+
+- Contract 状态 `in_progress → review_pending` 时，**必须**触发 code-reviewer agent
+- 审查通过后创建 `.claude/review-passed`（`git diff --cached | md5 > .claude/review-passed`）
+- `scripts/pre-commit-review-check.sh` 自动验证 hash，匹配后放行 commit
+- Contract 状态 `review_pending → completed` 在 commit 成功后更新
+
+**版本结项规则（v1.4.2 沉淀）**：
+
+- 版本标记 `✅ 完成` 前，必须确认该版本所有关联 contract 的 status 均为 `completed`
+- 版本 README 底部必须有「关联 Contract」段，列出所有属于该版本的 contract
+- `docs/versions/README.md` 总表是唯一状态真相源，子目录 README 状态必须与总表一致
+
 ### Business Task 流程
 
 #### 阶段 1: Planning（Planner Agent）

@@ -1,6 +1,6 @@
 # v1.4.2 — 版本/Contract 关系治理
 
-> 状态: 需求场景输出中
+> 状态: ✅ 完成
 > 前置: v1.4.1
 > 后置: v1.5.0
 > 类型: Platform Task（治理迭代）
@@ -184,31 +184,31 @@ in_progress → review_pending  →  code-reviewer agent 自动触发
 ## 功能清单
 
 ### 1. Contract 规范化
-- [ ] Contract frontmatter 统一为 blockquote 风格规范 Schema
-- [ ] 补齐 13 个 contract 的 `version` 字段
-- [ ] 统一 13 个 contract 的 `status` 为受控词汇
-- [ ] 关闭已完成但状态未更新的 contract
+- [x] Contract frontmatter 统一为 blockquote 风格规范 Schema
+- [x] 补齐 13 个 contract 的 `version` 字段
+- [x] 统一 13 个 contract 的 `status` 为受控词汇
+- [x] 关闭已完成但状态未更新的 contract
 
 ### 2. Version 反向引用
-- [ ] 每个活跃 version 的 README 底部增加「关联 Contract」段
-- [ ] v1.4.0 作为模板示范
+- [x] 每个活跃 version 的 README 底部增加「关联 Contract」段
+- [x] v1.4.0 作为模板示范
 
 ### 3. 清理与一致化
-- [ ] v1.3.8 contract 归入 v1.3.9（决策 1）
-- [ ] 为 v1.3.9 创建最小目录（README + 关联 Contract 表）
-- [ ] 删除 v1.4.0-archived/（审计后可删）
-- [ ] 统一 versions/README.md 为唯一状态真相源
-- [ ] 修正 v1.3.0 README 状态矛盾（`待规划` → `✅ 完成`）
+- [x] v1.3.8 contract 归入 v1.3.9（决策 1）
+- [x] 为 v1.3.9 创建最小目录（README + 关联 Contract 表）
+- [x] 删除 v1.4.0-archived/（审计后可删）
+- [x] 统一 versions/README.md 为唯一状态真相源
+- [x] 修正 v1.3.0 README 状态矛盾（`待规划` → `✅ 完成`）
 
 ### 4. v1.4.0 文档精简
-- [ ] 合并 `scenario-analysis.md` + `business-scenarios.md` → `user-scenarios.md`
-- [ ] 保留 `change-impact-map.md` 独立（决策 2）
-- [ ] 目标：5 → 4 个文件
+- [x] 合并 `scenario-analysis.md` + `business-scenarios.md` → `user-scenarios.md`
+- [x] 保留 `change-impact-map.md` 独立（决策 2）
+- [x] 目标：5 → 4 个文件
 
 ### 5. 规则沉淀
-- [ ] CLAUDE.md 增加 Contract 创建规范（version 必填、status 受控词汇）
-- [ ] CLAUDE.md 增加版本结项规则（关联 contract 全部 completed）
-- [ ] CLAUDE.md 增加 `review_pending` 与 pre-commit hook 联动规则
+- [x] CLAUDE.md 增加 Contract 创建规范（version 必填、status 受控词汇）
+- [x] CLAUDE.md 增加版本结项规则（关联 contract 全部 completed）
+- [x] CLAUDE.md 增加 `review_pending` 与 pre-commit hook 联动规则
 
 ## 不做
 
@@ -219,15 +219,15 @@ in_progress → review_pending  →  code-reviewer agent 自动触发
 
 ## 验收标准
 
-- [ ] 13 个 contract 的 `version` 字段非空
-- [ ] 13 个 contract 的 `status` 在受控词汇集合内
-- [ ] 活跃 version README（v1.3.9, v1.4.0, v1.4.1）底部有关联 Contract 列表
-- [ ] v1.4.0-archived/ 已删除
-- [ ] v1.3.9 目录存在，关联 contract 正确
-- [ ] v1.3.0 README 状态与总表一致
-- [ ] v1.4.0 文档 5 → 4 个
-- [ ] CLAUDE.md 包含 contract 创建/结项/review_pending 规则
-- [ ] 无 CRITICAL 或 HIGH 级别的遗漏
+- [x] 13 个 contract 的 `version` 字段非空
+- [x] 13 个 contract 的 `status` 在受控词汇集合内
+- [x] 活跃 version README（v1.3.7, v1.3.9, v1.4.0, v1.4.1）底部有关联 Contract 列表
+- [x] v1.4.0-archived/ 已删除
+- [x] v1.3.9 目录存在，关联 5 个 contract
+- [x] v1.3.0 README 状态与总表一致（`✅ 完成`）
+- [x] v1.4.0 文档 5 → 4 个（README + design + user-scenarios + change-impact-map）
+- [x] CLAUDE.md 包含 3 条 v1.4.2 沉淀规则（Contract 创建/结项/review_pending）
+- [x] 无 CRITICAL 或 HIGH 级别的遗漏
 
 ## 关联 Contract
 

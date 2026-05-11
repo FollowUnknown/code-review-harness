@@ -43,13 +43,13 @@
 - [x] V142-040: 合并 scenario-analysis.md + business-scenarios.md → user-scenarios.md（124 行，5 个场景）(P2)
 - [x] V142-041: 保留 change-impact-map.md 独立（架构决策 2），v1.4.0 目录 5→4 文件 (P2)
 
-## Phase 6: 规则沉淀
+## Phase 6: 规则沉淀（已完成）
 
-- [ ] V142-050: CLAUDE.md 增加 Contract 创建规范（version 必填、blockquote 格式、status 受控词汇）(P0)
-- [ ] V142-051: CLAUDE.md 增加版本结项规则（关联 contract 全部 completed 才能关）(P0)
-- [ ] V142-052: CLAUDE.md 增加 review_pending → pre-commit hook 联动规则 (P0)
-- [ ] V142-053: 更新 versions/README.md 路线图（v1.4.2 状态 → `🔄 进行中`）(P1)
+- [x] V142-050: CLAUDE.md 增加 Contract 创建规范（version 必填、blockquote 格式、status 受控词汇）(P0)
+- [x] V142-051: CLAUDE.md 增加版本结项规则（关联 contract 全部 completed 才能关）(P0)
+- [x] V142-052: CLAUDE.md 增加 review_pending → pre-commit hook 联动规则 (P0)
+- [x] V142-053: 更新 versions/README.md 路线图（v1.4.2 状态 → `✅ 完成`）(P1)
 
 ## 验收
 
-- [ ] V142-060: 逐项核对 v1.4.2 README 验收标准 + 需求场景效果验证 (P0)
+- [x] V142-060: 逐项核对 v1.4.2 README 验收标准 → 9/9 通过 (P0)
