@@ -1,10 +1,11 @@
 # v1.4.2 — 版本/Contract 关系治理
 
-> 状态: 架构设计完成
+> 状态: 需求场景输出中
 > 前置: v1.4.1
 > 后置: v1.5.0
 > 类型: Platform Task（治理迭代）
 > 架构评审: 2026-05-11，architect agent + 迭代沟通 agent 联合评审
+> 需求场景: 2026-05-11，新增 Phase 1 需求场景输出
 
 ## 背景
 
@@ -36,7 +37,73 @@ v1.3.8 只存在于 contract `2026-05-07-local-review-job-persistence.md` 头部
 ### 决策 3: `review_pending` 作为提交前强制评审的关键状态
 见下方「review_pending 实操设计」节。
 
-### Contract 规范 Schema
+## 需求场景输出（2026-05-11 新增）
+
+> 明确 v1.4.2 完成后的具体效果。每个场景覆盖一个当前痛点 → 改后效果。
+
+### 场景 1: 新建 Contract 自动归入版本
+
+**当前痛点**：创建 contract 时 `版本` 字段经常漏填，导致 69% 的 contract 挂在幽灵版本上，不知道是哪个迭代的工作。
+
+**改后效果**：
+- AI 创建 contract 时自动填入 `> 版本: vX.Y.Z`，必填不可跳过
+- 新 contract 建完，对应的 version README「关联 Contract」表自动多一行
+- 版本总表、contract、子目录 README 三者一致，追溯链路闭合
+
+**验证**：创建一个测试 contract → 检查 version 字段非空 → 检查对应 README 关联表存在该条目
+
+### 场景 2: 代码写完 → 自动触发评审 → 通过才能 commit
+
+**当前痛点**：`review_pending` 定义了但 0 个 contract 使用。代码写完直接 commit，pre-commit hook 需要手动创建 `review-passed` 标记文件，全靠 AI 自觉。
+
+**改后效果**：
+```
+in_progress → review_pending  →  code-reviewer agent 自动触发
+                                    ↓
+                              审查通过 → review-passed hash 写入
+                                    ↓
+                              completed → commit（hook 验证 hash 通过）
+```
+- Contract 状态驱动行为，不是靠"AI 记得"
+- 每次 commit 都有对应的 review 记录
+- review-passed 标记不再是"凭空出现的文件"，而是 contract 状态流转的自然产物
+
+**验证**：走一遍完整流程 `in_progress → review_pending → code-reviewer → review-passed → completed → commit`
+
+### 场景 3: 查一个版本做了哪些事，一目了然
+
+**当前痛点**：要看 v1.3.9 的完整工作，需要手动翻 `docs/contracts/` 目录靠文件名和记忆匹配。没有版本 → contract 的反向索引。
+
+**改后效果**：
+- 打开 v1.3.9/README.md，底部「关联 Contract」列出所有属于该版本的 contract
+- 每个 contract 有日期、状态、一句话范围
+- 反过来，打开任意 contract 看头部 `> 版本: v1.3.9`，直接知道属于哪个迭代
+
+**验证**：v1.3.9 关联表覆盖所有 v1.3.9 时期的 contract → v1.4.0 同样 → v1.4.1 同样
+
+### 场景 4: 状态全局一致，不再打架
+
+**当前痛点**：v1.3.0 总表写 `✅ 完成`，子目录 README 写 `待规划`。不知道信哪个。
+
+**改后效果**：
+- `docs/versions/README.md` 总表是唯一状态真相源
+- 子目录 README 的状态标记必须与总表一致
+- v1.4.2 完成后新增规则：修改子目录状态时，必须同步验证总表
+
+**验证**：遍历所有活跃 version，总表状态 = 子目录 README 状态
+
+### 场景 5: 文档密度可预期
+
+**当前痛点**：v1.4.0 有 5 个文件 ~5000+ 行，v1.3.9 目录不存在，信息密度严重不均衡。不知道一个新版本应该有哪些文档。
+
+**改后效果**：
+- v1.4.0 从 5 个文件精简到 4 个（合并场景文档，保留有独立价值的 change-impact-map）
+- v1.3.9 有最小目录（README + 关联 Contract 表）
+- 后续版本有明确的文件数量预期：README + design.md（可选）+ 任务文件 + 场景文档（可选）≤ 4
+
+**验证**：v1.4.0 目录下只有 4 个文件 → v1.3.9 目录存在且内容完整 → 无幽灵版本目录
+
+## Contract 规范 Schema
 
 ```markdown
 # Contract: <short-description>
