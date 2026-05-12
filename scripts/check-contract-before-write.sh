@@ -39,6 +39,12 @@ ALLOWED_PATTERNS=(
   "node_modules/"
   "dist/"
   "knowledge.db"
+  ".gitignore"
+  "package.json"
+  "tsconfig.json"
+  "CLAUDE.md"
+  "AGENTS.md"
+  ".env.example"
 )
 
 for pattern in "${ALLOWED_PATTERNS[@]}"; do
