@@ -30,7 +30,13 @@
       "Bash(git clean:*)",
       "Bash(git check-ignore:*)",
       "Bash(git rm:*)",
-      "Bash(grep -c \"版本:\" docs/contracts/*.md)"
+      "Bash(grep -c \"版本:\" docs/contracts/*.md)",
+      "Bash(npx vite:*)",
+      "Bash(bash scripts/check-contract-before-write.sh)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(bash -c 'echo test')",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
+      "Bash(npx vitest:*)"
     ],
     "deny": [
       "Bash(rm -rf*)",

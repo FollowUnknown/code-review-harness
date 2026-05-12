@@ -14,6 +14,7 @@
 6. **禁止硬编码密钥** — 密码、token、API key 必须走环境变量或密钥管理
 7. **数据库变更红线** — 禁止 DROP TABLE、DELETE 无 WHERE、TRUNCATE 等破坏性 SQL；禁止删除 .db 文件；ALTER TABLE 必须经过审查；数据库路径必须用环境变量，不允许依赖 cwd
 8. **Agent 流程不可跳过** — 任何 `src/` 下的代码变更，无论大小，必须走完整三阶段：Planner(创建Contract → 停等确认) → Generator(TDD实现 → 停等确认) → Evaluator(对照Contract评审 → 停等确认)。跳过任何阶段直接写代码视为违规
+9. **语言优先级** — 除代码和专有名词外，所有内容必须使用**简体中文 (zh-CN)**。禁止输出完整英文句子，技术解释须翻译为中文，仅保留专有名词（如 API, Mutex, LLM）。禁止输出无意义的客套话
 
 ---
 ## 当前阶段：Phase 2
