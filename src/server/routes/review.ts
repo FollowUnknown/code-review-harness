@@ -16,19 +16,32 @@ import type { SSEBatchResult } from "../../shared/types";
 import { saveReviewRecord, computeReviewStats } from "../services/review-store";
 import { saveLLMLog } from "../services/llm-logger";
 import { createSSEHelpers } from "../services/sse-helper";
-import { isPauseRequested, clearPause } from "../services/review-pause-controller";
-import { createCheckpoint, updateCheckpoint, completeCheckpoint } from "../services/review-checkpoint-store";
+import { isPauseRequested, clearPause, removeJob } from "../services/review-pause-controller";
+import { createCheckpoint, updateCheckpoint, completeCheckpoint, abandonCheckpoint, findCheckpointById } from "../services/review-checkpoint-store";
 
 const router = Router();
 
 // SSE-based review endpoint
 router.post("/review", async (req: Request, res: Response) => {
-  const { mrUrl, gitlabHost, gitlabToken, lanhuUrl }: ReviewRequest = req.body;
+  const { mrUrl, gitlabHost, gitlabToken, lanhuUrl, checkpointId: resumeCheckpointId }: ReviewRequest = req.body;
 
   // Validate before setting SSE headers so JSON error responses work correctly
   if (!mrUrl) {
     res.status(400).json({ error: "mrUrl is required" });
     return;
+  }
+
+  // v1.4.4: if resuming from checkpoint, validate early
+  if (resumeCheckpointId) {
+    const cp = findCheckpointById(resumeCheckpointId);
+    if (!cp) {
+      res.status(404).json({ error: "Checkpoint not found" });
+      return;
+    }
+    if (cp.status !== "paused") {
+      res.status(400).json({ error: `Checkpoint status is "${cp.status}", expected "paused"` });
+      return;
+    }
   }
 
   const llmConfig = getLLMConfig();
@@ -44,6 +57,20 @@ router.post("/review", async (req: Request, res: Response) => {
   res.setHeader("X-Accel-Buffering", "no");
 
   const { sendSSE, nextStep, completeStep, getStep, sendEvent } = createSSEHelpers(res);
+
+  // v1.4.4: abort detection — 60s timeout auto-abandons checkpoint
+  let aborted = false;
+  let checkpointId: string | null = null;
+  let abortTimeout: ReturnType<typeof setTimeout> | null = null;
+  const reviewId = `R-${randomUUID().slice(0, 8)}`;
+  res.on("close", () => {
+    abortTimeout = setTimeout(() => {
+      if (checkpointId) {
+        abandonCheckpoint(checkpointId);
+      }
+      aborted = true;
+    }, 60_000);
+  });
 
   try {
     // Step 1: Parse URL & connect GitLab
@@ -81,6 +108,16 @@ router.post("/review", async (req: Request, res: Response) => {
       .join(" ");
     completeStep(`S/A/B/C: ${levelCounts}, skipped: ${classification.stats.skipped}`);
 
+    // v1.4.4: emit review_start early so client sees progress ASAP
+    const totalBatches = batchDiffs.length;
+    const totalFiles = diffs.length;
+    sendEvent("review_start", {
+      reviewType: "mr",
+      totalBatches,
+      totalFiles,
+      jobId: reviewId,
+    });
+
     // Step 4: Understand requirement
     nextStep("Understanding requirement", `Analyzing MR context...`);
     const requirement = await understandRequirement(mr, diffs, lanhuUrl);
@@ -92,38 +129,41 @@ router.post("/review", async (req: Request, res: Response) => {
     completeStep(`${knowledge.length} entries loaded`);
 
     // Step 6+: Review batches
-    const totalBatches = batchDiffs.length;
-    const totalFiles = diffs.length;
-    const reviewId = `R-${randomUUID().slice(0, 8)}`;
     let report;
     let tokenUsage: { inputTokens: number; outputTokens: number } | undefined;
     let batchDetails: Array<{ files: number; tokens: { inputTokens: number; outputTokens: number } }> | undefined;
 
-    // v1.4.4: emit review_start for incremental progress tracking
-    sendEvent("review_start", {
-      reviewType: "mr",
-      totalBatches,
-      totalFiles,
-      jobId: reviewId,
-    });
-
-    // v1.4.4: create initial checkpoint for pause/resume
     const mrMeta = mr as unknown as Record<string, unknown>;
-    let checkpointId = createCheckpoint({
-      reviewType: "mr",
-      projectId: project,
-      sourceBranch: mrMeta.source_branch as string | undefined,
-      targetBranch: mrMeta.target_branch as string | undefined,
-      totalBatches,
-      totalFiles,
-      currentBatch: 0,
-      reviewedCount: 0,
-      jobId: reviewId,
-      createdBy: (req as Request & { user?: { id: string } }).user?.id,
-    }).id;
+    let startBatch = 0;
+
+    // v1.4.4: resume from checkpoint — pre-load completed batches, skip to breakpoint
+    if (resumeCheckpointId) {
+      const cp = findCheckpointById(resumeCheckpointId)!;
+      updateCheckpoint(cp.id, { status: "running" });
+      startBatch = cp.currentBatch;
+      checkpointId = cp.id;
+      sendEvent("resumed", {
+        checkpointId: cp.id,
+        remainingBatches: totalBatches - startBatch,
+      });
+    } else {
+      // v1.4.4: create initial checkpoint for pause/resume
+      checkpointId = createCheckpoint({
+        reviewType: "mr",
+        projectId: project,
+        sourceBranch: mrMeta.source_branch as string | undefined,
+        targetBranch: mrMeta.target_branch as string | undefined,
+        totalBatches,
+        totalFiles,
+        currentBatch: 0,
+        reviewedCount: 0,
+        jobId: reviewId,
+        createdBy: (req as Request & { user?: { id: string } }).user?.id,
+      }).id;
+    }
 
     if (totalBatches === 0) {
-      completeCheckpoint(checkpointId);
+      if (checkpointId) completeCheckpoint(checkpointId);
       sendSSE({ step: getStep() + 1, status: "done", label: "No files to review", detail: "All files skipped" });
       report = {
         contractTitle: "Code Review",
@@ -138,13 +178,17 @@ router.post("/review", async (req: Request, res: Response) => {
       const knowledgePrompt = knowledge.length > 0 ? buildKnowledgePrompt(knowledge) : "";
       const userPromptPrefix = getReviewUserPrompt();
 
-      const batchReports = [];
+      const batchReports: any[] = resumeCheckpointId
+        ? (JSON.parse(findCheckpointById(resumeCheckpointId)!.batchResults || "[]") as any[]).map((r: any) => ({ issues: r.issues, scores: r.scores }))
+        : [];
       const _batchDetails: Array<{ files: number; tokens: { inputTokens: number; outputTokens: number } }> = [];
       let totalInput = 0;
       let totalOutput = 0;
       const failedBatches: number[] = [];
 
-      for (let i = 0; i < batchDiffs.length; i++) {
+      for (let i = startBatch; i < batchDiffs.length; i++) {
+        if (aborted) break;
+
         const level = batchLevels[i];
         nextStep(
           `Reviewing batch ${i + 1}/${totalBatches}`,
@@ -180,7 +224,8 @@ router.post("/review", async (req: Request, res: Response) => {
 
         const durationMs = Date.now() - startTime;
 
-        batchReports.push(parseReviewResponse(result.text));
+        const parsed = parseReviewResponse(result.text);
+        batchReports.push(parsed);
 
         // Log LLM interaction
         saveLLMLog({
@@ -217,12 +262,11 @@ router.post("/review", async (req: Request, res: Response) => {
         });
 
         // v1.4.4: emit batch_result for incremental rendering
-        const currentReport = parseReviewResponse(result.text);
         const batchResult: SSEBatchResult = {
           batchIndex: i,
           files: batchDiffs[i].map((d: { new_path: string }) => d.new_path),
-          issues: currentReport.issues,
-          scores: currentReport.scores,
+          issues: parsed.issues,
+          scores: parsed.scores,
           progress: {
             completedBatches: i + 1,
             totalBatches,
@@ -243,6 +287,7 @@ router.post("/review", async (req: Request, res: Response) => {
             batchResults: JSON.stringify(
               batchReports.map((r, bi) => ({
                 batchIndex: bi,
+                files: batchDiffs[bi]?.map((d: { new_path: string }) => d.new_path) ?? [],
                 issues: r.issues,
                 scores: r.scores,
               }))
@@ -257,6 +302,7 @@ router.post("/review", async (req: Request, res: Response) => {
               totalFiles,
             },
           });
+          if (abortTimeout) clearTimeout(abortTimeout);
           res.end();
           return;
         }
@@ -331,8 +377,11 @@ router.post("/review", async (req: Request, res: Response) => {
 
     sendSSE({ step: getStep() + 1, status: "done", label: "COMPLETE", detail: JSON.stringify(response) });
     completeCheckpoint(checkpointId);
+    if (abortTimeout) clearTimeout(abortTimeout);
     res.end();
   } catch (err) {
+    if (abortTimeout) clearTimeout(abortTimeout);
+    removeJob(reviewId);
     const message = err instanceof Error ? err.message : "Review failed";
     // Sanitize: avoid leaking internal details to client
     const safeMessage = message.includes("ENOTFOUND") || message.includes("ECONNREFUSED")

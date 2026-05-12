@@ -34,6 +34,7 @@ export function LocalReviewPage() {
 
   // v1.4.4: pause/resume state
   const [isPaused, setIsPaused] = useState(false);
+  const [isPausing, setIsPausing] = useState(false);
   const [checkpointId, setCheckpointId] = useState<string | null>(null);
 
   const token = localStorage.getItem("auth_token");
@@ -64,6 +65,71 @@ export function LocalReviewPage() {
           return;
         }
 
+        // v1.4.4: detect pause via polling (SSE may be closed after page reload)
+        if (job.status === "paused") {
+          try {
+            const cpRes = await fetch(
+              `${API_BASE}/api/review/checkpoints?status=paused&review_type=local`,
+              { headers },
+            );
+            if (cpRes.ok) {
+              const cps = await cpRes.json();
+              if (Array.isArray(cps) && cps.length > 0) {
+                const cp = cps[0];
+                setReviewTotalBatches(cp.totalBatches ?? 0);
+                setReviewTotalFiles(cp.totalFiles ?? 0);
+                setReviewCompletedBatches(cp.currentBatch ?? 0);
+                setReviewReviewedFiles(cp.reviewedCount ?? 0);
+                if (cp.totalBatches > 0) setShowReviewProgress(true);
+                setCheckpointId(cp.id);
+                if (cp.jobId) jobIdRef.current = cp.jobId;
+                setIsPaused(true);
+                setIsPausing(false);
+                setLoading(false);
+                const saved = JSON.parse(cp.batchResults || "[]");
+                setReviewBatchResults(
+                  saved.map((r: any) => ({
+                    batchIndex: r.batchIndex ?? 0,
+                    files: r.files ?? [],
+                    issues: r.issues ?? [],
+                    scores: r.scores,
+                  })),
+                );
+                return; // stop polling
+              }
+            }
+          } catch { /* ignore */ }
+        }
+
+        // v1.4.4: sync checkpoint progress during polling (page reload recovery)
+        try {
+          const cpRes = await fetch(
+            `${API_BASE}/api/review/checkpoints?status=running&review_type=local`,
+            { headers },
+          );
+          if (cpRes.ok) {
+            const cps = await cpRes.json();
+            if (Array.isArray(cps) && cps.length > 0) {
+              const cp = cps[0];
+              setReviewTotalBatches(cp.totalBatches ?? 0);
+              setReviewTotalFiles(cp.totalFiles ?? 0);
+              setReviewCompletedBatches(cp.currentBatch ?? 0);
+              setReviewReviewedFiles(cp.reviewedCount ?? 0);
+              if (cp.totalBatches > 0) setShowReviewProgress(true);
+              if (cp.checkpointId || cp.id) setCheckpointId(cp.checkpointId || cp.id);
+              const saved = JSON.parse(cp.batchResults || "[]");
+              setReviewBatchResults(
+                saved.map((r: any) => ({
+                  batchIndex: r.batchIndex ?? 0,
+                  files: r.files ?? [],
+                  issues: r.issues ?? [],
+                  scores: r.scores,
+                })),
+              );
+            }
+          }
+        } catch { /* ignore checkpoint fetch error */ }
+
         // Still running — poll again after 2 seconds
         pollingRef.current = setTimeout(poll, 2000);
       } catch {
@@ -86,16 +152,20 @@ export function LocalReviewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // On mount: check for active running job
+  // On mount: check for active running job + paused checkpoints
   useEffect(() => {
+    // G2: mutual exclusion — if one finds state, the other skips
+    let recovered = false;
+
     async function checkActiveJob() {
       try {
         const res = await fetch(`${API_BASE}/api/review/local/active`, { headers });
         if (!res.ok) return;
         const job = await res.json();
-        if (!job) return;
+        if (!job || recovered) return;
 
         if (job.status === "running") {
+          recovered = true;
           // Found an in-progress job — restore UI state
           setProject(job.project);
           setSourceBranch(job.sourceBranch);
@@ -113,7 +183,51 @@ export function LocalReviewPage() {
         }
       } catch { /* ignore */ }
     }
+
+    // v1.4.4: check for paused checkpoints (page reload detection)
+    async function checkPausedCheckpoints() {
+      try {
+        const cpRes = await fetch(
+          `${API_BASE}/api/review/checkpoints?status=paused&review_type=local`,
+          { headers }
+        );
+        if (!cpRes.ok) return;
+        const checkpoints = await cpRes.json();
+        if (!Array.isArray(checkpoints) || checkpoints.length === 0 || recovered) return;
+        recovered = true;
+        const cp = checkpoints[0];
+
+        // Restore form state from checkpoint
+        setProject(cp.projectId);
+        setSourceBranch(cp.sourceBranch || "");
+        setTargetBranch(cp.targetBranch || "");
+        // Restore progress state
+        setReviewTotalBatches(cp.totalBatches);
+        setReviewTotalFiles(cp.totalFiles);
+        setReviewCompletedBatches(cp.currentBatch);
+        setReviewReviewedFiles(cp.reviewedCount);
+        setShowReviewProgress(true);
+        setIsPaused(true);
+        setCheckpointId(cp.id);
+        // Restore accumulated batch results
+        const saved = JSON.parse(cp.batchResults || "[]");
+        setReviewBatchResults(
+          saved.map((r: any) => ({
+            batchIndex: r.batchIndex ?? 0,
+            files: r.files ?? [],
+            issues: r.issues ?? [],
+            scores: r.scores,
+          }))
+        );
+        if (cp.jobId) {
+          setCurrentJobId(cp.jobId);
+          jobIdRef.current = cp.jobId;
+        }
+      } catch { /* ignore */ }
+    }
+
     checkActiveJob();
+    checkPausedCheckpoints();
 
     return () => {
       if (pollingRef.current) clearTimeout(pollingRef.current);
@@ -124,25 +238,24 @@ export function LocalReviewPage() {
   // v1.4.4: pause/resume/abandon handlers
   const handlePause = async () => {
     const jobId = jobIdRef.current;
-    if (!jobId) return;
+    if (!jobId || isPausing) return;
+    setIsPausing(true);
     try {
       await fetch(`${API_BASE}/api/review/pause`, {
         method: "POST",
         headers,
         body: JSON.stringify({ jobId }),
       });
-    } catch { /* ignore */ }
+    } catch {
+      setIsPausing(false);
+    }
   };
 
   const handleResume = async () => {
-    if (!checkpointId) return;
-    try {
-      await fetch(`${API_BASE}/api/review/resume`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ checkpointId }),
-      });
-    } catch { /* ignore */ }
+    if (!checkpointId || !project || !sourceBranch || !targetBranch) return;
+    setIsPaused(false);
+    // Re-establish SSE by calling the review endpoint with checkpointId
+    await startReview([], checkpointId);
   };
 
   const handleAbandon = async () => {
@@ -215,7 +328,14 @@ export function LocalReviewPage() {
     await startReview(excludedFiles);
   };
 
-  const startReview = async (excludedFiles: string[]) => {
+  const startReview = async (excludedFiles: string[], resumeCheckpointId?: string) => {
+    const isResume = !!resumeCheckpointId;
+    if (!isResume) {
+      // Fresh review: reset accumulated state
+      setReviewBatchResults([]);
+      setReviewCompletedBatches(0);
+      setReviewReviewedFiles(0);
+    }
     setLoading(true);
     setError(null);
 
@@ -223,7 +343,10 @@ export function LocalReviewPage() {
       const response = await fetch(`${API_BASE}/api/review/local`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ project, sourceBranch, targetBranch, excludedFiles }),
+        body: JSON.stringify({
+          project, sourceBranch, targetBranch, excludedFiles,
+          ...(resumeCheckpointId ? { checkpointId: resumeCheckpointId } : {}),
+        }),
       });
 
       if (!response.ok) {
@@ -291,7 +414,15 @@ export function LocalReviewPage() {
                 // v1.4.4: handle paused event
                 if (event.type === "paused") {
                   setIsPaused(true);
+                  setIsPausing(false);
                   setCheckpointId(event.checkpointId ?? null);
+                  continue;
+                }
+
+                // v1.4.4: handle resumed event
+                if (event.type === "resumed") {
+                  setIsPaused(false);
+                  setIsPausing(false);
                   continue;
                 }
 
@@ -337,7 +468,7 @@ export function LocalReviewPage() {
         <p>4. 评审完成 → 查看报告</p>
       </div>
 
-      {loading && project && (
+      {loading && !showReviewProgress && project && (
         <div className="bg-blue-900/20 border border-blue-800/50 rounded-xl p-4 flex items-center gap-3">
           <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
           <div>
@@ -425,6 +556,7 @@ export function LocalReviewPage() {
           reviewedFiles={reviewReviewedFiles}
           batchResults={reviewBatchResults}
           isPaused={isPaused}
+          isPausing={isPausing}
           onPause={handlePause}
           onResume={handleResume}
           onAbandon={handleAbandon}

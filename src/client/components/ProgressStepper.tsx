@@ -38,6 +38,7 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
 
   // v1.4.4: pause/resume state
   const [isPaused, setIsPaused] = useState(false);
+  const [isPausing, setIsPausing] = useState(false);
   const [checkpointId, setCheckpointId] = useState<string | null>(null);
   const jobIdRef = useRef<string | null>(null);
 
@@ -48,6 +49,42 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
   };
+
+  // v1.4.4: on mount, check for paused checkpoints (page reload detection)
+  useEffect(() => {
+    async function checkPausedCheckpoints() {
+      try {
+        const cpRes = await fetch(
+          `${API_BASE}/api/review/checkpoints?status=paused&review_type=mr`,
+          { headers: headers() }
+        );
+        if (!cpRes.ok) return;
+        const checkpoints = await cpRes.json();
+        if (!Array.isArray(checkpoints) || checkpoints.length === 0) return;
+        const cp = checkpoints[0];
+
+        setReviewTotalBatches(cp.totalBatches);
+        setReviewTotalFiles(cp.totalFiles);
+        setReviewCompletedBatches(cp.currentBatch);
+        setReviewReviewedFiles(cp.reviewedCount);
+        setShowReviewProgress(true);
+        setIsPaused(true);
+        setCheckpointId(cp.id);
+        if (cp.jobId) jobIdRef.current = cp.jobId;
+        const saved = JSON.parse(cp.batchResults || "[]");
+        setReviewBatchResults(
+          saved.map((r: any) => ({
+            batchIndex: r.batchIndex ?? 0,
+            files: r.files ?? [],
+            issues: r.issues ?? [],
+            scores: r.scores,
+          }))
+        );
+      } catch { /* ignore */ }
+    }
+    checkPausedCheckpoints();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -121,7 +158,15 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
                 // v1.4.4: handle paused event
                 if (event.type === "paused") {
                   setIsPaused(true);
+                  setIsPausing(false);
                   setCheckpointId(event.checkpointId ?? null);
+                  continue;
+                }
+
+                // v1.4.4: handle resumed event
+                if (event.type === "resumed") {
+                  setIsPaused(false);
+                  setIsPausing(false);
                   continue;
                 }
 
@@ -167,27 +212,92 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
   // v1.4.4: pause/resume/abandon handlers
   const handlePause = async () => {
     const jobId = jobIdRef.current;
-    if (!jobId) return;
+    if (!jobId || isPausing) return;
+    setIsPausing(true);
     try {
       await fetch(`${API_BASE}/api/review/pause`, {
         method: "POST",
         headers: headers(),
         body: JSON.stringify({ jobId }),
       });
-    } catch { /* ignore */ }
+    } catch {
+      setIsPausing(false);
+    }
   };
 
   const handleResume = async () => {
     if (!checkpointId) return;
+    setIsPaused(false);
+    setIsPausing(false);
+
     try {
-      await fetch(`${API_BASE}/api/review/resume`, {
+      const res = await fetch(`${API_BASE}/api/review`, {
         method: "POST",
         headers: headers(),
-        body: JSON.stringify({ checkpointId }),
+        body: JSON.stringify({ mrUrl, lanhuUrl, checkpointId }),
       });
-      // Re-trigger review — for now, let the user manually re-submit
-      // The checkpoint data is available for the parent to use
-    } catch { /* ignore */ }
+
+      if (!res.ok) {
+        onErrorRef.current(`HTTP ${res.status}`);
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) { onErrorRef.current("No response stream"); return; }
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+
+            if (event.type === "resumed") continue;
+
+            if (event.type === "batch_result") {
+              setReviewCompletedBatches(event.progress?.completedBatches ?? 0);
+              setReviewReviewedFiles(event.progress?.reviewedFiles ?? 0);
+              setReviewBatchResults((prev) => [
+                ...prev,
+                {
+                  batchIndex: event.batchIndex ?? prev.length,
+                  files: event.files ?? [],
+                  issues: event.issues ?? [],
+                  scores: event.scores,
+                },
+              ]);
+              continue;
+            }
+
+            if (event.type === "paused") {
+              setIsPaused(true);
+              setCheckpointId(event.checkpointId ?? null);
+              return;
+            }
+
+            if (event.label === "COMPLETE" && event.detail) {
+              onCompleteRef.current(JSON.parse(event.detail));
+              return;
+            }
+
+            if (event.status === "error") {
+              setFailed(true);
+              onErrorRef.current(event.label);
+              return;
+            }
+          } catch { /* skip */ }
+        }
+      }
+    } catch (err) {
+      onErrorRef.current(err instanceof Error ? err.message : "Connection failed");
+    }
   };
 
   const handleAbandon = async () => {
@@ -287,6 +397,7 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
             reviewedFiles={reviewReviewedFiles}
             batchResults={reviewBatchResults}
             isPaused={isPaused}
+            isPausing={isPausing}
             onPause={handlePause}
             onResume={handleResume}
             onAbandon={handleAbandon}

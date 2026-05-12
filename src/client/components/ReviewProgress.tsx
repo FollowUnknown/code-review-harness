@@ -19,6 +19,7 @@ export interface ReviewProgressProps {
   reviewedFiles: number;
   batchResults: BatchResultItem[];
   isPaused?: boolean;
+  isPausing?: boolean;
   isComplete?: boolean;
   onPause?: () => void;
   onResume?: () => void;
@@ -55,6 +56,7 @@ export function ReviewProgress({
   reviewedFiles,
   batchResults,
   isPaused,
+  isPausing,
   isComplete,
   onPause,
   onResume,
@@ -101,12 +103,20 @@ export function ReviewProgress({
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-slate-100">Review Progress</h3>
         <div className="flex items-center gap-2">
-          {!isComplete && onPause && !isPaused && (
+          {!isComplete && onPause && !isPaused && !isPausing && (
             <button
               onClick={onPause}
               className="px-3 py-1.5 text-xs rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
             >
               Pause ⏸
+            </button>
+          )}
+          {isPausing && !isPaused && (
+            <button
+              disabled
+              className="px-3 py-1.5 text-xs rounded-lg bg-amber-500/5 text-amber-400/50 border border-amber-500/10 cursor-not-allowed"
+            >
+              暂停中...
             </button>
           )}
           {isPaused && onResume && (

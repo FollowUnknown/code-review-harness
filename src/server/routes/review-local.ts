@@ -19,8 +19,10 @@ import { createSSEHelpers } from "../services/sse-helper";
 import { isPauseRequested, clearPause, removeJob } from "../services/review-pause-controller";
 import {
   createCheckpoint,
+  findCheckpointById,
   updateCheckpoint,
   completeCheckpoint,
+  abandonCheckpoint,
 } from "../services/review-checkpoint-store";
 
 const router = Router();
@@ -65,16 +67,29 @@ router.get("/local/:jobId", (req: Request, res: Response) => {
 
 // POST /local — start review with job tracking
 router.post("/local", async (req: Request, res: Response) => {
-  const { project, sourceBranch, targetBranch }: LocalReviewRequest = req.body;
+  const { project, sourceBranch, targetBranch, checkpointId: resumeCheckpointId }: LocalReviewRequest = req.body;
 
   if (!project || !sourceBranch || !targetBranch) {
     res.status(400).json({ error: "project, sourceBranch, targetBranch are required" });
     return;
   }
 
+  // v1.4.4: if resuming from checkpoint, validate early
+  if (resumeCheckpointId) {
+    const cp = findCheckpointById(resumeCheckpointId);
+    if (!cp) {
+      res.status(404).json({ error: "Checkpoint not found" });
+      return;
+    }
+    if (cp.status !== "paused") {
+      res.status(400).json({ error: `Checkpoint status is "${cp.status}", expected "paused"` });
+      return;
+    }
+  }
+
   // Prevent duplicate reviews: check if user already has a running job
   const userId = (req as Request & { user?: { id: string } }).user?.id || null;
-  if (userId) {
+  if (userId && !resumeCheckpointId) {
     const activeJob = findActiveJobByUser(userId);
     if (activeJob && activeJob.status === "running") {
       res.status(409).json({ error: "已有评审正在进行中，请等待完成后再发起", jobId: activeJob.id });
@@ -116,21 +131,23 @@ router.post("/local", async (req: Request, res: Response) => {
   sendSSE({ step: 0, status: "done", label: "init", jobId: job.id });
 
   // Abort detection: SSE close doesn't mean client left (polling may continue)
-  // Only mark aborted if no polling happens within 30 seconds after close
+  // Only mark aborted if no polling happens within 60 seconds after close
   let aborted = false;
   let sseDisconnected = false;
+  let checkpointId: string | null = null;
   let abortTimeout: ReturnType<typeof setTimeout> | null = null;
   res.on("close", () => {
     sseDisconnected = true;
-    // Wait 30s — if client is polling, the job status endpoint will be hit
+    // Wait 60s — if client is polling, the job status endpoint will be hit
     abortTimeout = setTimeout(() => {
       // Only abort if job is still running (polling would have seen completed)
       const currentJob = findJobById(job.id);
       if (currentJob && currentJob.status === "running") {
         aborted = true;
         updateJob(job.id, { status: "aborted", errorMessage: "Client disconnected" });
+        if (checkpointId) abandonCheckpoint(checkpointId);
       }
-    }, 30_000);
+    }, 60_000);
   });
 
   // Update job to running
@@ -175,6 +192,15 @@ router.post("/local", async (req: Request, res: Response) => {
 
     if (aborted) { res.end(); return; }
 
+    // v1.4.4: emit review_start early (before knowledge loading) so client sees progress ASAP
+    const totalBatches = batchDiffs.length;
+    sendEvent("review_start", {
+      reviewType: "local",
+      totalBatches,
+      totalFiles: diffs.length,
+      jobId: job.id,
+    });
+
     // Step 3: Load knowledge — infer module from diff file paths
     nextStep("Loading knowledge base");
     const inferredModule = inferModuleFromPaths(diffs.map((d: { new_path: string }) => d.new_path));
@@ -196,39 +222,47 @@ router.post("/local", async (req: Request, res: Response) => {
     const astPrompt = buildASTContextPrompt(context.astChanges ?? []);
     const userPromptPrefix = getReviewUserPrompt();
 
-    const batchReports = [];
-    const totalBatches = batchDiffs.length;
+    const batchReports: any[] = [];
+    let startBatch = 0;
+
+    // v1.4.4: resume from checkpoint — pre-load completed batches, skip to breakpoint
+    if (resumeCheckpointId) {
+      const cp = findCheckpointById(resumeCheckpointId)!;
+      updateCheckpoint(cp.id, { status: "running" });
+      startBatch = cp.currentBatch;
+      const savedResults = JSON.parse(cp.batchResults || "[]") as any[];
+      savedResults.forEach((r: any) => batchReports.push({ issues: r.issues, scores: r.scores }));
+      sendEvent("resumed", {
+        checkpointId: cp.id,
+        remainingBatches: totalBatches - startBatch,
+      });
+      checkpointId = cp.id;
+    } else {
+      // v1.4.4: create initial checkpoint for pause/resume
+      checkpointId = createCheckpoint({
+        reviewType: "local",
+        projectId: project,
+        sourceBranch,
+        targetBranch,
+        totalBatches,
+        totalFiles: diffs.length,
+        currentBatch: 0,
+        reviewedCount: 0,
+        jobId: job.id,
+        createdBy: userId ?? undefined,
+      }).id;
+    }
 
     if (totalBatches === 0) {
-      updateJob(job.id, { status: "completed", stepsJson: JSON.stringify(accumulatedSteps) });
+      if (!resumeCheckpointId) {
+        updateJob(job.id, { status: "completed", stepsJson: JSON.stringify(accumulatedSteps) });
+      }
       sendSSE({ step: getStep() + 1, status: "done", label: "No files to review", detail: "All files skipped" });
       res.end();
       return;
     }
 
-    // v1.4.4: emit review_start for incremental progress
-    sendEvent("review_start", {
-      reviewType: "local",
-      totalBatches,
-      totalFiles: diffs.length,
-      jobId: job.id,
-    });
-
-    // v1.4.4: create initial checkpoint for pause/resume
-    let checkpointId = createCheckpoint({
-      reviewType: "local",
-      projectId: project,
-      sourceBranch,
-      targetBranch,
-      totalBatches,
-      totalFiles: diffs.length,
-      currentBatch: 0,
-      reviewedCount: 0,
-      jobId: job.id,
-      createdBy: userId ?? undefined,
-    }).id;
-
-    for (let i = 0; i < totalBatches; i++) {
+    for (let i = startBatch; i < totalBatches; i++) {
       if (aborted) break;
 
       const level = batchLevels[i];
@@ -297,6 +331,7 @@ router.post("/local", async (req: Request, res: Response) => {
           batchResults: JSON.stringify(
             batchReports.map((r, bi) => ({
               batchIndex: bi,
+              files: batchDiffs[bi]?.map((d: { new_path: string }) => d.new_path) ?? [],
               issues: r.issues,
               scores: r.scores,
             }))
@@ -312,6 +347,7 @@ router.post("/local", async (req: Request, res: Response) => {
             totalFiles: diffs.length,
           },
         });
+        if (abortTimeout) clearTimeout(abortTimeout);
         res.end();
         return;
       }

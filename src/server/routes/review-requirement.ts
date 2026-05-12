@@ -32,8 +32,10 @@ import { createSSEHelpers } from "../services/sse-helper";
 import { isPauseRequested, clearPause, removeJob } from "../services/review-pause-controller";
 import {
   createCheckpoint,
+  findCheckpointById,
   updateCheckpoint,
   completeCheckpoint,
+  abandonCheckpoint,
 } from "../services/review-checkpoint-store";
 import type {
   RequirementReviewRequest,
@@ -144,11 +146,25 @@ router.post("/requirement", async (req: Request, res: Response) => {
     productLine, sourceBranch, targetBranch,
     excludedProjects, excludedFiles,
     requirement, requirementId,
+    checkpointId: resumeCheckpointId,
   }: RequirementReviewRequest = req.body;
 
   if (!productLine || !sourceBranch || !targetBranch) {
     res.status(400).json({ error: "productLine, sourceBranch, targetBranch are required" });
     return;
+  }
+
+  // v1.4.4: if resuming from checkpoint, validate early
+  if (resumeCheckpointId) {
+    const cp = findCheckpointById(resumeCheckpointId);
+    if (!cp) {
+      res.status(404).json({ error: "Checkpoint not found" });
+      return;
+    }
+    if (cp.status !== "paused") {
+      res.status(400).json({ error: `Checkpoint status is "${cp.status}", expected "paused"` });
+      return;
+    }
   }
 
   const llmConfig = getLLMConfig();
@@ -204,15 +220,18 @@ router.post("/requirement", async (req: Request, res: Response) => {
   sendSSE({ step: 0, status: "done", label: "init", jobId: job.id });
 
   let aborted = false;
+  let checkpointId: string | null = null;
   let abortTimeout: ReturnType<typeof setTimeout> | null = null;
   res.on("close", () => {
+    // Wait 60s — if resumed within window, checkpoint stays paused
     abortTimeout = setTimeout(() => {
       const currentJob = findJobById(job.id);
       if (currentJob && currentJob.status === "running") {
         aborted = true;
         updateJob(job.id, { status: "aborted", errorMessage: "Client disconnected" });
+        if (checkpointId) abandonCheckpoint(checkpointId);
       }
-    }, 30_000);
+    }, 60_000);
   });
 
   updateJob(job.id, { status: "running" });
@@ -274,22 +293,55 @@ router.post("/requirement", async (req: Request, res: Response) => {
       techStack: TechStack;
     }> = [];
 
-    // v1.4.4: create checkpoint for pause/resume
-    let checkpointId = createCheckpoint({
+    // v1.4.4: resume context from checkpoint
+    let resumeTechStack: string | null = null;
+    let resumeProjectIndex = -1;
+
+    if (resumeCheckpointId) {
+      const cp = findCheckpointById(resumeCheckpointId)!;
+      updateCheckpoint(cp.id, { status: "running" });
+      checkpointId = cp.id;
+      try {
+        const stats = JSON.parse(cp.accumulatedStats || "{}");
+        resumeTechStack = stats.techStack || null;
+        resumeProjectIndex = typeof stats.projectIndex === "number" ? stats.projectIndex : -1;
+      } catch { /* ignore */ }
+      sendEvent("resumed", {
+        checkpointId: cp.id,
+        remainingBatches: (cp.totalBatches || 0) - cp.currentBatch,
+      });
+    } else {
+      // v1.4.4: create checkpoint for pause/resume
+      checkpointId = createCheckpoint({
+        reviewType: "requirement",
+        projectId: productLine,
+        sourceBranch,
+        targetBranch,
+        totalBatches: multiCtx.totalFiles,
+        totalFiles: multiCtx.totalFiles,
+        currentBatch: 0,
+        reviewedCount: 0,
+        jobId: job.id,
+        createdBy: userId ?? undefined,
+      }).id;
+    }
+
+    // v1.4.4: emit review_start early so client sees progress ASAP
+    sendEvent("review_start", {
       reviewType: "requirement",
-      projectId: productLine,
-      sourceBranch,
-      targetBranch,
-      totalBatches: multiCtx.totalFiles, // approximate; updated on pause
+      totalBatches: multiCtx.projectCount,
       totalFiles: multiCtx.totalFiles,
-      currentBatch: 0,
-      reviewedCount: 0,
       jobId: job.id,
-      createdBy: userId ?? undefined,
-    }).id;
+    });
 
     for (const [techStack, groupResults] of techGroups) {
       if (aborted) break;
+
+      // v1.4.4: skip completed techStack groups on resume
+      if (resumeTechStack && techStack !== resumeTechStack) {
+        // Collect results from previous groups (already saved to checkpoint)
+        continue;
+      }
 
       const dimensions = getDimensionsForProject(null, techStack);
       const dimensionSetName = techStack === "java-backend" ? "Java 后端维度集"
@@ -300,6 +352,11 @@ router.post("/requirement", async (req: Request, res: Response) => {
 
       for (let pi = 0; pi < groupResults.length; pi++) {
         if (aborted) break;
+
+        // v1.4.4: skip completed projects within a techStack group on resume
+        if (resumeTechStack && techStack === resumeTechStack && pi < resumeProjectIndex) {
+          continue;
+        }
 
         const scanItem = groupResults[pi];
         const projCtx = multiCtx.projects.find((p) => p.project === scanItem.project);
@@ -349,7 +406,15 @@ router.post("/requirement", async (req: Request, res: Response) => {
 
           // Review batches
           const batchReports: ReviewReport[] = [];
-          for (let i = 0; i < batchDiffs.length; i++) {
+          const isResumeProject = resumeTechStack && techStack === resumeTechStack && pi === resumeProjectIndex;
+          let startBatch = 0;
+          if (isResumeProject) {
+            const cp = findCheckpointById(resumeCheckpointId!)!;
+            startBatch = cp.currentBatch;
+            const savedResults = JSON.parse(cp.batchResults || "[]") as any[];
+            savedResults.forEach((r: any) => batchReports.push({ issues: r.issues, scores: r.scores } as unknown as ReviewReport));
+          }
+          for (let i = startBatch; i < batchDiffs.length; i++) {
             if (aborted) break;
 
             const level = batchLevels[i];
@@ -418,6 +483,7 @@ router.post("/requirement", async (req: Request, res: Response) => {
                 batchResults: JSON.stringify(
                   batchReports.map((r, bi) => ({
                     batchIndex: bi,
+                    files: batchDiffs[bi]?.map((d: { new_path: string }) => d.new_path) ?? [],
                     issues: r.issues,
                     scores: r.scores,
                   }))
@@ -438,6 +504,7 @@ router.post("/requirement", async (req: Request, res: Response) => {
                   totalFiles: projDiffs.length,
                 },
               });
+              if (abortTimeout) clearTimeout(abortTimeout);
               res.end();
               return;
             }

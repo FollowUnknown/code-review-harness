@@ -171,6 +171,7 @@ export interface ReviewRequest {
   gitlabHost?: string;
   gitlabToken?: string;
   lanhuUrl?: string;
+  checkpointId?: string;                // v1.4.4: resume from paused checkpoint
 }
 
 export interface ContinueReviewRequest {
@@ -464,6 +465,7 @@ export interface LocalReviewRequest {
   includeRelatedFiles?: boolean;   // default true
   relatedFileDepth?: number;       // 1 = direct deps only (default)
   excludedFiles?: string[];        // v1.3.5: files to skip
+  checkpointId?: string;           // v1.4.4: resume from paused checkpoint
 }
 
 export interface DiffReviewRequest {
@@ -566,6 +568,7 @@ export interface RequirementReviewRequest {
   excludedFiles?: string[];
   requirement?: string;
   requirementId?: string;
+  checkpointId?: string;               // v1.4.4: resume from paused checkpoint
 }
 
 export interface ProjectScanResult {
