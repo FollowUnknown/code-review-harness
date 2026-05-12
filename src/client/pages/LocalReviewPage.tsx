@@ -522,6 +522,17 @@ export function LocalReviewPage() {
         </div>
       )}
 
+      {(isPaused || isInterrupted) && showReviewProgress && project && (
+        <div className={`rounded-xl p-4 flex items-center gap-3 ${isInterrupted ? "bg-orange-900/20 border border-orange-800/50" : "bg-amber-900/20 border border-amber-800/50"}`}>
+          <div>
+            <span className={`text-sm font-medium ${isInterrupted ? "text-orange-400" : "text-amber-400"}`}>
+              {isInterrupted ? "评审中断" : "评审已暂停"}
+            </span>
+            <span className="text-slate-400 text-xs ml-2">{project} ({sourceBranch} → {targetBranch})</span>
+          </div>
+        </div>
+      )}
+
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 space-y-4">
         <div>
           <label className="block text-sm text-slate-400 mb-1">Project</label>
