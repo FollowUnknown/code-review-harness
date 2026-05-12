@@ -12,22 +12,14 @@ import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { getDimensionsForProject } from "../services/dimensions";
 import { inferTechStack } from "../services/techstack";
 import { ReviewRequest, ReviewResponse } from "../../shared/types";
+import type { SSEBatchResult } from "../../shared/types";
 import { saveReviewRecord, computeReviewStats } from "../services/review-store";
 import { saveLLMLog } from "../services/llm-logger";
+import { createSSEHelpers } from "../services/sse-helper";
+import { isPauseRequested, clearPause } from "../services/review-pause-controller";
+import { createCheckpoint, updateCheckpoint, completeCheckpoint } from "../services/review-checkpoint-store";
 
 const router = Router();
-
-interface ProgressEvent {
-  step: number;
-  status: "running" | "done" | "error";
-  label: string;
-  detail?: string;
-  progress?: number;
-}
-
-function sendSSE(res: Response, event: ProgressEvent) {
-  res.write(`data: ${JSON.stringify(event)}\n\n`);
-}
 
 // SSE-based review endpoint
 router.post("/review", async (req: Request, res: Response) => {
@@ -51,16 +43,7 @@ router.post("/review", async (req: Request, res: Response) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
-  let step = 0;
-
-  const nextStep = (label: string, detail?: string) => {
-    step++;
-    sendSSE(res, { step, status: "running", label, detail });
-  };
-
-  const completeStep = (detail?: string) => {
-    sendSSE(res, { step, status: "done", label: "", detail });
-  };
+  const { sendSSE, nextStep, completeStep, getStep, sendEvent } = createSSEHelpers(res);
 
   try {
     // Step 1: Parse URL & connect GitLab
@@ -70,7 +53,7 @@ router.post("/review", async (req: Request, res: Response) => {
     const token = gitlabToken || process.env.GITLAB_TOKEN;
 
     if (!token) {
-      sendSSE(res, { step, status: "error", label: "GitLab token required" });
+      sendSSE({ step: getStep(), status: "error", label: "GitLab token required" });
       res.end();
       return;
     }
@@ -110,13 +93,38 @@ router.post("/review", async (req: Request, res: Response) => {
 
     // Step 6+: Review batches
     const totalBatches = batchDiffs.length;
+    const totalFiles = diffs.length;
     const reviewId = `R-${randomUUID().slice(0, 8)}`;
     let report;
     let tokenUsage: { inputTokens: number; outputTokens: number } | undefined;
     let batchDetails: Array<{ files: number; tokens: { inputTokens: number; outputTokens: number } }> | undefined;
 
+    // v1.4.4: emit review_start for incremental progress tracking
+    sendEvent("review_start", {
+      reviewType: "mr",
+      totalBatches,
+      totalFiles,
+      jobId: reviewId,
+    });
+
+    // v1.4.4: create initial checkpoint for pause/resume
+    const mrMeta = mr as unknown as Record<string, unknown>;
+    let checkpointId = createCheckpoint({
+      reviewType: "mr",
+      projectId: project,
+      sourceBranch: mrMeta.source_branch as string | undefined,
+      targetBranch: mrMeta.target_branch as string | undefined,
+      totalBatches,
+      totalFiles,
+      currentBatch: 0,
+      reviewedCount: 0,
+      jobId: reviewId,
+      createdBy: (req as Request & { user?: { id: string } }).user?.id,
+    }).id;
+
     if (totalBatches === 0) {
-      sendSSE(res, { step: step + 1, status: "done", label: "No files to review", detail: "All files skipped" });
+      completeCheckpoint(checkpointId);
+      sendSSE({ step: getStep() + 1, status: "done", label: "No files to review", detail: "All files skipped" });
       report = {
         contractTitle: "Code Review",
         timestamp: new Date().toISOString(),
@@ -166,7 +174,7 @@ router.post("/review", async (req: Request, res: Response) => {
           const errMsg = llmErr instanceof Error ? llmErr.message : "LLM call failed";
           console.error(`[Review ${reviewId}] Batch ${i + 1}/${totalBatches} failed: ${errMsg}`);
           failedBatches.push(i);
-          sendSSE(res, { step, status: "error", label: `Batch ${i + 1} failed: ${errMsg.slice(0, 100)}` });
+          sendSSE({ step: getStep(), status: "error", label: `Batch ${i + 1} failed: ${errMsg.slice(0, 100)}` });
           continue; // skip this batch, proceed with remaining
         }
 
@@ -200,13 +208,58 @@ router.post("/review", async (req: Request, res: Response) => {
           ? `${batchDiffs[i].length} files reviewed (${result.usage.inputTokens}+${result.usage.outputTokens} tokens)`
           : `${batchDiffs[i].length} files reviewed`;
 
-        sendSSE(res, {
-          step,
+        sendSSE({
+          step: getStep(),
           status: "done",
           label: "",
           detail: tokenDetail,
           progress: Math.round(((i + 1) / totalBatches) * 100),
         });
+
+        // v1.4.4: emit batch_result for incremental rendering
+        const currentReport = parseReviewResponse(result.text);
+        const batchResult: SSEBatchResult = {
+          batchIndex: i,
+          files: batchDiffs[i].map((d: { new_path: string }) => d.new_path),
+          issues: currentReport.issues,
+          scores: currentReport.scores,
+          progress: {
+            completedBatches: i + 1,
+            totalBatches,
+            reviewedFiles: batchDiffs.slice(0, i + 1).reduce((sum: number, b: unknown[]) => sum + b.length, 0),
+            totalFiles,
+          },
+        };
+        sendEvent("batch_result", batchResult);
+
+        // v1.4.4: check pause request between batches
+        if (isPauseRequested(reviewId)) {
+          clearPause(reviewId);
+          const reviewedCount = batchDiffs.slice(0, i + 1).reduce((sum: number, b: unknown[]) => sum + b.length, 0);
+          updateCheckpoint(checkpointId, {
+            status: "paused",
+            currentBatch: i + 1,
+            reviewedCount,
+            batchResults: JSON.stringify(
+              batchReports.map((r, bi) => ({
+                batchIndex: bi,
+                issues: r.issues,
+                scores: r.scores,
+              }))
+            ),
+          });
+          sendEvent("paused", {
+            checkpointId,
+            progress: {
+              completedBatches: i + 1,
+              totalBatches,
+              reviewedFiles: reviewedCount,
+              totalFiles,
+            },
+          });
+          res.end();
+          return;
+        }
       }
 
       // Merge reports
@@ -227,9 +280,8 @@ router.post("/review", async (req: Request, res: Response) => {
     const stats = computeReviewStats(report);
 
     // Extract head_sha from MR meta if available
-    const mrAny = mr as unknown as Record<string, unknown>;
-    const headSha = mrAny.diff_refs
-      ? (mrAny.diff_refs as Record<string, unknown>)?.head_sha as string | undefined
+    const headSha = mrMeta.diff_refs
+      ? (mrMeta.diff_refs as Record<string, unknown>)?.head_sha as string | undefined
       : undefined;
 
     saveReviewRecord({
@@ -277,7 +329,8 @@ router.post("/review", async (req: Request, res: Response) => {
       ...(tokenUsage ? { tokenUsage, batchDetails } : {}),
     };
 
-    sendSSE(res, { step: step + 1, status: "done", label: "COMPLETE", detail: JSON.stringify(response) });
+    sendSSE({ step: getStep() + 1, status: "done", label: "COMPLETE", detail: JSON.stringify(response) });
+    completeCheckpoint(checkpointId);
     res.end();
   } catch (err) {
     const message = err instanceof Error ? err.message : "Review failed";
@@ -285,7 +338,7 @@ router.post("/review", async (req: Request, res: Response) => {
     const safeMessage = message.includes("ENOTFOUND") || message.includes("ECONNREFUSED")
       ? "Failed to connect to external service"
       : message.length > 200 ? message.slice(0, 200) + "..." : message;
-    sendSSE(res, { step, status: "error", label: safeMessage });
+    sendSSE({ step: getStep(), status: "error", label: safeMessage });
     res.end();
   }
 });

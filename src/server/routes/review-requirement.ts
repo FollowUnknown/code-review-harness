@@ -28,6 +28,13 @@ import { inferModuleFromPaths } from "../services/module-utils";
 import { createJob, findJobById, findActiveJobByUser, updateJob } from "../services/review-job-store";
 import { groupByTechStack } from "../services/techstack-grouper";
 import { detectCrossStackIssues } from "../services/cross-stack-analyzer";
+import { createSSEHelpers } from "../services/sse-helper";
+import { isPauseRequested, clearPause, removeJob } from "../services/review-pause-controller";
+import {
+  createCheckpoint,
+  updateCheckpoint,
+  completeCheckpoint,
+} from "../services/review-checkpoint-store";
 import type {
   RequirementReviewRequest,
   RequirementReviewReport,
@@ -36,22 +43,9 @@ import type {
   TechStack,
   ReviewReport,
 } from "../../shared/types";
+import type { SSEBatchResult } from "../../shared/types";
 
 const router = Router();
-
-// ---- SSE Helpers ----
-
-interface ProgressEvent {
-  step: number;
-  status: "running" | "done" | "error";
-  label: string;
-  detail?: string;
-  jobId?: string;
-}
-
-function sendSSE(res: Response, event: ProgressEvent): void {
-  res.write(`data: ${JSON.stringify(event)}\n\n`);
-}
 
 // ---- GET /requirement/active ----
 
@@ -205,7 +199,9 @@ router.post("/requirement", async (req: Request, res: Response) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
-  sendSSE(res, { step: 0, status: "done", label: "init", jobId: job.id });
+  // Switch to SSE
+  const { sendSSE, nextStep: _sseNext, completeStep: _sseComplete, getStep, sendEvent } = createSSEHelpers(res);
+  sendSSE({ step: 0, status: "done", label: "init", jobId: job.id });
 
   let aborted = false;
   let abortTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -221,16 +217,14 @@ router.post("/requirement", async (req: Request, res: Response) => {
 
   updateJob(job.id, { status: "running" });
 
-  let step = 0;
   const accumulatedSteps: string[] = [];
   const nextStep = (label: string, detail?: string) => {
-    step++;
+    _sseNext(label, detail);
     accumulatedSteps.push(`${label}: ${detail || ""}`);
-    updateJob(job.id, { currentStep: step, currentLabel: label, stepsJson: JSON.stringify(accumulatedSteps) });
-    sendSSE(res, { step, status: "running", label, detail });
+    updateJob(job.id, { currentStep: getStep(), currentLabel: label, stepsJson: JSON.stringify(accumulatedSteps) });
   };
   const completeStep = (detail?: string) => {
-    sendSSE(res, { step, status: "done", label: "", detail });
+    _sseComplete(detail);
   };
 
   try {
@@ -244,7 +238,7 @@ router.post("/requirement", async (req: Request, res: Response) => {
 
     if (multiCtx.projectCount === 0) {
       updateJob(job.id, { status: "completed", stepsJson: JSON.stringify(accumulatedSteps) });
-      sendSSE(res, { step: step + 1, status: "done", label: "No changes", detail: "No diff found in any project" });
+      sendSSE({ step: getStep() + 1, status: "done", label: "No changes", detail: "No diff found in any project" });
       res.end();
       return;
     }
@@ -279,6 +273,20 @@ router.post("/requirement", async (req: Request, res: Response) => {
       report: ReviewReport;
       techStack: TechStack;
     }> = [];
+
+    // v1.4.4: create checkpoint for pause/resume
+    let checkpointId = createCheckpoint({
+      reviewType: "requirement",
+      projectId: productLine,
+      sourceBranch,
+      targetBranch,
+      totalBatches: multiCtx.totalFiles, // approximate; updated on pause
+      totalFiles: multiCtx.totalFiles,
+      currentBatch: 0,
+      reviewedCount: 0,
+      jobId: job.id,
+      createdBy: userId ?? undefined,
+    }).id;
 
     for (const [techStack, groupResults] of techGroups) {
       if (aborted) break;
@@ -384,6 +392,55 @@ router.post("/requirement", async (req: Request, res: Response) => {
               provider: llmConfig.provider,
               model: llmConfig.model,
             });
+
+            // v1.4.4: emit batch_result for incremental rendering
+            sendEvent("batch_result", {
+              batchIndex: i,
+              files: batchDiffs[i].map((d: { new_path: string }) => d.new_path),
+              issues: parsed.issues,
+              scores: parsed.scores,
+              progress: {
+                completedBatches: i + 1,
+                totalBatches: batchDiffs.length,
+                reviewedFiles: batchDiffs.slice(0, i + 1).reduce((sum: number, b: unknown[]) => sum + b.length, 0),
+                totalFiles: projDiffs.length,
+              },
+            } as SSEBatchResult);
+
+            // v1.4.4: check pause request between batches
+            if (isPauseRequested(job.id)) {
+              clearPause(job.id);
+              const reviewedCount = batchDiffs.slice(0, i + 1).reduce((sum: number, b: unknown[]) => sum + b.length, 0);
+              updateCheckpoint(checkpointId, {
+                status: "paused",
+                currentBatch: i + 1,
+                reviewedCount,
+                batchResults: JSON.stringify(
+                  batchReports.map((r, bi) => ({
+                    batchIndex: bi,
+                    issues: r.issues,
+                    scores: r.scores,
+                  }))
+                ),
+                accumulatedStats: JSON.stringify({
+                  techStack,
+                  projectIndex: pi,
+                  project: scanItem.project,
+                }),
+              });
+              updateJob(job.id, { status: "paused", stepsJson: JSON.stringify(accumulatedSteps) });
+              sendEvent("paused", {
+                checkpointId,
+                progress: {
+                  completedBatches: i + 1,
+                  totalBatches: batchDiffs.length,
+                  reviewedFiles: reviewedCount,
+                  totalFiles: projDiffs.length,
+                },
+              });
+              res.end();
+              return;
+            }
           }
 
           if (aborted) break;
@@ -555,7 +612,8 @@ router.post("/requirement", async (req: Request, res: Response) => {
 
     updateJob(job.id, { status: "completed", reviewId, stepsJson: JSON.stringify(accumulatedSteps) });
 
-    sendSSE(res, { step: step + 1, status: "done", label: "COMPLETE", detail: JSON.stringify({ reviewId, report: finalReport }) });
+    sendSSE({ step: getStep() + 1, status: "done", label: "COMPLETE", detail: JSON.stringify({ reviewId, report: finalReport }) });
+    completeCheckpoint(checkpointId);
     if (abortTimeout) clearTimeout(abortTimeout);
     res.end();
   } catch (error) {
@@ -563,7 +621,8 @@ router.post("/requirement", async (req: Request, res: Response) => {
     const message = error instanceof Error ? error.message : "Unknown error";
     const shortMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
     updateJob(job.id, { status: "failed", errorMessage: shortMessage, stepsJson: JSON.stringify(accumulatedSteps) });
-    sendSSE(res, { step, status: "error", label: shortMessage });
+    removeJob(job.id);
+    sendSSE({ step: getStep(), status: "error", label: shortMessage });
     res.end();
   }
 });

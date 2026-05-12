@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { ReviewProgress } from "../components/ReviewProgress";
+import type { BatchResultItem } from "../components/ReviewProgress";
 import type { TechStack, ProjectScanResult, ProductLine } from "../../shared/types";
 
 const API_BASE = "";
@@ -46,6 +48,18 @@ export function RequirementReviewPage() {
   const [reviewId, setReviewId] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const jobIdRef = useRef<string | null>(null);
+
+  // v1.4.4: incremental review state
+  const [reviewTotalBatches, setReviewTotalBatches] = useState(0);
+  const [reviewTotalFiles, setReviewTotalFiles] = useState(0);
+  const [reviewCompletedBatches, setReviewCompletedBatches] = useState(0);
+  const [reviewReviewedFiles, setReviewReviewedFiles] = useState(0);
+  const [reviewBatchResults, setReviewBatchResults] = useState<BatchResultItem[]>([]);
+  const [showReviewProgress, setShowReviewProgress] = useState(false);
+
+  // v1.4.4: pause/resume state
+  const [isPaused, setIsPaused] = useState(false);
+  const [checkpointId, setCheckpointId] = useState<string | null>(null);
 
   const token = localStorage.getItem("auth_token");
   const headers: Record<string, string> = {
@@ -131,6 +145,42 @@ export function RequirementReviewPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // v1.4.4: pause/resume/abandon handlers
+  const handlePause = async () => {
+    const jobId = jobIdRef.current;
+    if (!jobId) return;
+    try {
+      await fetch(`${API_BASE}/api/review/pause`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ jobId }),
+      });
+    } catch { /* ignore */ }
+  };
+
+  const handleResume = async () => {
+    if (!checkpointId) return;
+    try {
+      await fetch(`${API_BASE}/api/review/resume`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ checkpointId }),
+      });
+    } catch { /* ignore */ }
+  };
+
+  const handleAbandon = async () => {
+    if (!checkpointId) return;
+    try {
+      await fetch(`${API_BASE}/api/review/checkpoints/${checkpointId}?abandon=true`, {
+        method: "DELETE",
+        headers,
+      });
+      setIsPaused(false);
+      setCheckpointId(null);
+    } catch { /* ignore */ }
+  };
 
   function handlePreview() {
     if (!productLine || !sourceBranch || !targetBranch) {
@@ -241,6 +291,37 @@ export function RequirementReviewPage() {
 
                 if (event.jobId) {
                   jobIdRef.current = event.jobId;
+                }
+
+                // v1.4.4: handle review_start event
+                if ((event as any).type === "review_start") {
+                  setReviewTotalBatches((event as any).totalBatches ?? 0);
+                  setReviewTotalFiles((event as any).totalFiles ?? 0);
+                  setShowReviewProgress(true);
+                  continue;
+                }
+
+                // v1.4.4: handle batch_result event
+                if ((event as any).type === "batch_result") {
+                  setReviewCompletedBatches((event as any).progress?.completedBatches ?? 0);
+                  setReviewReviewedFiles((event as any).progress?.reviewedFiles ?? 0);
+                  setReviewBatchResults((prev) => [
+                    ...prev,
+                    {
+                      batchIndex: (event as any).batchIndex ?? prev.length,
+                      files: (event as any).files ?? [],
+                      issues: (event as any).issues ?? [],
+                      scores: (event as any).scores,
+                    },
+                  ]);
+                  continue;
+                }
+
+                // v1.4.4: handle paused event
+                if ((event as any).type === "paused") {
+                  setIsPaused(true);
+                  setCheckpointId((event as any).checkpointId ?? null);
+                  continue;
                 }
 
                 if (event.status === "running") {
@@ -440,6 +521,22 @@ export function RequirementReviewPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* v1.4.4: incremental review progress */}
+      {showReviewProgress && reviewTotalBatches > 0 && (
+        <ReviewProgress
+          reviewType="requirement"
+          totalBatches={reviewTotalBatches}
+          totalFiles={reviewTotalFiles}
+          completedBatches={reviewCompletedBatches}
+          reviewedFiles={reviewReviewedFiles}
+          batchResults={reviewBatchResults}
+          isPaused={isPaused}
+          onPause={handlePause}
+          onResume={handleResume}
+          onAbandon={handleAbandon}
+        />
       )}
 
       {/* Step 4: Result */}

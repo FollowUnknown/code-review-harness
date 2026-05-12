@@ -271,6 +271,34 @@ function initialize(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_review_jobs_created_by ON review_jobs(created_by);
   `);
 
+  // Review checkpoints (v1.4.4) — pause/resume for all three review types
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS review_checkpoints (
+      id                  TEXT PRIMARY KEY,
+      review_type         TEXT NOT NULL CHECK(review_type IN ('mr', 'local', 'requirement')),
+      project_id          TEXT NOT NULL,
+      source_branch       TEXT,
+      target_branch       TEXT,
+      status              TEXT NOT NULL DEFAULT 'running'
+        CHECK(status IN ('running', 'paused', 'completed', 'abandoned')),
+      current_batch       INTEGER DEFAULT 0,
+      total_batches       INTEGER DEFAULT 0,
+      total_files         INTEGER DEFAULT 0,
+      reviewed_count      INTEGER DEFAULT 0,
+      batch_results       TEXT DEFAULT '[]',
+      accumulated_scores  TEXT DEFAULT '[]',
+      accumulated_stats   TEXT DEFAULT '{}',
+      job_id              TEXT,
+      created_by          TEXT,
+      created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_rc_review_type ON review_checkpoints(review_type);
+    CREATE INDEX IF NOT EXISTS idx_rc_project ON review_checkpoints(project_id);
+    CREATE INDEX IF NOT EXISTS idx_rc_status ON review_checkpoints(status);
+    CREATE INDEX IF NOT EXISTS idx_rc_project_status ON review_checkpoints(project_id, status);
+  `);
+
   // Migrate repo_mappings table with product_line_id, tech_stack (v1.4.0)
   migrateRepoMappingsTable(db);
 

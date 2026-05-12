@@ -289,7 +289,7 @@ export interface PlanFilter {
 
 // ---- Review Job Types (v1.3.8) ----
 
-export type ReviewJobStatus = "pending" | "running" | "completed" | "failed" | "aborted";
+export type ReviewJobStatus = "pending" | "running" | "completed" | "failed" | "aborted" | "paused";
 
 export interface ReviewJob {
   id: string;
@@ -615,4 +615,98 @@ export interface RequirementReviewReport {
     frontendProject?: string;
     severity: SeverityLevel;
   }>;
+}
+
+// ---- SSE Progress Event (v1.4.4) ----
+// Extracted from three inline definitions in review routes.
+// Replaces per-route ProgressEvent interfaces.
+
+export interface ProgressEvent {
+  step: number;
+  status: "running" | "done" | "error";
+  label: string;
+  detail?: string;
+  progress?: number;
+  jobId?: string;
+}
+
+// ---- SSE Streaming Events (v1.4.4) ----
+
+export interface SSEReviewStart {
+  reviewType: "mr" | "local" | "requirement";
+  totalBatches: number;
+  totalFiles: number;
+  jobId?: string;
+}
+
+export interface SSEBatchProgress {
+  completedBatches: number;
+  totalBatches: number;
+  reviewedFiles: number;
+  totalFiles: number;
+}
+
+export interface SSEBatchResult {
+  batchIndex: number;
+  files: string[];
+  issues: ReviewIssue[];
+  scores?: ReviewScore[];
+  progress: SSEBatchProgress;
+}
+
+export interface SSEPaused {
+  checkpointId: string;
+  progress: SSEBatchProgress;
+}
+
+export interface SSEResumed {
+  checkpointId: string;
+  remainingBatches: number;
+}
+
+// ---- Review Checkpoint (v1.4.4) ----
+
+export type ReviewType = "mr" | "local" | "requirement";
+export type CheckpointStatus = "running" | "paused" | "completed" | "abandoned";
+
+export interface ReviewCheckpoint {
+  id: string;
+  reviewType: ReviewType;
+  projectId: string;
+  sourceBranch?: string;
+  targetBranch?: string;
+  status: CheckpointStatus;
+  currentBatch: number;
+  totalBatches: number;
+  totalFiles: number;
+  reviewedCount: number;
+  batchResults: string;          // JSON array of SSEBatchResult
+  accumulatedScores: string;     // JSON array of ReviewScore
+  accumulatedStats: string;      // JSON object
+  jobId?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// SSE payload discriminant union — sendSSE accepts any of these
+export type SSEPayload =
+  | ProgressEvent
+  | ({ type: "review_start" } & SSEReviewStart)
+  | ({ type: "batch_result" } & SSEBatchResult)
+  | ({ type: "paused" } & SSEPaused)
+  | ({ type: "resumed" } & SSEResumed);
+
+export interface PauseRequest {
+  jobId: string;
+}
+
+export interface ResumeRequest {
+  checkpointId: string;
+}
+
+export interface CheckpointFilter {
+  project?: string;
+  status?: CheckpointStatus;
+  reviewType?: ReviewType;
 }

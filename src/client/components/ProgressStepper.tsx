@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ReviewProgress } from "./ReviewProgress";
+import type { BatchResultItem } from "./ReviewProgress";
 
 const API_BASE = "";
 
@@ -25,6 +27,27 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
   const onErrorRef = useRef(onError);
   onCompleteRef.current = onComplete;
   onErrorRef.current = onError;
+
+  // v1.4.4: incremental review state
+  const [reviewTotalBatches, setReviewTotalBatches] = useState(0);
+  const [reviewTotalFiles, setReviewTotalFiles] = useState(0);
+  const [reviewCompletedBatches, setReviewCompletedBatches] = useState(0);
+  const [reviewReviewedFiles, setReviewReviewedFiles] = useState(0);
+  const [reviewBatchResults, setReviewBatchResults] = useState<BatchResultItem[]>([]);
+  const [showReviewProgress, setShowReviewProgress] = useState(false);
+
+  // v1.4.4: pause/resume state
+  const [isPaused, setIsPaused] = useState(false);
+  const [checkpointId, setCheckpointId] = useState<string | null>(null);
+  const jobIdRef = useRef<string | null>(null);
+
+  const headers = (): Record<string, string> => {
+    const token = localStorage.getItem("auth_token");
+    return {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -68,7 +91,39 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
           for (const line of lines) {
             if (line.startsWith("data: ")) {
               try {
-                const event: ProgressStep = JSON.parse(line.slice(6));
+                const event = JSON.parse(line.slice(6));
+
+                // v1.4.4: handle review_start event
+                if (event.type === "review_start") {
+                  setReviewTotalBatches(event.totalBatches ?? 0);
+                  setReviewTotalFiles(event.totalFiles ?? 0);
+                  setShowReviewProgress(true);
+                  if (event.jobId) jobIdRef.current = event.jobId;
+                  continue;
+                }
+
+                // v1.4.4: handle batch_result event
+                if (event.type === "batch_result") {
+                  setReviewCompletedBatches(event.progress?.completedBatches ?? 0);
+                  setReviewReviewedFiles(event.progress?.reviewedFiles ?? 0);
+                  setReviewBatchResults((prev) => [
+                    ...prev,
+                    {
+                      batchIndex: event.batchIndex ?? prev.length,
+                      files: event.files ?? [],
+                      issues: event.issues ?? [],
+                      scores: event.scores,
+                    },
+                  ]);
+                  continue;
+                }
+
+                // v1.4.4: handle paused event
+                if (event.type === "paused") {
+                  setIsPaused(true);
+                  setCheckpointId(event.checkpointId ?? null);
+                  continue;
+                }
 
                 if (event.label === "COMPLETE" && event.detail) {
                   onCompleteRef.current(JSON.parse(event.detail));
@@ -108,6 +163,44 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
 
     return () => controller.abort();
   }, [mrUrl, lanhuUrl]);
+
+  // v1.4.4: pause/resume/abandon handlers
+  const handlePause = async () => {
+    const jobId = jobIdRef.current;
+    if (!jobId) return;
+    try {
+      await fetch(`${API_BASE}/api/review/pause`, {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({ jobId }),
+      });
+    } catch { /* ignore */ }
+  };
+
+  const handleResume = async () => {
+    if (!checkpointId) return;
+    try {
+      await fetch(`${API_BASE}/api/review/resume`, {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({ checkpointId }),
+      });
+      // Re-trigger review — for now, let the user manually re-submit
+      // The checkpoint data is available for the parent to use
+    } catch { /* ignore */ }
+  };
+
+  const handleAbandon = async () => {
+    if (!checkpointId) return;
+    try {
+      await fetch(`${API_BASE}/api/review/checkpoints/${checkpointId}?abandon=true`, {
+        method: "DELETE",
+        headers: headers(),
+      });
+      setIsPaused(false);
+      setCheckpointId(null);
+    } catch { /* ignore */ }
+  };
 
   return (
     <motion.div
@@ -183,6 +276,23 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
           ))}
         </AnimatePresence>
       </div>
+
+      {showReviewProgress && reviewTotalBatches > 0 && (
+        <div className="mt-4">
+          <ReviewProgress
+            reviewType="mr"
+            totalBatches={reviewTotalBatches}
+            totalFiles={reviewTotalFiles}
+            completedBatches={reviewCompletedBatches}
+            reviewedFiles={reviewReviewedFiles}
+            batchResults={reviewBatchResults}
+            isPaused={isPaused}
+            onPause={handlePause}
+            onResume={handleResume}
+            onAbandon={handleAbandon}
+          />
+        </div>
+      )}
 
       {failed && (
         <motion.p

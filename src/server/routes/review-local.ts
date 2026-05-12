@@ -14,20 +14,16 @@ import { buildLocalScanContext, buildRelatedFilesPrompt, buildASTContextPrompt }
 import { inferModuleFromPaths } from "../services/module-utils";
 import { createJob, findJobById, findActiveJobByUser, updateJob } from "../services/review-job-store";
 import type { LocalReviewRequest } from "../../shared/types";
+import type { SSEBatchResult } from "../../shared/types";
+import { createSSEHelpers } from "../services/sse-helper";
+import { isPauseRequested, clearPause, removeJob } from "../services/review-pause-controller";
+import {
+  createCheckpoint,
+  updateCheckpoint,
+  completeCheckpoint,
+} from "../services/review-checkpoint-store";
 
 const router = Router();
-
-interface ProgressEvent {
-  step: number;
-  status: "running" | "done" | "error";
-  label: string;
-  detail?: string;
-  jobId?: string;
-}
-
-function sendSSE(res: Response, event: ProgressEvent) {
-  res.write(`data: ${JSON.stringify(event)}\n\n`);
-}
 
 // GET /local/active — find running job for current user
 router.get("/local/active", (req: Request, res: Response) => {
@@ -116,7 +112,8 @@ router.post("/local", async (req: Request, res: Response) => {
   res.setHeader("X-Accel-Buffering", "no");
 
   // Send jobId as first event so client can store it for recovery
-  sendSSE(res, { step: 0, status: "done", label: "init", jobId: job.id });
+  const { sendSSE, nextStep: _sseNext, completeStep: _sseComplete, getStep, sendEvent } = createSSEHelpers(res);
+  sendSSE({ step: 0, status: "done", label: "init", jobId: job.id });
 
   // Abort detection: SSE close doesn't mean client left (polling may continue)
   // Only mark aborted if no polling happens within 30 seconds after close
@@ -139,16 +136,14 @@ router.post("/local", async (req: Request, res: Response) => {
   // Update job to running
   updateJob(job.id, { status: "running" });
 
-  let step = 0;
   const accumulatedSteps: string[] = [];
   const nextStep = (label: string, detail?: string) => {
-    step++;
+    _sseNext(label, detail);
     accumulatedSteps.push(`${label}: ${detail || ""}`);
-    updateJob(job.id, { currentStep: step, currentLabel: label, stepsJson: JSON.stringify(accumulatedSteps) });
-    sendSSE(res, { step, status: "running", label, detail });
+    updateJob(job.id, { currentStep: getStep(), currentLabel: label, stepsJson: JSON.stringify(accumulatedSteps) });
   };
   const completeStep = (detail?: string) => {
-    sendSSE(res, { step, status: "done", label: "", detail });
+    _sseComplete(detail);
   };
 
   try {
@@ -165,7 +160,7 @@ router.post("/local", async (req: Request, res: Response) => {
 
     if (diffs.length === 0) {
       updateJob(job.id, { status: "completed", stepsJson: JSON.stringify(accumulatedSteps) });
-      sendSSE(res, { step: step + 1, status: "done", label: "No changes", detail: "No diff found between branches" });
+      sendSSE({ step: getStep() + 1, status: "done", label: "No changes", detail: "No diff found between branches" });
       res.end();
       return;
     }
@@ -206,10 +201,32 @@ router.post("/local", async (req: Request, res: Response) => {
 
     if (totalBatches === 0) {
       updateJob(job.id, { status: "completed", stepsJson: JSON.stringify(accumulatedSteps) });
-      sendSSE(res, { step: step + 1, status: "done", label: "No files to review", detail: "All files skipped" });
+      sendSSE({ step: getStep() + 1, status: "done", label: "No files to review", detail: "All files skipped" });
       res.end();
       return;
     }
+
+    // v1.4.4: emit review_start for incremental progress
+    sendEvent("review_start", {
+      reviewType: "local",
+      totalBatches,
+      totalFiles: diffs.length,
+      jobId: job.id,
+    });
+
+    // v1.4.4: create initial checkpoint for pause/resume
+    let checkpointId = createCheckpoint({
+      reviewType: "local",
+      projectId: project,
+      sourceBranch,
+      targetBranch,
+      totalBatches,
+      totalFiles: diffs.length,
+      currentBatch: 0,
+      reviewedCount: 0,
+      jobId: job.id,
+      createdBy: userId ?? undefined,
+    }).id;
 
     for (let i = 0; i < totalBatches; i++) {
       if (aborted) break;
@@ -235,7 +252,8 @@ router.post("/local", async (req: Request, res: Response) => {
       const result = await callLLM(systemPrompt, userMessage, llmConfig);
       const durationMs = Date.now() - startTime;
 
-      batchReports.push(parseReviewResponse(result.text));
+      const parsed = parseReviewResponse(result.text);
+      batchReports.push(parsed);
 
       saveLLMLog({
         id: `LOG-${randomUUID().slice(0, 8)}`,
@@ -253,6 +271,50 @@ router.post("/local", async (req: Request, res: Response) => {
       });
 
       completeStep(`${batchDiffs[i].length} files reviewed`);
+
+      // v1.4.4: emit batch_result for incremental rendering
+      sendEvent("batch_result", {
+        batchIndex: i,
+        files: batchDiffs[i].map((d: { new_path: string }) => d.new_path),
+        issues: parsed.issues,
+        scores: parsed.scores,
+        progress: {
+          completedBatches: i + 1,
+          totalBatches,
+          reviewedFiles: batchDiffs.slice(0, i + 1).reduce((sum: number, b: unknown[]) => sum + b.length, 0),
+          totalFiles: diffs.length,
+        },
+      });
+
+      // v1.4.4: check pause request between batches
+      if (isPauseRequested(job.id)) {
+        clearPause(job.id);
+        const reviewedCount = batchDiffs.slice(0, i + 1).reduce((sum: number, b: unknown[]) => sum + b.length, 0);
+        updateCheckpoint(checkpointId, {
+          status: "paused",
+          currentBatch: i + 1,
+          reviewedCount,
+          batchResults: JSON.stringify(
+            batchReports.map((r, bi) => ({
+              batchIndex: bi,
+              issues: r.issues,
+              scores: r.scores,
+            }))
+          ),
+        });
+        updateJob(job.id, { status: "paused", stepsJson: JSON.stringify(accumulatedSteps) });
+        sendEvent("paused", {
+          checkpointId,
+          progress: {
+            completedBatches: i + 1,
+            totalBatches,
+            reviewedFiles: reviewedCount,
+            totalFiles: diffs.length,
+          },
+        });
+        res.end();
+        return;
+      }
     }
 
     if (aborted) { res.end(); return; }
@@ -294,7 +356,8 @@ router.post("/local", async (req: Request, res: Response) => {
     // Mark job completed with reviewId
     updateJob(job.id, { status: "completed", reviewId, stepsJson: JSON.stringify(accumulatedSteps) });
 
-    sendSSE(res, { step: step + 1, status: "done", label: "COMPLETE", detail: JSON.stringify(response) });
+    sendSSE({ step: getStep() + 1, status: "done", label: "COMPLETE", detail: JSON.stringify(response) });
+    completeCheckpoint(checkpointId);
     if (abortTimeout) clearTimeout(abortTimeout);
     res.end();
   } catch (error) {
@@ -302,7 +365,8 @@ router.post("/local", async (req: Request, res: Response) => {
     const message = error instanceof Error ? error.message : "Unknown error";
     const shortMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
     updateJob(job.id, { status: "failed", errorMessage: shortMessage, stepsJson: JSON.stringify(accumulatedSteps) });
-    sendSSE(res, { step, status: "error", label: shortMessage });
+    removeJob(job.id);
+    sendSSE({ step: getStep(), status: "error", label: shortMessage });
     res.end();
   }
 });
