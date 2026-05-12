@@ -670,7 +670,7 @@ export interface SSEResumed {
 // ---- Review Checkpoint (v1.4.4) ----
 
 export type ReviewType = "mr" | "local" | "requirement";
-export type CheckpointStatus = "running" | "paused" | "completed" | "abandoned";
+export type CheckpointStatus = "running" | "paused" | "completed" | "abandoned" | "interrupted";
 
 export interface ReviewCheckpoint {
   id: string;

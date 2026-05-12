@@ -66,7 +66,7 @@ router.post("/review", async (req: Request, res: Response) => {
   res.on("close", () => {
     abortTimeout = setTimeout(() => {
       if (checkpointId) {
-        abandonCheckpoint(checkpointId);
+        updateCheckpoint(checkpointId, { status: "interrupted" });
       }
       aborted = true;
     }, 60_000);
@@ -275,6 +275,23 @@ router.post("/review", async (req: Request, res: Response) => {
           },
         };
         sendEvent("batch_result", batchResult);
+
+        // v1.4.4: incremental checkpoint save per batch (failure recovery)
+        {
+          const reviewedCount = batchDiffs.slice(0, i + 1).reduce((sum: number, b: unknown[]) => sum + b.length, 0);
+          updateCheckpoint(checkpointId, {
+            currentBatch: i + 1,
+            reviewedCount,
+            batchResults: JSON.stringify(
+              batchReports.map((r, bi) => ({
+                batchIndex: bi,
+                files: batchDiffs[bi]?.map((d: { new_path: string }) => d.new_path) ?? [],
+                issues: r.issues,
+                scores: r.scores,
+              }))
+            ),
+          });
+        }
 
         // v1.4.4: check pause request between batches
         if (isPauseRequested(reviewId)) {

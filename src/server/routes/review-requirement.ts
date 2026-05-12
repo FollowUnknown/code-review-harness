@@ -229,7 +229,7 @@ router.post("/requirement", async (req: Request, res: Response) => {
       if (currentJob && currentJob.status === "running") {
         aborted = true;
         updateJob(job.id, { status: "aborted", errorMessage: "Client disconnected" });
-        if (checkpointId) abandonCheckpoint(checkpointId);
+        if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
       }
     }, 60_000);
   });
@@ -471,6 +471,28 @@ router.post("/requirement", async (req: Request, res: Response) => {
                 totalFiles: projDiffs.length,
               },
             } as SSEBatchResult);
+
+            // v1.4.4: incremental checkpoint save per batch (failure recovery)
+            {
+              const reviewedCount = batchDiffs.slice(0, i + 1).reduce((sum: number, b: unknown[]) => sum + b.length, 0);
+              updateCheckpoint(checkpointId, {
+                currentBatch: i + 1,
+                reviewedCount,
+                batchResults: JSON.stringify(
+                  batchReports.map((r, bi) => ({
+                    batchIndex: bi,
+                    files: batchDiffs[bi]?.map((d: { new_path: string }) => d.new_path) ?? [],
+                    issues: r.issues,
+                    scores: r.scores,
+                  }))
+                ),
+                accumulatedStats: JSON.stringify({
+                  techStack,
+                  projectIndex: pi,
+                  project: scanItem.project,
+                }),
+              });
+            }
 
             // v1.4.4: check pause request between batches
             if (isPauseRequested(job.id)) {

@@ -35,6 +35,7 @@ export function LocalReviewPage() {
   // v1.4.4: pause/resume state
   const [isPaused, setIsPaused] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
+  const [isInterrupted, setIsInterrupted] = useState(false);
   const [checkpointId, setCheckpointId] = useState<string | null>(null);
 
   const token = localStorage.getItem("auth_token");
@@ -184,18 +185,22 @@ export function LocalReviewPage() {
       } catch { /* ignore */ }
     }
 
-    // v1.4.4: check for paused checkpoints (page reload detection)
-    async function checkPausedCheckpoints() {
+    // v1.4.4: check for paused/interrupted checkpoints (page reload detection)
+    async function checkRecoverableCheckpoints() {
       try {
-        const cpRes = await fetch(
-          `${API_BASE}/api/review/checkpoints?status=paused&review_type=local`,
-          { headers }
-        );
-        if (!cpRes.ok) return;
-        const checkpoints = await cpRes.json();
-        if (!Array.isArray(checkpoints) || checkpoints.length === 0 || recovered) return;
+        // Query both paused and interrupted, pick the most recent
+        const [pausedRes, interruptedRes] = await Promise.all([
+          fetch(`${API_BASE}/api/review/checkpoints?status=paused&review_type=local`, { headers }),
+          fetch(`${API_BASE}/api/review/checkpoints?status=interrupted&review_type=local`, { headers }),
+        ]);
+        const paused = pausedRes.ok ? await pausedRes.json() : [];
+        const interrupted = interruptedRes.ok ? await interruptedRes.json() : [];
+        const all = [...(Array.isArray(paused) ? paused : []), ...(Array.isArray(interrupted) ? interrupted : [])];
+        if (all.length === 0 || recovered) return;
+        // Pick the most recent by updatedAt
+        all.sort((a: any, b: any) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt));
         recovered = true;
-        const cp = checkpoints[0];
+        const cp = all[0];
 
         // Restore form state from checkpoint
         setProject(cp.projectId);
@@ -207,7 +212,8 @@ export function LocalReviewPage() {
         setReviewCompletedBatches(cp.currentBatch);
         setReviewReviewedFiles(cp.reviewedCount);
         setShowReviewProgress(true);
-        setIsPaused(true);
+        setIsPaused(cp.status === "paused");
+        setIsInterrupted(cp.status === "interrupted");
         setCheckpointId(cp.id);
         // Restore accumulated batch results
         const saved = JSON.parse(cp.batchResults || "[]");
@@ -227,7 +233,7 @@ export function LocalReviewPage() {
     }
 
     checkActiveJob();
-    checkPausedCheckpoints();
+    checkRecoverableCheckpoints();
 
     return () => {
       if (pollingRef.current) clearTimeout(pollingRef.current);
@@ -254,6 +260,7 @@ export function LocalReviewPage() {
   const handleResume = async () => {
     if (!checkpointId || !project || !sourceBranch || !targetBranch) return;
     setIsPaused(false);
+    setIsInterrupted(false);
     // Re-establish SSE by calling the review endpoint with checkpointId
     await startReview([], checkpointId);
   };
@@ -266,6 +273,7 @@ export function LocalReviewPage() {
         headers,
       });
       setIsPaused(false);
+      setIsInterrupted(false);
       setCheckpointId(null);
     } catch { /* ignore */ }
   };
@@ -557,6 +565,7 @@ export function LocalReviewPage() {
           batchResults={reviewBatchResults}
           isPaused={isPaused}
           isPausing={isPausing}
+          isInterrupted={isInterrupted}
           onPause={handlePause}
           onResume={handleResume}
           onAbandon={handleAbandon}

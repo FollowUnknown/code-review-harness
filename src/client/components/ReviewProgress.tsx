@@ -20,6 +20,7 @@ export interface ReviewProgressProps {
   batchResults: BatchResultItem[];
   isPaused?: boolean;
   isPausing?: boolean;
+  isInterrupted?: boolean;
   isComplete?: boolean;
   onPause?: () => void;
   onResume?: () => void;
@@ -57,6 +58,7 @@ export function ReviewProgress({
   batchResults,
   isPaused,
   isPausing,
+  isInterrupted,
   isComplete,
   onPause,
   onResume,
@@ -119,7 +121,7 @@ export function ReviewProgress({
               暂停中...
             </button>
           )}
-          {isPaused && onResume && (
+          {(isPaused || isInterrupted) && onResume && (
             <button
               onClick={onResume}
               className="px-3 py-1.5 text-xs rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
@@ -127,7 +129,7 @@ export function ReviewProgress({
               Resume ▶
             </button>
           )}
-          {isPaused && onAbandon && (
+          {(isPaused || isInterrupted) && onAbandon && (
             <button
               onClick={onAbandon}
               className="px-3 py-1.5 text-xs rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
@@ -154,8 +156,11 @@ export function ReviewProgress({
             transition={{ duration: 0.4 }}
           />
         </div>
-        {isPaused && (
+        {isPaused && !isInterrupted && (
           <p className="mt-2 text-xs text-amber-400">Review paused — you can resume or abandon</p>
+        )}
+        {isInterrupted && (
+          <p className="mt-2 text-xs text-orange-400">评审中断 — 已完成批次数据已保留，可恢复或放弃</p>
         )}
       </div>
 

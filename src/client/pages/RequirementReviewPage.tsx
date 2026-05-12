@@ -60,6 +60,7 @@ export function RequirementReviewPage() {
   // v1.4.4: pause/resume state
   const [isPaused, setIsPaused] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
+  const [isInterrupted, setIsInterrupted] = useState(false);
   const [checkpointId, setCheckpointId] = useState<string | null>(null);
 
   const token = localStorage.getItem("auth_token");
@@ -209,18 +210,20 @@ export function RequirementReviewPage() {
       } catch { /* ignore */ }
     }
 
-    // v1.4.4: check for paused checkpoints (page reload detection)
-    async function checkPausedCheckpoints() {
+    // v1.4.4: check for paused/interrupted checkpoints (page reload detection)
+    async function checkRecoverableCheckpoints() {
       try {
-        const cpRes = await fetch(
-          `${API_BASE}/api/review/checkpoints?status=paused&review_type=requirement`,
-          { headers }
-        );
-        if (!cpRes.ok) return;
-        const checkpoints = await cpRes.json();
-        if (!Array.isArray(checkpoints) || checkpoints.length === 0 || recovered) return;
+        const [pausedRes, interruptedRes] = await Promise.all([
+          fetch(`${API_BASE}/api/review/checkpoints?status=paused&review_type=requirement`, { headers }),
+          fetch(`${API_BASE}/api/review/checkpoints?status=interrupted&review_type=requirement`, { headers }),
+        ]);
+        const paused = pausedRes.ok ? await pausedRes.json() : [];
+        const interrupted = interruptedRes.ok ? await interruptedRes.json() : [];
+        const all = [...(Array.isArray(paused) ? paused : []), ...(Array.isArray(interrupted) ? interrupted : [])];
+        if (all.length === 0 || recovered) return;
+        all.sort((a: any, b: any) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt));
         recovered = true;
-        const cp = checkpoints[0];
+        const cp = all[0];
 
         setProductLine(cp.projectId);
         setSourceBranch(cp.sourceBranch || "");
@@ -230,7 +233,8 @@ export function RequirementReviewPage() {
         setReviewCompletedBatches(cp.currentBatch);
         setReviewReviewedFiles(cp.reviewedCount);
         setShowReviewProgress(true);
-        setIsPaused(true);
+        setIsPaused(cp.status === "paused");
+        setIsInterrupted(cp.status === "interrupted");
         setCheckpointId(cp.id);
         if (cp.jobId) jobIdRef.current = cp.jobId;
         const saved = JSON.parse(cp.batchResults || "[]");
@@ -246,7 +250,7 @@ export function RequirementReviewPage() {
     }
 
     checkActiveJob();
-    checkPausedCheckpoints();
+    checkRecoverableCheckpoints();
 
     return () => {
       if (pollingRef.current) clearTimeout(pollingRef.current);
@@ -273,6 +277,7 @@ export function RequirementReviewPage() {
   const handleResume = async () => {
     if (!checkpointId || !productLine || !sourceBranch || !targetBranch) return;
     setIsPaused(false);
+    setIsInterrupted(false);
     setSteps([]);
     setLoading(true);
     await startSSEStream({
@@ -289,6 +294,7 @@ export function RequirementReviewPage() {
         headers,
       });
       setIsPaused(false);
+      setIsInterrupted(false);
       setCheckpointId(null);
     } catch { /* ignore */ }
   };
@@ -653,6 +659,7 @@ export function RequirementReviewPage() {
           batchResults={reviewBatchResults}
           isPaused={isPaused}
           isPausing={isPausing}
+          isInterrupted={isInterrupted}
           onPause={handlePause}
           onResume={handleResume}
           onAbandon={handleAbandon}

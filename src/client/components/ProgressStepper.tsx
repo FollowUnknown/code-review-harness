@@ -39,6 +39,7 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
   // v1.4.4: pause/resume state
   const [isPaused, setIsPaused] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
+  const [isInterrupted, setIsInterrupted] = useState(false);
   const [checkpointId, setCheckpointId] = useState<string | null>(null);
   const jobIdRef = useRef<string | null>(null);
 
@@ -50,25 +51,28 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
     };
   };
 
-  // v1.4.4: on mount, check for paused checkpoints (page reload detection)
+  // v1.4.4: on mount, check for paused/interrupted checkpoints (page reload detection)
   useEffect(() => {
-    async function checkPausedCheckpoints() {
+    async function checkRecoverableCheckpoints() {
       try {
-        const cpRes = await fetch(
-          `${API_BASE}/api/review/checkpoints?status=paused&review_type=mr`,
-          { headers: headers() }
-        );
-        if (!cpRes.ok) return;
-        const checkpoints = await cpRes.json();
-        if (!Array.isArray(checkpoints) || checkpoints.length === 0) return;
-        const cp = checkpoints[0];
+        const [pausedRes, interruptedRes] = await Promise.all([
+          fetch(`${API_BASE}/api/review/checkpoints?status=paused&review_type=mr`, { headers: headers() }),
+          fetch(`${API_BASE}/api/review/checkpoints?status=interrupted&review_type=mr`, { headers: headers() }),
+        ]);
+        const paused = pausedRes.ok ? await pausedRes.json() : [];
+        const interrupted = interruptedRes.ok ? await interruptedRes.json() : [];
+        const all = [...(Array.isArray(paused) ? paused : []), ...(Array.isArray(interrupted) ? interrupted : [])];
+        if (all.length === 0) return;
+        all.sort((a: any, b: any) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt));
+        const cp = all[0];
 
         setReviewTotalBatches(cp.totalBatches);
         setReviewTotalFiles(cp.totalFiles);
         setReviewCompletedBatches(cp.currentBatch);
         setReviewReviewedFiles(cp.reviewedCount);
         setShowReviewProgress(true);
-        setIsPaused(true);
+        setIsPaused(cp.status === "paused");
+        setIsInterrupted(cp.status === "interrupted");
         setCheckpointId(cp.id);
         if (cp.jobId) jobIdRef.current = cp.jobId;
         const saved = JSON.parse(cp.batchResults || "[]");
@@ -82,7 +86,7 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
         );
       } catch { /* ignore */ }
     }
-    checkPausedCheckpoints();
+    checkRecoverableCheckpoints();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -229,6 +233,7 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
     if (!checkpointId) return;
     setIsPaused(false);
     setIsPausing(false);
+    setIsInterrupted(false);
 
     try {
       const res = await fetch(`${API_BASE}/api/review`, {
@@ -308,6 +313,7 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
         headers: headers(),
       });
       setIsPaused(false);
+      setIsInterrupted(false);
       setCheckpointId(null);
     } catch { /* ignore */ }
   };
@@ -398,6 +404,7 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
             batchResults={reviewBatchResults}
             isPaused={isPaused}
             isPausing={isPausing}
+            isInterrupted={isInterrupted}
             onPause={handlePause}
             onResume={handleResume}
             onAbandon={handleAbandon}
