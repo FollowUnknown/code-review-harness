@@ -89,6 +89,42 @@ export function RequirementReviewPage() {
         }
 
         if (job.status === "failed" || job.status === "aborted") {
+          // Check for interrupted checkpoint before showing error
+          try {
+            const cpRes = await fetch(
+              `${API_BASE}/api/review/checkpoints?status=interrupted&review_type=requirement`,
+              { headers },
+            );
+            if (cpRes.ok) {
+              const cps = await cpRes.json();
+              if (Array.isArray(cps) && cps.length > 0) {
+                const cp = cps[0];
+                setReviewTotalBatches(cp.totalBatches ?? 0);
+                setReviewTotalFiles(cp.totalFiles ?? 0);
+                setReviewCompletedBatches(cp.currentBatch ?? 0);
+                setReviewReviewedFiles(cp.reviewedCount ?? 0);
+                if (cp.totalBatches > 0) setShowReviewProgress(true);
+                setCheckpointId(cp.id);
+                if (cp.jobId) jobIdRef.current = cp.jobId;
+                setIsInterrupted(true);
+                setIsPaused(false);
+                setLoading(false);
+                setProductLine(cp.projectId);
+                setSourceBranch(cp.sourceBranch || "");
+                setTargetBranch(cp.targetBranch || "");
+                const saved = JSON.parse(cp.batchResults || "[]");
+                setReviewBatchResults(
+                  saved.map((r: any) => ({
+                    batchIndex: r.batchIndex ?? 0,
+                    files: r.files ?? [],
+                    issues: r.issues ?? [],
+                    scores: r.scores,
+                  })),
+                );
+                return; // stop polling, show interrupted state
+              }
+            }
+          } catch { /* ignore */ }
           setError(job.errorMessage || "Review failed");
           setLoading(false);
           return;

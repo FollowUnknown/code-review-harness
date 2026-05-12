@@ -398,6 +398,7 @@ router.post("/review", async (req: Request, res: Response) => {
     res.end();
   } catch (err) {
     if (abortTimeout) clearTimeout(abortTimeout);
+    if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
     removeJob(reviewId);
     const message = err instanceof Error ? err.message : "Review failed";
     // Sanitize: avoid leaking internal details to client

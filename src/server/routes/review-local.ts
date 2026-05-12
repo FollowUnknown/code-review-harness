@@ -418,6 +418,7 @@ router.post("/local", async (req: Request, res: Response) => {
     const message = error instanceof Error ? error.message : "Unknown error";
     const shortMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
     updateJob(job.id, { status: "failed", errorMessage: shortMessage, stepsJson: JSON.stringify(accumulatedSteps) });
+    if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
     removeJob(job.id);
     sendSSE({ step: getStep(), status: "error", label: shortMessage });
     res.end();
