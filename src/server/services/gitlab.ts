@@ -177,3 +177,35 @@ export async function fetchCompareDiffs(
   );
   return data.diffs || [];
 }
+
+/**
+ * v1.4.5: Fetch compare diffs using branch names (not SHAs).
+ * Used by Preview to get file list + diff stats without local git.
+ * Returns null on error (branch not found, 404, etc.) so callers can fallback.
+ */
+export async function fetchCompareDiffsForBranches(
+  host: string,
+  projectPath: string,
+  sourceBranch: string,
+  targetBranch: string,
+  token: string
+): Promise<GitLabDiff[] | null> {
+  try {
+    const encoded = encodeURIComponent(projectPath);
+    const from = encodeURIComponent(targetBranch);
+    const to = encodeURIComponent(sourceBranch);
+    const data = await fetchJSON<{ diffs: GitLabDiff[] }>(
+      `${host}/api/v4/projects/${encoded}/repository/compare?from=${from}&to=${to}`,
+      token
+    );
+    return data.diffs || [];
+  } catch (error) {
+    // Branch not found, 404, or other API errors — return null for fallback
+    console.warn(
+      `[gitlab] fetchCompareDiffsForBranches failed for ${projectPath}: ${
+        error instanceof Error ? error.message : error
+      }`
+    );
+    return null;
+  }
+}

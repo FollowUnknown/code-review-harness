@@ -114,12 +114,17 @@ export function ReviewProgress({
             </button>
           )}
           {isPausing && !isPaused && (
-            <button
-              disabled
-              className="px-3 py-1.5 text-xs rounded-lg bg-amber-500/5 text-amber-400/50 border border-amber-500/10 cursor-not-allowed"
-            >
-              暂停中...
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-amber-400">
+                暂停中 — 等待当前批次完成（{completedBatches}/{totalBatches}）
+              </span>
+              <button
+                onClick={onPause}
+                className="px-2 py-1 text-[10px] rounded bg-slate-700/50 text-slate-400 border border-slate-600/30 hover:bg-slate-700 transition-colors"
+              >
+                取消暂停
+              </button>
+            </div>
           )}
           {(isPaused || isInterrupted) && onResume && (
             <button

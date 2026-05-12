@@ -524,6 +524,14 @@ function migrateRepoMappingsTable(db: Database.Database): void {
     db.exec("ALTER TABLE repo_mappings ADD COLUMN tech_stack TEXT DEFAULT 'unknown' CHECK(tech_stack IN ('java-backend', 'vue-frontend', 'mixed', 'unknown'))");
   }
 
+  // v1.4.5: GitLab fields for API-based preview/review
+  if (!colNames.has("gitlab_host")) {
+    db.exec("ALTER TABLE repo_mappings ADD COLUMN gitlab_host TEXT");
+  }
+  if (!colNames.has("gitlab_project_path")) {
+    db.exec("ALTER TABLE repo_mappings ADD COLUMN gitlab_project_path TEXT");
+  }
+
   // Add index for product_line_id if not exists
   const indexes = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_rm_product_line'").get();
   if (!indexes) {

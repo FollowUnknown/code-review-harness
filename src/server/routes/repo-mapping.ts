@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getRepoMapping, setRepoMapping, listRepoMappings, deleteRepoMapping } from "../config/repo-mapping";
+import { getRepoMapping, setRepoMapping, listRepoMappings, deleteRepoMapping, setRepoMappingGitlab } from "../config/repo-mapping";
 
 const router = Router();
 
@@ -11,7 +11,12 @@ router.get("/", (_req: Request, res: Response) => {
 
 // POST /api/repo-mappings — create or update mapping
 router.post("/", (req: Request, res: Response) => {
-  const { project, localPath } = req.body as { project: string; localPath: string };
+  const { project, localPath, gitlabHost, gitlabProjectPath } = req.body as {
+    project: string;
+    localPath: string;
+    gitlabHost?: string;
+    gitlabProjectPath?: string;
+  };
 
   if (!project?.trim() || !localPath?.trim()) {
     res.status(400).json({ error: "project and localPath are required" });
@@ -19,6 +24,16 @@ router.post("/", (req: Request, res: Response) => {
   }
 
   setRepoMapping(project.trim(), localPath.trim());
+
+  // v1.4.5: Optionally update GitLab config
+  if (gitlabHost !== undefined || gitlabProjectPath !== undefined) {
+    setRepoMappingGitlab(
+      project.trim(),
+      gitlabHost?.trim() || null,
+      gitlabProjectPath?.trim() || null,
+    );
+  }
+
   const mapping = getRepoMapping(project.trim());
   res.json(mapping);
 });

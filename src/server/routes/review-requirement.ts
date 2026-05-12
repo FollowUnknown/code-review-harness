@@ -17,6 +17,7 @@ import { callLLM, getLLMConfig } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { getDimensionsForProject } from "../services/dimensions";
 import { inferTechStack } from "../services/techstack";
+import { fetchCompareDiffsForBranches } from "../services/gitlab";
 import { saveReviewRecord, computeReviewStats } from "../services/review-store";
 import { saveLLMLog } from "../services/llm-logger";
 import {
@@ -74,6 +75,13 @@ router.get("/requirement/active", (req: Request, res: Response) => {
   });
 });
 
+// ---- GET /requirement/gitlab-token-status ----
+// v1.4.5: Must be before /:jobId to avoid being matched as a jobId
+
+router.get("/requirement/gitlab-token-status", (_req: Request, res: Response) => {
+  res.json({ configured: !!process.env.GITLAB_TOKEN });
+});
+
 // ---- GET /requirement/:jobId ----
 
 router.get("/requirement/:jobId", (req: Request, res: Response) => {
@@ -96,7 +104,7 @@ router.get("/requirement/:jobId", (req: Request, res: Response) => {
 // ---- POST /requirement/preview ----
 
 router.post("/requirement/preview", async (req: Request, res: Response) => {
-  const { productLine, sourceBranch, targetBranch }: RequirementReviewRequest = req.body;
+  const { productLine, sourceBranch, targetBranch, gitlabToken }: RequirementReviewRequest = req.body;
 
   if (!productLine || !sourceBranch || !targetBranch) {
     res.status(400).json({ error: "productLine, sourceBranch, targetBranch are required" });
@@ -109,9 +117,17 @@ router.post("/requirement/preview", async (req: Request, res: Response) => {
     return;
   }
 
+  // v1.4.5: Resolve GitLab token — env var first, then request body
+  const resolvedGitlabToken = process.env.GITLAB_TOKEN || gitlabToken || null;
+
   try {
-    const projects = mappings.map((m) => ({ project: m.project, repoPath: m.localPath }));
-    const multiCtx = await buildMultiProjectScanContext(projects, targetBranch, sourceBranch);
+    // v1.4.5: Split projects into GitLab API vs local fallback
+    const gitlabProjects = mappings.filter(
+      (m) => m.gitlabHost && m.gitlabProjectPath && resolvedGitlabToken
+    );
+    const localProjects = mappings.filter(
+      (m) => !(m.gitlabHost && m.gitlabProjectPath && resolvedGitlabToken)
+    );
 
     const previewProjects: Array<{
       project: string;
@@ -119,19 +135,72 @@ router.post("/requirement/preview", async (req: Request, res: Response) => {
       diffCount: number;
       diffChars: number;
       diffPreview: Array<{ path: string; newFile: boolean; diffChars: number }>;
-    }> = multiCtx.projects.map((p) => ({
-      project: p.project,
-      techStack: p.techStack,
-      diffCount: p.diffCount,
-      diffChars: p.diffChars,
-      diffPreview: p.diffPreview,
-    }));
+    }> = [];
+
+    // GitLab API projects — parallel fetch
+    if (gitlabProjects.length > 0) {
+      const gitlabResults = await Promise.allSettled(
+        gitlabProjects.map(async (m) => {
+          const diffs = await fetchCompareDiffsForBranches(
+            m.gitlabHost!,
+            m.gitlabProjectPath!,
+            sourceBranch,
+            targetBranch,
+            resolvedGitlabToken!
+          );
+          return { mapping: m, diffs };
+        })
+      );
+
+      for (const result of gitlabResults) {
+        if (result.status === "rejected") continue;
+        const { mapping, diffs } = result.value;
+        if (!diffs || diffs.length === 0) continue;
+
+        const techStack = inferTechStack(diffs.map((d) => d.new_path));
+        const diffChars = diffs.reduce((sum, d) => sum + d.diff.length, 0);
+        previewProjects.push({
+          project: mapping.project,
+          techStack,
+          diffCount: diffs.length,
+          diffChars,
+          diffPreview: diffs.map((d) => ({
+            path: d.new_path,
+            newFile: d.new_file,
+            diffChars: d.diff.length,
+          })),
+        });
+      }
+    }
+
+    // Local fallback projects — use buildMultiProjectScanContext with skipHeavy for Preview speed
+    if (localProjects.length > 0) {
+      const projects = localProjects.map((m) => ({ project: m.project, repoPath: m.localPath }));
+      const multiCtx = await buildMultiProjectScanContext(projects, targetBranch, sourceBranch, {
+        skipHeavy: true,
+      });
+
+      for (const p of multiCtx.projects) {
+        previewProjects.push({
+          project: p.project,
+          techStack: p.techStack,
+          diffCount: p.diffCount,
+          diffChars: p.diffChars,
+          diffPreview: p.diffPreview,
+        });
+      }
+    }
+
+    const totalFiles = previewProjects.reduce((sum, p) => sum + p.diffCount, 0);
+    const totalTokens = Math.round(
+      previewProjects.reduce((sum, p) => sum + p.diffChars, 0) / 4
+    );
 
     res.json({
       projects: previewProjects,
-      totalFiles: multiCtx.totalFiles,
-      totalTokens: multiCtx.totalTokens,
-      projectCount: multiCtx.projectCount,
+      totalFiles,
+      totalTokens,
+      projectCount: previewProjects.length,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -147,6 +216,7 @@ router.post("/requirement", async (req: Request, res: Response) => {
     excludedProjects, excludedFiles,
     requirement, requirementId,
     checkpointId: resumeCheckpointId,
+    gitlabToken: requestGitlabToken,
   }: RequirementReviewRequest = req.body;
 
   if (!productLine || !sourceBranch || !targetBranch) {
@@ -251,8 +321,25 @@ router.post("/requirement", async (req: Request, res: Response) => {
     if (aborted) { res.end(); return; }
     nextStep("Loading product line", `${productLine}: ${filteredMappings.length} projects`);
 
+    // v1.4.5: Resolve GitLab token and build config map
+    const resolvedGitlabToken = process.env.GITLAB_TOKEN || requestGitlabToken || null;
+    const gitlabConfigs = new Map<string, { gitlabHost: string; gitlabProjectPath: string }>();
+    if (resolvedGitlabToken) {
+      for (const m of filteredMappings) {
+        if (m.gitlabHost && m.gitlabProjectPath) {
+          gitlabConfigs.set(m.project, {
+            gitlabHost: m.gitlabHost,
+            gitlabProjectPath: m.gitlabProjectPath,
+          });
+        }
+      }
+    }
+
     const projectItems = filteredMappings.map((m) => ({ project: m.project, repoPath: m.localPath }));
-    const multiCtx = await buildMultiProjectScanContext(projectItems, targetBranch, sourceBranch);
+    const multiCtx = await buildMultiProjectScanContext(projectItems, targetBranch, sourceBranch, {
+      gitlabToken: resolvedGitlabToken ?? undefined,
+      gitlabConfigs,
+    });
     completeStep(`${multiCtx.projectCount} projects have changes, ${multiCtx.totalFiles} files total`);
 
     if (multiCtx.projectCount === 0) {

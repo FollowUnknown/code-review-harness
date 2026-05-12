@@ -280,7 +280,11 @@ export function LocalReviewPage() {
   // v1.4.4: pause/resume/abandon handlers
   const handlePause = async () => {
     const jobId = jobIdRef.current;
-    if (!jobId || isPausing) return;
+    if (!jobId) return;
+    if (isPausing) {
+      setIsPausing(false);
+      return;
+    }
     setIsPausing(true);
     try {
       await fetch(`${API_BASE}/api/review/pause`, {

@@ -7,6 +7,8 @@ interface RepoMappingRow {
   local_path: string;
   product_line_id: string | null;
   tech_stack: string | null;
+  gitlab_host: string | null;
+  gitlab_project_path: string | null;
   created_at: string;
 }
 
@@ -17,6 +19,8 @@ function mapRow(row: RepoMappingRow): RepoMapping {
     localPath: row.local_path,
     productLineId: row.product_line_id ?? null,
     techStack: (row.tech_stack as TechStack) ?? "unknown",
+    gitlabHost: row.gitlab_host ?? null,
+    gitlabProjectPath: row.gitlab_project_path ?? null,
     createdAt: row.created_at,
   };
 }
@@ -77,4 +81,16 @@ export function setRepoMappingProductLine(project: string, productLineId: string
   const db = getDb();
   db.prepare("UPDATE repo_mappings SET product_line_id = ? WHERE project = ?")
     .run(productLineId, project);
+}
+
+// v1.4.5: Set GitLab configuration for a project
+export function setRepoMappingGitlab(
+  project: string,
+  gitlabHost: string | null,
+  gitlabProjectPath: string | null,
+): void {
+  const db = getDb();
+  db.prepare(
+    "UPDATE repo_mappings SET gitlab_host = ?, gitlab_project_path = ? WHERE project = ?"
+  ).run(gitlabHost, gitlabProjectPath, project);
 }

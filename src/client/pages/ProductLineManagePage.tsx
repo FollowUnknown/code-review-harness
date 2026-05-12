@@ -86,11 +86,17 @@ function ProjectRow({ project, onPathChanged, onRemove }: {
 }) {
   const [editing, setEditing] = useState(false);
   const [path, setPath] = useState(project.localPath);
+  const [glHost, setGlHost] = useState(project.gitlabHost || "");
+  const [glPath, setGlPath] = useState(project.gitlabProjectPath || "");
   const [saving, setSaving] = useState(false);
   const [validating, setValidating] = useState(false);
   const [pathStatus, setPathStatus] = useState<"ok" | "not_found" | "not_git" | null>(null);
 
-  useEffect(() => { setPath(project.localPath); }, [project.localPath]);
+  useEffect(() => {
+    setPath(project.localPath);
+    setGlHost(project.gitlabHost || "");
+    setGlPath(project.gitlabProjectPath || "");
+  }, [project.localPath, project.gitlabHost, project.gitlabProjectPath]);
 
   async function handleSave() {
     if (!path.trim()) return;
@@ -99,7 +105,12 @@ function ProjectRow({ project, onPathChanged, onRemove }: {
       const res = await fetch(`${API_BASE}/api/repo-mappings`, {
         method: "POST",
         headers: authHeaders(true),
-        body: JSON.stringify({ project: project.project, localPath: path.trim() }),
+        body: JSON.stringify({
+          project: project.project,
+          localPath: path.trim(),
+          gitlabHost: glHost.trim() || null,
+          gitlabProjectPath: glPath.trim() || null,
+        }),
       });
       if (res.ok) {
         setEditing(false);
@@ -171,26 +182,45 @@ function ProjectRow({ project, onPathChanged, onRemove }: {
         </div>
       </div>
       {editing ? (
-        <div className="flex items-center gap-1.5">
-          <input
-            type="text"
-            value={path}
-            onChange={(e) => setPath(e.target.value)}
-            placeholder="/path/to/project"
-            className="flex-1 px-2 py-1 text-[11px] bg-slate-800 border border-slate-700/50 rounded text-slate-300 font-mono"
-          />
-          <button
-            onClick={handleSave}
-            disabled={saving || !path.trim()}
-            className="px-2 py-1 text-[10px] bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50"
-          >
-            {saving ? "..." : "save"}
-          </button>
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <input
+              type="text"
+              value={path}
+              onChange={(e) => setPath(e.target.value)}
+              placeholder="/path/to/project"
+              className="flex-1 px-2 py-1 text-[11px] bg-slate-800 border border-slate-700/50 rounded text-slate-300 font-mono"
+            />
+            <button
+              onClick={handleSave}
+              disabled={saving || !path.trim()}
+              className="px-2 py-1 text-[10px] bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50"
+            >
+              {saving ? "..." : "save"}
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <input
+              type="text"
+              value={glHost}
+              onChange={(e) => setGlHost(e.target.value)}
+              placeholder="GitLab Host (e.g. https://gitlab.example.com)"
+              className="px-2 py-1 text-[11px] bg-slate-800 border border-slate-700/50 rounded text-slate-300 font-mono"
+            />
+            <input
+              type="text"
+              value={glPath}
+              onChange={(e) => setGlPath(e.target.value)}
+              placeholder="Project Path (e.g. group/project)"
+              className="px-2 py-1 text-[11px] bg-slate-800 border border-slate-700/50 rounded text-slate-300 font-mono"
+            />
+          </div>
         </div>
       ) : (
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-slate-600 font-mono truncate">{project.localPath}</span>
-          <button
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-slate-600 font-mono truncate">{project.localPath}</span>
+            <button
             onClick={handleValidate}
             disabled={validating}
             className="shrink-0 text-[10px] text-slate-500 hover:text-slate-300 transition-colors disabled:opacity-50"
@@ -198,9 +228,15 @@ function ProjectRow({ project, onPathChanged, onRemove }: {
             {validating ? "checking..." : "verify"}
           </button>
           {pathStatus && (
-            <span className={`text-[10px] ${statusColor}`}>
-              {pathStatus === "ok" ? "path valid" : pathStatus === "not_found" ? "path not found" : "not a git repo"}
-            </span>
+              <span className={`text-[10px] ${statusColor}`}>
+                {pathStatus === "ok" ? "path valid" : pathStatus === "not_found" ? "path not found" : "not a git repo"}
+              </span>
+            )}
+          </div>
+          {project.gitlabHost && (
+            <div className="text-[10px] text-slate-600 font-mono truncate">
+              GitLab: {project.gitlabHost}/{project.gitlabProjectPath}
+            </div>
           )}
         </div>
       )}

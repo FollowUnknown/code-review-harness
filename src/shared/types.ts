@@ -481,6 +481,8 @@ export interface RepoMapping {
   localPath: string;
   productLineId: string | null;
   techStack: TechStack;
+  gitlabHost: string | null;         // v1.4.5: GitLab instance URL (e.g. https://gitlab.example.com)
+  gitlabProjectPath: string | null;  // v1.4.5: GitLab project path (e.g. group/qiqiao-api)
   createdAt: string;
 }
 
@@ -569,6 +571,7 @@ export interface RequirementReviewRequest {
   requirement?: string;
   requirementId?: string;
   checkpointId?: string;               // v1.4.4: resume from paused checkpoint
+  gitlabToken?: string;                // v1.4.5: optional, fallback when env GITLAB_TOKEN not set
 }
 
 export interface ProjectScanResult {

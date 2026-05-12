@@ -40,6 +40,8 @@ export function RequirementReviewPage() {
   const [productLine, setProductLine] = useState("");
   const [sourceBranch, setSourceBranch] = useState("");
   const [targetBranch, setTargetBranch] = useState("");
+  const [gitlabToken, setGitlabToken] = useState("");
+  const [gitlabTokenConfigured, setGitlabTokenConfigured] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
@@ -217,6 +219,12 @@ export function RequirementReviewPage() {
         })));
       })
       .catch(() => {});
+
+    // v1.4.5: Check if GITLAB_TOKEN is configured server-side
+    fetch(`${API_BASE}/api/review/requirement/gitlab-token-status`, { headers })
+      .then((r) => (r.ok ? r.json() : { configured: false }))
+      .then((data) => setGitlabTokenConfigured(!!data.configured))
+      .catch(() => setGitlabTokenConfigured(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -297,7 +305,12 @@ export function RequirementReviewPage() {
   // v1.4.4: pause/resume/abandon handlers
   const handlePause = async () => {
     const jobId = jobIdRef.current;
-    if (!jobId || isPausing) return;
+    if (!jobId) return;
+    // If already pausing, cancel the pause request
+    if (isPausing) {
+      setIsPausing(false);
+      return;
+    }
     setIsPausing(true);
     try {
       await fetch(`${API_BASE}/api/review/pause`, {
@@ -350,7 +363,7 @@ export function RequirementReviewPage() {
     fetch(`${API_BASE}/api/review/requirement/preview`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ productLine, sourceBranch, targetBranch }),
+      body: JSON.stringify({ productLine, sourceBranch, targetBranch, gitlabToken: gitlabToken || undefined }),
     })
       .then(async (r) => {
         if (!r.ok) {
@@ -402,6 +415,7 @@ export function RequirementReviewPage() {
       sourceBranch,
       targetBranch,
       excludedProjects: excludedProjects.length > 0 ? excludedProjects : undefined,
+      gitlabToken: gitlabToken || undefined,
     };
 
     startSSEStream(body);
@@ -598,6 +612,21 @@ export function RequirementReviewPage() {
             />
           </div>
         </div>
+        {gitlabTokenConfigured === false && (
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">
+              GitLab Token <span className="text-amber-500">未配置环境变量，需手动输入</span>
+            </label>
+            <input
+              type="password"
+              value={gitlabToken}
+              onChange={(e) => setGitlabToken(e.target.value)}
+              disabled={loading}
+              placeholder="glpat-xxxxxxxxxxxxx"
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm disabled:opacity-50"
+            />
+          </div>
+        )}
         <button
           onClick={handlePreview}
           disabled={loading || !productLine || !sourceBranch || !targetBranch}

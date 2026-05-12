@@ -8,6 +8,7 @@ import { extractFileContext } from "./context-extractor";
 import { estimateTokens, truncateRelatedFiles, type RelatedFileWithContext } from "./token-budget";
 import { analyzeDiffsWithAST, buildASTContextPrompt, type ASTChangeInfo } from "./ast-analyzer";
 import { inferTechStack } from "../techstack";
+import { fetchCompareDiffsForBranches } from "../gitlab";
 
 export { buildASTContextPrompt };
 
@@ -15,17 +16,42 @@ const MAX_RELATED_FILES = 10;
 const TOKEN_BUDGET = 30000;
 const MAX_LINES_PER_FILE = 300;
 
+export interface LocalScanOptions {
+  gitlabDiffs?: GitLabDiff[];   // v1.4.5: pre-fetched diffs, skip local git diff
+  skipHeavy?: boolean;           // v1.4.5: skip AST + related files + context (Preview mode)
+}
+
+function extractDiffs(
+  repoPath: string,
+  targetBranch: string,
+  sourceBranch: string,
+  options?: LocalScanOptions,
+): GitLabDiff[] {
+  // Use pre-fetched GitLab diffs if available, otherwise local git
+  if (options?.gitlabDiffs && options.gitlabDiffs.length > 0) {
+    return options.gitlabDiffs;
+  }
+  const diffText = extractLocalDiff(repoPath, targetBranch, sourceBranch);
+  return parseDiffToGitLabDiffs(diffText);
+}
+
 export async function buildLocalScanContext(
   repoPath: string,
   targetBranch: string,
-  sourceBranch: string
+  sourceBranch: string,
+  options?: LocalScanOptions
 ): Promise<ScanContext> {
   // 1. Extract diff
-  const diffText = extractLocalDiff(repoPath, targetBranch, sourceBranch);
-  const diffs = parseDiffToGitLabDiffs(diffText);
+  const diffs = extractDiffs(repoPath, targetBranch, sourceBranch, options);
 
   if (diffs.length === 0) {
     return { diffs, changedSymbols: [], relatedFiles: [], totalTokens: 0 };
+  }
+
+  // v1.4.5: Preview mode — only need file list + diff stats, skip heavy steps
+  if (options?.skipHeavy) {
+    const totalTokens = Math.round(diffs.reduce((sum, d) => sum + d.diff.length, 0) / 4);
+    return { diffs, changedSymbols: [], relatedFiles: [], totalTokens };
   }
 
   // 2. Extract changed symbols
@@ -120,6 +146,23 @@ export interface MultiProjectScanContext {
 }
 
 /**
+ * v1.4.5: GitLab config per project for API-based diff fetching.
+ * If provided and token is available, diffs are fetched from GitLab Compare API
+ * instead of local git operations, significantly reducing scan time.
+ */
+export interface GitLabProjectConfig {
+  gitlabHost: string;
+  gitlabProjectPath: string;
+}
+
+export interface MultiProjectScanOptions {
+  maxConcurrent?: number;
+  gitlabToken?: string;
+  gitlabConfigs?: Map<string, GitLabProjectConfig>;  // keyed by project name
+  skipHeavy?: boolean;                                // v1.4.5: skip AST + related files (Preview mode)
+}
+
+/**
  * Per-repoPath lock for git operations to avoid index.lock conflicts.
  * Uses Promise chain: same repoPath operations serialize, different paths run in parallel.
  */
@@ -153,22 +196,47 @@ async function withGitLock<T>(repoPath: string, fn: () => Promise<T>): Promise<T
  * Scan multiple projects concurrently (max 3 parallel).
  * Projects without diff are skipped.
  * Git operations on the same repoPath are serialized via a lock.
+ *
+ * v1.4.5: When gitlabConfigs + gitlabToken are provided, projects with
+ * GitLab configuration will fetch diffs via GitLab Compare API and pass
+ * them to buildLocalScanContext, skipping local git diff (step 1).
  */
 export async function buildMultiProjectScanContext(
   projects: Array<{ project: string; repoPath: string }>,
   targetBranch: string,
   sourceBranch: string,
-  options?: { maxConcurrent?: number }
+  options?: MultiProjectScanOptions
 ): Promise<MultiProjectScanContext> {
   const concurrency = options?.maxConcurrent ?? 3;
+  const gitlabToken = options?.gitlabToken;
+  const gitlabConfigs = options?.gitlabConfigs;
   const results: MultiProjectScanContext["projects"] = [];
 
   const queue = [...projects];
   const executing = new Set<Promise<void>>();
 
   const scanOne = async (item: { project: string; repoPath: string }): Promise<void> => {
+    // v1.4.5: Try GitLab API first for projects with GitLab config
+    let gitlabDiffs: GitLabDiff[] | undefined;
+    const glConfig = gitlabConfigs?.get(item.project);
+    if (glConfig && gitlabToken) {
+      const diffs = await fetchCompareDiffsForBranches(
+        glConfig.gitlabHost,
+        glConfig.gitlabProjectPath,
+        sourceBranch,
+        targetBranch,
+        gitlabToken
+      );
+      if (diffs && diffs.length > 0) {
+        gitlabDiffs = diffs;
+      }
+    }
+
     const ctx = await withGitLock(item.repoPath, () =>
-      buildLocalScanContext(item.repoPath, targetBranch, sourceBranch)
+      buildLocalScanContext(item.repoPath, targetBranch, sourceBranch, {
+        gitlabDiffs,
+        skipHeavy: options?.skipHeavy,
+      })
     );
 
     if (ctx.diffs.length === 0) return;
