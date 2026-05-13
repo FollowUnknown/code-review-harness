@@ -1,7 +1,7 @@
 # Contract: 子项目详情页补充 LLM Logs + 知识库
 
 > 日期: 2026-05-13
-> 状态: review_pending
+> 状态: completed
 > 类型: Business Task
 > 版本: v1.4.6
 

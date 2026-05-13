@@ -2487,3 +2487,21 @@
 [2026-05-13T07:26:28Z] Edit src/client/pages/SubReportDetailPage.tsx session=398af6c1-1e41-452d-bc26-295c9498451c
 [AUDIT] Edit on src/client/pages/SubReportDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
 [2026-05-13T07:26:44Z] Edit docs/contracts/2026-05-13-sub-report-detail-supplement.md session=398af6c1-1e41-452d-bc26-295c9498451c
+[2026-05-13T07:34:39Z] Edit docs/contracts/2026-05-13-sub-report-detail-supplement.md session=398af6c1-1e41-452d-bc26-295c9498451c
+[2026-05-13T07:40:28Z] Edit CLAUDE.md session=398af6c1-1e41-452d-bc26-295c9498451c
+[2026-05-13T07:44:57Z] Edit sessions/active-tasks.md session=398af6c1-1e41-452d-bc26-295c9498451c
+[2026-05-13T07:49:10Z] Edit CLAUDE.md session=398af6c1-1e41-452d-bc26-295c9498451c
+[2026-05-13T07:50:03Z] Edit sessions/2026-05-13.md session=398af6c1-1e41-452d-bc26-295c9498451c
+[2026-05-13T07:50:20Z] Edit sessions/2026-05-13.md session=398af6c1-1e41-452d-bc26-295c9498451c
+[2026-05-13T07:56:38Z] Edit src/server/routes/review-local.ts session=d229efc4-17f2-449d-a315-9e882e935bc9
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:56:54Z] Edit docs/contracts/2026-05-13-llm-validation-sse-timeout.md session=d229efc4-17f2-449d-a315-9e882e935bc9
+[2026-05-13T07:57:10Z] Edit sessions/2026-05-13.md session=d229efc4-17f2-449d-a315-9e882e935bc9
+[2026-05-13T07:57:17Z] Edit sessions/2026-05-13.md session=d229efc4-17f2-449d-a315-9e882e935bc9
+[2026-05-13T07:57:20Z] Edit sessions/active-tasks.md session=d229efc4-17f2-449d-a315-9e882e935bc9
+[2026-05-13T08:04:20Z] Write docs/contracts/2026-05-13-auto-clear-after-commit.md session=96b3cb53-c3dd-4393-89e9-47c88760193f
+[2026-05-13T08:07:44Z] Write .claude/review-passed session=96b3cb53-c3dd-4393-89e9-47c88760193f
+[2026-05-13T08:08:34Z] Edit docs/contracts/2026-05-13-sub-report-detail.md session=96b3cb53-c3dd-4393-89e9-47c88760193f
+[2026-05-13T08:08:38Z] Edit sessions/2026-05-13.md session=96b3cb53-c3dd-4393-89e9-47c88760193f
+[2026-05-13T08:08:41Z] Edit sessions/active-tasks.md session=96b3cb53-c3dd-4393-89e9-47c88760193f
+[2026-05-13T08:08:45Z] Edit sessions/2026-05-13.md session=96b3cb53-c3dd-4393-89e9-47c88760193f

@@ -40,7 +40,7 @@
 
 ### 待跟进项（Contract 分析发现）
 - [ ] **v1.4.4-recovery-flow 残留**：4 个测试文件未确认（review-pause-controller.test.ts、review-checkpoint-store.test.ts、sse-helper.test.ts、review-checkpoint-routes.test.ts）
-- [ ] **v1.4.6 收尾**：3 个 in_progress Contract 需确认是否标记 completed（llm-validation-sse-timeout、sub-report-detail、v1.4.6-requirement-review-records）
+- [ ] **v1.4.6 收尾**：1 个 in_progress Contract 待确认（v1.4.6-requirement-review-records）；✅ sub-report-detail 已完成；✅ llm-validation-sse-timeout 已完成
 - [ ] **Version README 同步**：v1.4.4/v1.4.5/v1.4.6 的 README.md 状态字段与实际不一致
 
 ## Execution 关联规范

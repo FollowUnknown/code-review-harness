@@ -87,8 +87,17 @@ router.post("/local", async (req: Request, res: Response) => {
     }
   }
 
-  // Prevent duplicate reviews: check if user already has a running job
+  // G3: Clean stale running jobs before checking duplicates
   const userId = (req as Request & { user?: { id: string } }).user?.id || null;
+  if (userId && !resumeCheckpointId) {
+    const activeJob = findActiveJobByUser(userId);
+    if (activeJob && activeJob.status === "running") {
+      // Stale running job from a previous crash — clean it up so it doesn't block new requests
+      updateJob(activeJob.id, { status: "failed", errorMessage: "上一次评审异常中断，已自动清理" });
+    }
+  }
+
+  // Prevent duplicate reviews (skip for resume — resume always creates a fresh job)
   if (userId && !resumeCheckpointId) {
     const activeJob = findActiveJobByUser(userId);
     if (activeJob && activeJob.status === "running") {

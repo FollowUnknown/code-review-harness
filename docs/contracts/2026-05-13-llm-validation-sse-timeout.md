@@ -1,7 +1,7 @@
 # Contract: LLM Key 启动前验证 + SSE 全局超时
 
 > 日期: 2026-05-13
-> 状态: in_progress
+> 状态: completed
 > 类型: Business Task
 > 版本: v1.4.6
 

@@ -1,7 +1,7 @@
 # Contract: 子项目评审结果下钻查看
 
 > 日期: 2026-05-13
-> 状态: in_progress
+> 状态: completed
 > 类型: Business Task
 > 版本: v1.4.6
 
@@ -11,26 +11,34 @@
 
 ## 范围
 
-- `src/client/pages/RequirementReviewDetailPage.tsx`：子项目行可点击，展开/导航查看该项目的完整 issues 列表
+- `src/client/pages/RequirementReviewDetailPage.tsx`：保留行点击弹窗，每行新增"详情"按钮导航到独立页面
+- `src/client/pages/SubReportDetailPage.tsx`：新增独立页面，展示子项目的 issues 列表和评分明细
+- `src/client/App.tsx`：新增路由 `/requirement-review/:reviewId/projects/:projectName`
 - 不修改后端 API，复用现有 `GET /api/reviews/:id/sub-reports` 数据
 - 不修改 ReviewListPage 或其他页面
 
 ## 验收标准
 
-1. 子项目列表每行可点击
-2. 点击后展示该子项目的 issues 列表（严重级别、文件路径、问题描述、建议）
-3. 展示该子项目的评分明细（各维度分数）
-4. 可关闭/返回
-5. **旧数据兼容**：v1.4.6 之前的旧评审记录（无 `review_sub_reports` 表数据，从 `report_json.techStackReports` 提取）同样支持点击查看 issues 和评分明细
+1. 子项目列表**行点击**继续弹窗查看（保持现有行为不变）
+2. 每行新增"详情"按钮，点击后导航到独立页面
+3. 独立页面展示该子项目的 issues 列表（严重级别、文件路径、问题描述、建议）
+4. 展示该子项目的评分明细（各维度分数）
+5. 顶部有返回按钮，可回到需求评审详情页
+6. **可直接通过 URL 访问**：`/requirement-review/:reviewId/projects/:projectName`
+7. **旧数据兼容**：v1.4.6 之前的旧评审记录（无 `review_sub_reports` 表数据，从 `report_json.techStackReports` 提取）同样支持查看 issues 和评分明细
+8. **LLM Logs 抽屉**：右上角 LLM Logs 按钮，点击打开 LLMHistoryDrawer（与 ReviewDetailPage 一致）
+9. **KnowledgeDetailDrawer**：支持点击知识条目查看详情
 
 ## 不做的
 
-- 不新增独立路由 `/requirement-review/:id/project/:projectName`
 - 不改后端
 - 不从 `/reviews/:id`（普通评审详情页）加子项目入口
+- 不修改数据库结构
 
 ## 影响文件
 
 | 文件 | 改动 |
 |------|------|
-| `src/client/pages/RequirementReviewDetailPage.tsx` | 子项目行加点击展开抽屉/弹窗 |
+| `src/client/App.tsx` | 新增路由 `/requirement-review/:reviewId/projects/:projectName` |
+| `src/client/pages/RequirementReviewDetailPage.tsx` | 每行新增"详情"按钮导航到独立页面，保留弹窗 |
+| `src/client/pages/SubReportDetailPage.tsx` | 新增，从弹窗中提取 issues + 评分明细内容 |
