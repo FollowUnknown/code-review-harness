@@ -31,9 +31,17 @@
 | [v1.3.6](../docs/versions/v1.3.6/README.md) | 05/06 | 知识库闭环 + 评审质量 | Knowledge Loop + Quality | ✅ 已完成 |
 | [v1.3.7](../docs/versions/v1.3.7/README.md) | 05/06 | 多技术栈评审 | Tech-stack aware review | ✅ 已完成 |
 | [v1.4.0](../docs/versions/v1.4.0/README.md) | 待定 | Capability 高级 | Phase 5 (高级) | ⚪ 待启动 |
+| [v1.4.1](../docs/versions/v1.4.1/README.md) | 05/11 | 页面崩溃修复 | Bugfix | ✅ 已完成 |
+| [v1.4.2](../docs/versions/v1.4.2/README.md) | 05/11 | Phase 2 治理 + Contract 规范化 | Governance | ✅ 已完成 |
+| [v1.4.3](../docs/versions/v1.4.3/README.md) | 05/11 | Knowledge 导入 + Drawer 优化 | Knowledge | ✅ 已完成 |
+| [v1.4.4](../docs/versions/v1.4.4/README.md) | 05/12 | 渐进式报告 + 暂停恢复 | UX + Recovery | ✅ 已完成 |
+| [v1.4.5](../docs/versions/v1.4.5/README.md) | 05/12 | GitLab API Preview | Integration | ✅ 已完成 |
+| [v1.4.6](../docs/versions/v1.4.6/README.md) | 05/13 | 需求评审子报告 + 详情下钻 | Requirement Review | 🔄 开发中 |
 
-### P2 — 一般
-（暂无）
+### 待跟进项（Contract 分析发现）
+- [ ] **v1.4.4-recovery-flow 残留**：4 个测试文件未确认（review-pause-controller.test.ts、review-checkpoint-store.test.ts、sse-helper.test.ts、review-checkpoint-routes.test.ts）
+- [ ] **v1.4.6 收尾**：3 个 in_progress Contract 需确认是否标记 completed（llm-validation-sse-timeout、sub-report-detail、v1.4.6-requirement-review-records）
+- [ ] **Version README 同步**：v1.4.4/v1.4.5/v1.4.6 的 README.md 状态字段与实际不一致
 
 ## Execution 关联规范
 
