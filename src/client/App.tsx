@@ -21,6 +21,7 @@ import { MemoryPage } from "./pages/MemoryPage";
 import { LocalReviewPage } from "./pages/LocalReviewPage";
 import { RequirementReviewPage } from "./pages/RequirementReviewPage";
 import { RequirementReviewDetailPage } from "./pages/RequirementReviewDetailPage";
+import { SubReportDetailPage } from "./pages/SubReportDetailPage";
 import { ProductLineManagePage } from "./pages/ProductLineManagePage";
 import { ToastProvider } from "./components/Toast";
 
@@ -313,6 +314,7 @@ export default function App() {
           <Route path="/local-review" element={<LocalReviewPage />} />
           <Route path="/requirement-review" element={<RequirementReviewPage />} />
           <Route path="/requirement-review/:id" element={<RequirementReviewDetailPage />} />
+          <Route path="/requirement-review/:reviewId/projects/:projectName" element={<SubReportDetailPage />} />
           <Route path="/product-lines" element={<ProductLineManagePage />} />
         </Routes>
       </div>

@@ -2436,3 +2436,54 @@
 [2026-05-13T06:48:09Z] Edit src/server/db.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
 [AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
 [2026-05-13T06:52:36Z] Edit docs/contracts/2026-05-13-sub-report-detail.md session=1c4f2ea5-9b48-4c1d-bb59-194a5682321f
+[2026-05-13T06:56:32Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=1c4f2ea5-9b48-4c1d-bb59-194a5682321f
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T06:56:36Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=1c4f2ea5-9b48-4c1d-bb59-194a5682321f
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T06:57:10Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=1c4f2ea5-9b48-4c1d-bb59-194a5682321f
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T06:57:16Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=1c4f2ea5-9b48-4c1d-bb59-194a5682321f
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T06:57:32Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=1c4f2ea5-9b48-4c1d-bb59-194a5682321f
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T06:57:37Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=1c4f2ea5-9b48-4c1d-bb59-194a5682321f
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T06:57:45Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=1c4f2ea5-9b48-4c1d-bb59-194a5682321f
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T06:57:57Z] Edit docs/contracts/2026-05-13-sub-report-detail.md session=1c4f2ea5-9b48-4c1d-bb59-194a5682321f
+[2026-05-13T07:03:42Z] Edit sessions/2026-05-13.md session=1c4f2ea5-9b48-4c1d-bb59-194a5682321f
+[2026-05-13T07:12:39Z] Edit docs/contracts/2026-05-13-sub-report-detail.md session=ef9516b5-ee1f-43d0-9896-56abffc2b79b
+[2026-05-13T07:14:39Z] Edit docs/contracts/2026-05-13-sub-report-detail.md session=ef9516b5-ee1f-43d0-9896-56abffc2b79b
+[2026-05-13T07:14:45Z] Edit docs/contracts/2026-05-13-sub-report-detail.md session=ef9516b5-ee1f-43d0-9896-56abffc2b79b
+[2026-05-13T07:15:20Z] Write src/client/pages/SubReportDetailPage.tsx session=ef9516b5-ee1f-43d0-9896-56abffc2b79b
+[AUDIT] Write on src/client/pages/SubReportDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:15:27Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=ef9516b5-ee1f-43d0-9896-56abffc2b79b
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:15:31Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=ef9516b5-ee1f-43d0-9896-56abffc2b79b
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:15:36Z] Edit src/client/App.tsx session=ef9516b5-ee1f-43d0-9896-56abffc2b79b
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:15:39Z] Edit src/client/App.tsx session=ef9516b5-ee1f-43d0-9896-56abffc2b79b
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:18:27Z] Edit docs/contracts/2026-05-13-sub-report-detail.md session=ef9516b5-ee1f-43d0-9896-56abffc2b79b
+[2026-05-13T07:20:40Z] Edit src/client/pages/SubReportDetailPage.tsx session=ef9516b5-ee1f-43d0-9896-56abffc2b79b
+[AUDIT] Edit on src/client/pages/SubReportDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:22:34Z] Write docs/contracts/2026-05-13-sub-report-detail-supplement.md session=398af6c1-1e41-452d-bc26-295c9498451c
+[2026-05-13T07:25:16Z] Edit docs/contracts/2026-05-13-sub-report-detail-supplement.md session=398af6c1-1e41-452d-bc26-295c9498451c
+[2026-05-13T07:25:22Z] Edit docs/contracts/2026-05-13-sub-report-detail-supplement.md session=398af6c1-1e41-452d-bc26-295c9498451c
+[2026-05-13T07:25:49Z] Edit docs/contracts/2026-05-13-sub-report-detail-supplement.md session=398af6c1-1e41-452d-bc26-295c9498451c
+[2026-05-13T07:25:53Z] Edit src/client/pages/SubReportDetailPage.tsx session=398af6c1-1e41-452d-bc26-295c9498451c
+[AUDIT] Edit on src/client/pages/SubReportDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:25:57Z] Edit src/client/pages/SubReportDetailPage.tsx session=398af6c1-1e41-452d-bc26-295c9498451c
+[AUDIT] Edit on src/client/pages/SubReportDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:26:00Z] Edit src/client/pages/SubReportDetailPage.tsx session=398af6c1-1e41-452d-bc26-295c9498451c
+[AUDIT] Edit on src/client/pages/SubReportDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:26:05Z] Edit src/client/pages/SubReportDetailPage.tsx session=398af6c1-1e41-452d-bc26-295c9498451c
+[AUDIT] Edit on src/client/pages/SubReportDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:26:14Z] Edit src/client/pages/SubReportDetailPage.tsx session=398af6c1-1e41-452d-bc26-295c9498451c
+[AUDIT] Edit on src/client/pages/SubReportDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:26:24Z] Edit src/client/pages/SubReportDetailPage.tsx session=398af6c1-1e41-452d-bc26-295c9498451c
+[AUDIT] Edit on src/client/pages/SubReportDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:26:28Z] Edit src/client/pages/SubReportDetailPage.tsx session=398af6c1-1e41-452d-bc26-295c9498451c
+[AUDIT] Edit on src/client/pages/SubReportDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T07:26:44Z] Edit docs/contracts/2026-05-13-sub-report-detail-supplement.md session=398af6c1-1e41-452d-bc26-295c9498451c

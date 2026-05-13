@@ -284,6 +284,7 @@ export function RequirementReviewDetailPage() {
                   <th className="px-3 py-2 text-center">状态</th>
                   <th className="px-3 py-2 text-center">评分</th>
                   <th className="px-3 py-2 text-center">Issues</th>
+                  <th className="px-3 py-2 text-center">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -326,6 +327,17 @@ export function RequirementReviewDetailPage() {
                       <td className="px-3 py-2.5 text-center text-slate-400">
                         {row.issueCount}
                         {row.criticalCount > 0 && <span className="text-red-400 ml-1">({row.criticalCount}C)</span>}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/requirement-review/${id}/projects/${encodeURIComponent(row.project)}`);
+                          }}
+                          className="px-2 py-1 text-xs rounded bg-slate-700/50 text-slate-400 hover:text-white hover:bg-slate-600/50 transition-colors"
+                        >
+                          详情
+                        </button>
                       </td>
                     </tr>
                   );
