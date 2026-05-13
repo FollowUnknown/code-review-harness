@@ -170,9 +170,21 @@ function fixUnescapedQuotes(text: string): string {
         if (text[i] === '"') {
           // Check if this quote is the true end of the string value
           const rest = text.slice(i + 1).trimStart();
-          if (rest.length === 0 || /^[,}\]:]/.test(rest) || /^:/.test(rest)) {
-            // This is the real closing quote
+          if (rest.length === 0 || /^[}\]:]/.test(rest) || /^:/.test(rest)) {
+            // Definitely real closing quote
             break;
+          }
+          if (/^,/.test(rest)) {
+            // Comma: could be JSON separator (", "nextKey":) or code content (", id))
+            const afterComma = rest.slice(1).trimStart();
+            // If followed by key/object/array/number, it's structural JSON → real closing quote
+            if (/^["{\[]/.test(afterComma) || /^\d/.test(afterComma) || afterComma.length === 0) {
+              break;
+            }
+            // Otherwise it's likely code content (e.g. ", id)" in Java) — escape the quote
+            content.push('\\"');
+            i++;
+            continue;
           }
           // Unescaped quote inside a string — escape it
           content.push('\\"');
