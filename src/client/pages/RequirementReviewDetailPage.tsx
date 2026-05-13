@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import type { ReviewSubReport, ReviewRecord } from "../../shared/types";
+import { motion, AnimatePresence } from "framer-motion";
+import type { ReviewSubReport, ReviewRecord, ReviewReport } from "../../shared/types";
 
 const API_BASE = "";
 
@@ -19,6 +19,15 @@ function authHeaders(): Record<string, string> {
   return headers;
 }
 
+function severityColor(severity: string): string {
+  switch (severity) {
+    case "CRITICAL": return "text-red-400 font-semibold";
+    case "HIGH": return "text-orange-400 font-semibold";
+    case "MEDIUM": return "text-yellow-400";
+    default: return "text-slate-400";
+  }
+}
+
 export function RequirementReviewDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -29,6 +38,12 @@ export function RequirementReviewDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [resuming, setResuming] = useState(false);
   const [abandoning, setAbandoning] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<{
+    project: string;
+    techStack: string;
+    status: string;
+    report: ReviewReport | null;
+  } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -218,17 +233,25 @@ export function RequirementReviewDetailPage() {
           score: number | null;
           issueCount: number;
           criticalCount: number;
+          report: ReviewReport | null;
         };
 
         const rows: ProjectRow[] = subReports.length > 0
-          ? subReports.map((s) => ({
-              project: s.project,
-              techStack: s.tech_stack,
-              status: s.status,
-              score: s.score,
-              issueCount: s.issue_count ?? 0,
-              criticalCount: s.critical_count,
-            }))
+          ? subReports.map((s) => {
+              let report: ReviewReport | null = null;
+              if (s.report_json) {
+                try { report = JSON.parse(s.report_json); } catch { /* ignore */ }
+              }
+              return {
+                project: s.project,
+                techStack: s.tech_stack,
+                status: s.status,
+                score: s.score,
+                issueCount: s.issue_count ?? 0,
+                criticalCount: s.critical_count,
+                report,
+              };
+            })
           : (report.techStackReports ?? []).flatMap((tsr: any) =>
               (tsr.projectReports ?? []).map((pr: any) => ({
                 project: pr.project,
@@ -239,6 +262,7 @@ export function RequirementReviewDetailPage() {
                   : null,
                 issueCount: pr.report?.issues?.length ?? 0,
                 criticalCount: pr.report?.issues?.filter((i: any) => i.severity === "CRITICAL").length ?? 0,
+                report: pr.report ?? null,
               }))
             );
 
@@ -285,7 +309,16 @@ export function RequirementReviewDetailPage() {
                   };
 
                   return (
-                    <tr key={`${row.project}-${idx}`} className="border-t border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                    <tr
+                      key={`${row.project}-${idx}`}
+                      className="border-t border-slate-800/50 hover:bg-slate-800/30 transition-colors cursor-pointer"
+                      onClick={() => setSelectedRow({
+                        project: row.project,
+                        techStack: row.techStack,
+                        status: row.status,
+                        report: row.report,
+                      })}
+                    >
                       <td className="px-3 py-2.5 text-slate-300">{row.project}</td>
                       <td className="px-3 py-2.5 text-center text-slate-500">{row.techStack}</td>
                       <td className="px-3 py-2.5 text-center">{statusBadge()}</td>
@@ -302,6 +335,115 @@ export function RequirementReviewDetailPage() {
           </div>
         );
       })()}
+
+      {/* Sub-report detail modal */}
+      <AnimatePresence>
+        {selectedRow && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedRow(null)}
+          >
+            <motion.div
+              className="bg-slate-800 border border-slate-700/50 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto m-4"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal header */}
+              <div className="flex items-center justify-between p-4 border-b border-slate-700/50">
+                <div>
+                  <h3 className="text-slate-200 font-medium">{selectedRow.project}</h3>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    {selectedRow.techStack} · {selectedRow.status === "completed" ? "已完成" : selectedRow.status === "failed" ? "失败" : selectedRow.status === "reviewing" ? "评审中" : "等待中"}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedRow(null)}
+                  className="text-slate-500 hover:text-white transition-colors text-lg leading-none"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Empty state */}
+              {!selectedRow.report && (
+                <div className="p-8 text-center text-sm text-slate-500">
+                  {selectedRow.status === "pending" || selectedRow.status === "reviewing"
+                    ? "评审尚未完成，暂无数据"
+                    : selectedRow.status === "failed"
+                    ? "该子项目评审失败"
+                    : "暂无评审报告数据"}
+                </div>
+              )}
+
+              {/* Issues list */}
+              {selectedRow.report && selectedRow.report.issues.length > 0 && (
+                <div className="p-4 border-b border-slate-700/50">
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+                    Issues ({selectedRow.report.issues.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedRow.report.issues.map((issue, i) => (
+                      <div key={i} className="bg-slate-900/50 rounded p-3 text-xs">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={severityColor(issue.severity)}>
+                            {issue.severity}
+                          </span>
+                          <span className="text-slate-300">{issue.message}</span>
+                        </div>
+                        <div className="text-slate-500 mt-0.5">
+                          {issue.file}{issue.line != null ? `:${issue.line}` : ""}
+                        </div>
+                        {issue.suggestion && (
+                          <div className="text-slate-400 mt-1 border-t border-slate-800 pt-1">
+                            {issue.suggestion}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Scores breakdown */}
+              {selectedRow.report && selectedRow.report.scores.length > 0 && (
+                <div className="p-4 border-b border-slate-700/50">
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+                    评分明细
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedRow.report.scores.map((sc, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span className={`text-sm font-semibold shrink-0 ${sc.score >= 4 ? "text-emerald-400" : sc.score >= 3 ? "text-yellow-400" : "text-red-400"}`}>
+                          {sc.score.toFixed(1)}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-xs text-slate-300">{sc.dimension}</div>
+                          {sc.comment && (
+                            <div className="text-xs text-slate-500 mt-0.5">{sc.comment}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Summary */}
+              {selectedRow.report && selectedRow.report.summary && (
+                <div className="p-4">
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">总结</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">{selectedRow.report.summary}</p>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
