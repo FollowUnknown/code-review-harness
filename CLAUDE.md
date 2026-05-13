@@ -22,6 +22,8 @@
 
 13. **DB Migration 红线** — DB 结构变更（建表、ALTER TABLE、加列、修 FK）必须使用带版本号的 Migration 文件，不得手动插入 `initialize()` 函数链或直接修改 `.db` 文件结构。Migration 文件必须可重入（重复执行不报错）
 
+14. **Session 闭环红线** — Contract 状态变更或代码提交后，必须在当天 session 文件的"会话记录"区块追加记录并同步更新 `active-tasks.md`。禁止出现"代码已提交但 session/active-tasks 无记录"或"Contract 已 completed 但 session 未归档"的状态漂移。对话结束时自动生成"今日总结"并更新所有待办状态
+
 ---
 ## 当前阶段：Phase 2
 
