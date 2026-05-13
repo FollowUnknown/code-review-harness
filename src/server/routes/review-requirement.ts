@@ -318,7 +318,7 @@ router.post("/requirement", async (req: Request, res: Response) => {
     aborted = true;
     sendSSE({ step: 0, status: "error", label: `评审超时（${timeoutMinutes}分钟），请检查 LLM 配置后重试` });
     updateJob(job.id, { status: "failed", errorMessage: `评审超时（${timeoutMinutes}分钟）` });
-    if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+    if (checkpointId) abandonCheckpoint(checkpointId);
     if (reviewIdForCleanup) updateReview(reviewIdForCleanup, { status: "interrupted" });
     res.end();
   }, timeoutMinutes * 60_000);
@@ -331,7 +331,7 @@ router.post("/requirement", async (req: Request, res: Response) => {
       if (currentJob && currentJob.status === "running") {
         aborted = true;
         updateJob(job.id, { status: "aborted", errorMessage: "Client disconnected" });
-        if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+        if (checkpointId) abandonCheckpoint(checkpointId);
         if (reviewIdForCleanup) updateReview(reviewIdForCleanup, { status: "interrupted" });
       }
     }, 60_000);
@@ -603,8 +603,15 @@ router.post("/requirement", async (req: Request, res: Response) => {
           `(${pi + 1}/${groupResults.length})`
         );
 
-        // v1.4.6: create sub_report for this project
-        const subReportId = createSubReport(reviewId, scanItem.project, scanItem.techStack);
+        // v1.4.6: create or reuse sub_report for this project
+        // On resume: reuse existing sub_report from pre-pause phase
+        // to avoid leaving orphaned "reviewing" sub_reports in the DB
+        const existingSub = resumeCheckpointId
+          ? listSubReports(reviewId).find((s) => s.project === scanItem.project)
+          : undefined;
+        const subReportId = existingSub
+          ? existingSub.id
+          : createSubReport(reviewId, scanItem.project, scanItem.techStack);
         updateSubReport(subReportId, { status: "reviewing" });
 
         try {
@@ -738,35 +745,42 @@ router.post("/requirement", async (req: Request, res: Response) => {
             // v1.4.4: check pause request between batches
             if (isPauseRequested(job.id)) {
               clearPause(job.id);
-              const reviewedCount = batchDiffs.slice(0, i + 1).reduce((sum: number, b: unknown[]) => sum + b.length, 0);
-              updateCheckpoint(checkpointId, {
-                status: "paused",
-                currentBatch: i + 1,
-                reviewedCount,
-                batchResults: JSON.stringify(
-                  batchReports.map((r, bi) => ({
-                    batchIndex: bi,
-                    files: batchDiffs[bi]?.map((d: { new_path: string }) => d.new_path) ?? [],
-                    issues: r.issues,
-                    scores: r.scores,
-                  }))
-                ),
-                accumulatedStats: JSON.stringify({
-                  reviewId,
-                  techStack,
-                  projectIndex: pi,
-                  project: scanItem.project,
-                }),
-              });
-              updateJob(job.id, { status: "paused", stepsJson: JSON.stringify(accumulatedSteps) });
-              // v1.4.6: update main record status to paused
-              updateReview(reviewId, { status: "paused" });
+              // 独立 try/catch: 确保 DB 更新失败也不阻塞 pause 退出路径 (res.end + return)
+              try {
+                const reviewedCount = batchDiffs.slice(0, i + 1).reduce((sum: number, b: unknown[]) => sum + b.length, 0);
+                updateCheckpoint(checkpointId, {
+                  status: "paused",
+                  currentBatch: i + 1,
+                  reviewedCount,
+                  batchResults: JSON.stringify(
+                    batchReports.map((r, bi) => ({
+                      batchIndex: bi,
+                      files: batchDiffs[bi]?.map((d: { new_path: string }) => d.new_path) ?? [],
+                      issues: r.issues,
+                      scores: r.scores,
+                    }))
+                  ),
+                  accumulatedStats: JSON.stringify({
+                    reviewId,
+                    techStack,
+                    projectIndex: pi,
+                    project: scanItem.project,
+                  }),
+                });
+                updateJob(job.id, { status: "paused", stepsJson: JSON.stringify(accumulatedSteps) });
+                // v1.4.6: update main record status to paused
+                updateReview(reviewId, { status: "paused" });
+              } catch (pauseErr) {
+                console.error("[pause] DB update failed:", pauseErr);
+              }
+              // 无论 DB 更新是否成功, pause 事件 + 关闭流 必须执行
+              const _reviewedCount = batchDiffs.slice(0, i + 1).reduce((sum: number, b: unknown[]) => sum + b.length, 0);
               sendEvent("paused", {
                 checkpointId,
                 progress: {
                   completedBatches: i + 1,
                   totalBatches: batchDiffs.length,
-                  reviewedFiles: reviewedCount,
+                  reviewedFiles: _reviewedCount,
                   totalFiles: projDiffs.length,
                 },
               });
@@ -963,7 +977,7 @@ router.post("/requirement", async (req: Request, res: Response) => {
     const message = error instanceof Error ? error.message : "Unknown error";
     const shortMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
     updateJob(job.id, { status: "failed", errorMessage: shortMessage, stepsJson: JSON.stringify(accumulatedSteps) });
-    if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+    if (checkpointId) abandonCheckpoint(checkpointId);
     if (reviewIdForCleanup) updateReview(reviewIdForCleanup, { status: "interrupted" });
     removeJob(job.id);
     sendSSE({ step: getStep(), status: "error", label: shortMessage });

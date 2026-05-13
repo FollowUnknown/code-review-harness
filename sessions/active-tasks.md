@@ -39,9 +39,9 @@
 | [v1.4.6](../docs/versions/v1.4.6/README.md) | 05/13 | 需求评审子报告 + 详情下钻 | Requirement Review | 🔄 开发中 |
 
 ### 待跟进项（Contract 分析发现）
-- [ ] **v1.4.4-recovery-flow 残留**：4 个测试文件未确认（review-pause-controller.test.ts、review-checkpoint-store.test.ts、sse-helper.test.ts、review-checkpoint-routes.test.ts）
-- [ ] **v1.4.6 收尾**：1 个 in_progress Contract 待确认（v1.4.6-requirement-review-records）；✅ sub-report-detail 已完成；✅ llm-validation-sse-timeout 已完成
-- [ ] **Version README 同步**：v1.4.4/v1.4.5/v1.4.6 的 README.md 状态字段与实际不一致
+- [x] **v1.4.4-recovery-flow 残留**：4 个测试文件未确认（review-pause-controller.test.ts、review-checkpoint-store.test.ts、sse-helper.test.ts、review-checkpoint-routes.test.ts）→ **✅ 已确认，Contract 已归档**
+- [x] **v1.4.6 收尾**：✅ pause-resume-ui-fix (completed)；✅ v1.4.6-requirement-review-records (completed，G5 详情页暂停按钮补充完成)；✅ sub-report-detail 已完成；✅ llm-validation-sse-timeout 已完成
+- [x] **Version README 同步**：v1.4.4/v1.4.5/v1.4.6 的 README.md 状态字段与实际不一致 → **✅ 已同步**
 
 ## Execution 关联规范
 

@@ -162,7 +162,7 @@ router.post("/local", async (req: Request, res: Response) => {
     aborted = true;
     sendSSE({ step: 0, status: "error", label: `评审超时（${timeoutMinutes}分钟），请检查 LLM 配置后重试` });
     updateJob(job.id, { status: "failed", errorMessage: `评审超时（${timeoutMinutes}分钟）` });
-    if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+    if (checkpointId) abandonCheckpoint(checkpointId);
     if (reviewIdForCleanup) updateReview(reviewIdForCleanup, { status: "interrupted" });
     res.end();
   }, timeoutMinutes * 60_000);
@@ -177,7 +177,7 @@ router.post("/local", async (req: Request, res: Response) => {
       if (currentJob && currentJob.status === "running") {
         aborted = true;
         updateJob(job.id, { status: "aborted", errorMessage: "Client disconnected" });
-        if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+        if (checkpointId) abandonCheckpoint(checkpointId);
         if (reviewIdForCleanup) updateReview(reviewIdForCleanup, { status: "interrupted" });
       }
     }, 60_000);
@@ -455,7 +455,7 @@ router.post("/local", async (req: Request, res: Response) => {
     const message = error instanceof Error ? error.message : "Unknown error";
     const shortMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
     updateJob(job.id, { status: "failed", errorMessage: shortMessage, stepsJson: JSON.stringify(accumulatedSteps) });
-    if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+    if (checkpointId) abandonCheckpoint(checkpointId);
     if (reviewIdForCleanup) updateReview(reviewIdForCleanup, { status: "interrupted" });
     removeJob(job.id);
     sendSSE({ step: getStep(), status: "error", label: shortMessage });

@@ -388,6 +388,27 @@ export function RequirementReviewPage() {
         headers,
         body: JSON.stringify({ jobId }),
       });
+      // v1.4.6: SSE 流激活时, paused 事件会在下一批次间隔到达并设置 isPaused.
+      // 如果 SSE 已结束, 需要 fallback 检测 checkpoint 状态.
+      setIsPausing(false);
+      setTimeout(() => {
+        fetch(`${API_BASE}/api/review/checkpoints?status=paused&review_type=requirement`, { headers })
+          .then(r => r.ok ? r.json() : [])
+          .then(list => {
+            if (!Array.isArray(list)) return;
+            const cp = list.find((c: any) => c.jobId === jobId);
+            if (cp) {
+              setIsPaused(true);
+              setCheckpointId(cp.id);
+              setReviewTotalBatches(cp.totalBatches ?? 0);
+              setReviewTotalFiles(cp.totalFiles ?? 0);
+              setReviewCompletedBatches(cp.currentBatch ?? 0);
+              setReviewReviewedFiles(cp.reviewedCount ?? 0);
+              setShowReviewProgress(true);
+            }
+          })
+          .catch(() => {});
+      }, 1000);
     } catch {
       setIsPausing(false);
     }
@@ -842,7 +863,7 @@ export function RequirementReviewPage() {
         >
           <span className="text-green-400 text-sm">Requirement review complete. </span>
           <button
-            onClick={() => navigate(`/reviews/${reviewId}`)}
+            onClick={() => navigate(`/requirement-review/${reviewId}`)}
             className="text-blue-400 underline text-sm"
           >
             View Report

@@ -10,6 +10,7 @@ interface CheckpointInfo {
   status: string;
   currentBatch: number;
   totalBatches: number;
+  jobId?: string;
 }
 
 function authHeaders(): Record<string, string> {
@@ -38,6 +39,7 @@ export function RequirementReviewDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [resuming, setResuming] = useState(false);
   const [abandoning, setAbandoning] = useState(false);
+  const [pausing, setPausing] = useState(false);
   const [selectedRow, setSelectedRow] = useState<{
     project: string;
     techStack: string;
@@ -111,6 +113,22 @@ export function RequirementReviewDetailPage() {
       setRecord(detailData.record);
     } catch { /* ignore */ }
     setAbandoning(false);
+  };
+
+  const handlePause = async () => {
+    if (!checkpoint || pausing) return;
+    setPausing(true);
+    try {
+      await fetch(`${API_BASE}/api/review/pause`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: checkpoint.jobId ?? checkpoint.id }),
+      });
+      // Refresh record to get updated status
+      const detailData = await fetch(`${API_BASE}/api/reviews/${id}`, { headers: authHeaders() }).then((r) => r.json());
+      setRecord(detailData.record);
+    } catch { /* ignore */ }
+    setPausing(false);
   };
 
   if (loading) {
@@ -201,7 +219,20 @@ export function RequirementReviewDetailPage() {
           </div>
         )}
 
-        {/* v1.4.6: Resume/Abandon actions */}
+        {/* v1.4.6: Pause action (reviewing) */}
+        {record.status === "reviewing" && checkpoint && (
+          <div className="flex items-center gap-3 mt-4 pt-3 border-t border-slate-700/50">
+            <button
+              onClick={handlePause}
+              disabled={pausing}
+              className="px-3 py-1.5 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50 transition-colors"
+            >
+              {pausing ? "暂停中..." : "暂停评审"}
+            </button>
+          </div>
+        )}
+
+        {/* Resume/Abandon actions */}
         {(record.status === "paused" || record.status === "interrupted") && checkpoint && (
           <div className="flex items-center gap-3 mt-4 pt-3 border-t border-slate-700/50">
             <button

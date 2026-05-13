@@ -357,6 +357,9 @@ function initialize(db: Database.Database): void {
   // Migrate review_jobs table with review_type, product_line_id (v1.4.0)
   migrateReviewJobsTable(db);
 
+  // v1.4.6: Add 'paused'/'interrupted' to review_jobs status CHECK constraint
+  migrateJobsStatusForPause(db);
+
   // Migrate review_plan_items table with branch/author/error_message/reviewed_at columns
   migrateReviewPlanItemsTable(db);
 
@@ -717,6 +720,62 @@ function migrateReviewJobsTable(db: Database.Database): void {
 }
 
 /**
+ * v1.4.6: Add 'paused' and 'interrupted' to review_jobs status CHECK constraint.
+ * Uses rename+recreate pattern to work around SQLite's inability to ALTER CHECK constraints.
+ */
+function migrateJobsStatusForPause(db: Database.Database): void {
+  const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='review_jobs'").get() as { sql: string } | undefined;
+  if (!tableInfo?.sql) return;
+
+  // Already migrated
+  if (tableInfo.sql.includes("'paused'")) return;
+
+  const migrate = db.transaction(() => {
+    db.exec("ALTER TABLE review_jobs RENAME TO review_jobs_old");
+
+    db.exec(`
+      CREATE TABLE review_jobs (
+        id TEXT PRIMARY KEY,
+        project TEXT NOT NULL,
+        source_branch TEXT NOT NULL,
+        target_branch TEXT NOT NULL,
+        excluded_files_json TEXT,
+        status TEXT NOT NULL DEFAULT 'pending'
+          CHECK(status IN ('pending', 'running', 'completed', 'failed', 'aborted', 'paused', 'interrupted')),
+        review_id TEXT,
+        review_type TEXT DEFAULT 'single' CHECK(review_type IN ('single', 'requirement')),
+        product_line_id TEXT,
+        current_step INTEGER NOT NULL DEFAULT 0,
+        current_label TEXT,
+        steps_json TEXT,
+        error_message TEXT,
+        created_by TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+
+    db.exec(`
+      INSERT INTO review_jobs (id, project, source_branch, target_branch, excluded_files_json,
+        status, review_id, review_type, product_line_id, current_step, current_label,
+        steps_json, error_message, created_by, created_at, updated_at)
+      SELECT id, project, source_branch, target_branch, excluded_files_json,
+        status, review_id, review_type, product_line_id, current_step, current_label,
+        steps_json, error_message, created_by, created_at, updated_at
+      FROM review_jobs_old
+    `);
+
+    db.exec("DROP TABLE review_jobs_old");
+
+    db.exec("CREATE INDEX IF NOT EXISTS idx_review_jobs_status ON review_jobs(status)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_review_jobs_created_by ON review_jobs(created_by)");
+  });
+
+  migrate();
+}
+
+/**
+ * Fix review_sub_reports FK if it incorrectly references "reviews_old" instead of "reviews".
  * Fix review_sub_reports FK if it incorrectly references "reviews_old" instead of "reviews".
  * This can happen when the table was first created while a migration had renamed reviews → reviews_old,
  * and CREATE TABLE IF NOT EXISTS preserved the stale FK reference.

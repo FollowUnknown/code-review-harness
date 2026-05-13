@@ -78,7 +78,7 @@ router.post("/review", async (req: Request, res: Response) => {
     if (aborted) return;
     aborted = true;
     sendSSE({ step: 0, status: "error", label: `评审超时（${timeoutMinutes}分钟），请检查 LLM 配置后重试` });
-    if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+    if (checkpointId) abandonCheckpoint(checkpointId);
     res.end();
   }, timeoutMinutes * 60_000);
 
@@ -86,7 +86,7 @@ router.post("/review", async (req: Request, res: Response) => {
     clearTimeout(globalTimeout);
     abortTimeout = setTimeout(() => {
       if (checkpointId) {
-        updateCheckpoint(checkpointId, { status: "interrupted" });
+        abandonCheckpoint(checkpointId);
       }
       aborted = true;
     }, 60_000);
@@ -421,7 +421,7 @@ router.post("/review", async (req: Request, res: Response) => {
   } catch (err) {
     clearTimeout(globalTimeout);
     if (abortTimeout) clearTimeout(abortTimeout);
-    if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+    if (checkpointId) abandonCheckpoint(checkpointId);
     removeJob(reviewId);
     const message = err instanceof Error ? err.message : "Review failed";
     // Sanitize: avoid leaking internal details to client
