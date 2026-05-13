@@ -4,11 +4,11 @@ import { getRepoMapping } from "../config/repo-mapping";
 import { classify } from "../services/classifier";
 import { getKnowledgeForReview, buildKnowledgePrompt, extractLearnings, trackKnowledgeHits, determineAdoptedKnowledge, suggestDispositions } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
-import { callLLM, getLLMConfig } from "../llm";
+import { callLLM, getLLMConfig, validateLLMKey } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { getDimensionsForProject } from "../services/dimensions";
 import { inferTechStack } from "../services/techstack";
-import { saveReviewRecord, computeReviewStats } from "../services/review-store";
+import { saveReviewRecord, updateReview, computeReviewStats } from "../services/review-store";
 import { saveLLMLog } from "../services/llm-logger";
 import { buildLocalScanContext, buildRelatedFilesPrompt, buildASTContextPrompt } from "../services/local-scan";
 import { inferModuleFromPaths } from "../services/module-utils";
@@ -81,8 +81,8 @@ router.post("/local", async (req: Request, res: Response) => {
       res.status(404).json({ error: "Checkpoint not found" });
       return;
     }
-    if (cp.status !== "paused") {
-      res.status(400).json({ error: `Checkpoint status is "${cp.status}", expected "paused"` });
+    if (cp.status !== "paused" && cp.status !== "interrupted") {
+      res.status(400).json({ error: `Checkpoint status is "${cp.status}", expected "paused" or "interrupted"` });
       return;
     }
   }
@@ -136,7 +136,30 @@ router.post("/local", async (req: Request, res: Response) => {
   let sseDisconnected = false;
   let checkpointId: string | null = null;
   let abortTimeout: ReturnType<typeof setTimeout> | null = null;
+  let reviewIdForCleanup: string | null = null;
+
+  // G1: Validate LLM key early
+  const keyError = await validateLLMKey(llmConfig);
+  if (keyError) {
+    sendSSE({ step: 0, status: "error", label: keyError });
+    res.end();
+    return;
+  }
+
+  // G2: Global SSE timeout
+  const timeoutMinutes = parseInt(process.env.REVIEW_TIMEOUT_MINUTES || "30", 10);
+  const globalTimeout = setTimeout(() => {
+    if (aborted) return;
+    aborted = true;
+    sendSSE({ step: 0, status: "error", label: `评审超时（${timeoutMinutes}分钟），请检查 LLM 配置后重试` });
+    updateJob(job.id, { status: "failed", errorMessage: `评审超时（${timeoutMinutes}分钟）` });
+    if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+    if (reviewIdForCleanup) updateReview(reviewIdForCleanup, { status: "interrupted" });
+    res.end();
+  }, timeoutMinutes * 60_000);
+
   res.on("close", () => {
+    clearTimeout(globalTimeout);
     sseDisconnected = true;
     // Wait 60s — if client is polling, the job status endpoint will be hit
     abortTimeout = setTimeout(() => {
@@ -146,6 +169,7 @@ router.post("/local", async (req: Request, res: Response) => {
         aborted = true;
         updateJob(job.id, { status: "aborted", errorMessage: "Client disconnected" });
         if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+        if (reviewIdForCleanup) updateReview(reviewIdForCleanup, { status: "interrupted" });
       }
     }, 60_000);
   });
@@ -216,6 +240,7 @@ router.post("/local", async (req: Request, res: Response) => {
 
     // Step 4: Review batches
     const reviewId = `R-${randomUUID().slice(0, 8)}`;
+    reviewIdForCleanup = reviewId;
     const dimensions = getDimensionsForProject(project, techStack);
     const knowledgePrompt = knowledge.length > 0 ? buildKnowledgePrompt(knowledge) : "";
     const relatedPrompt = buildRelatedFilesPrompt(context);
@@ -365,6 +390,7 @@ router.post("/local", async (req: Request, res: Response) => {
           },
         });
         if (abortTimeout) clearTimeout(abortTimeout);
+        clearTimeout(globalTimeout);
         res.end();
         return;
       }
@@ -411,14 +437,17 @@ router.post("/local", async (req: Request, res: Response) => {
 
     sendSSE({ step: getStep() + 1, status: "done", label: "COMPLETE", detail: JSON.stringify(response) });
     completeCheckpoint(checkpointId);
+    clearTimeout(globalTimeout);
     if (abortTimeout) clearTimeout(abortTimeout);
     res.end();
   } catch (error) {
+    clearTimeout(globalTimeout);
     if (abortTimeout) clearTimeout(abortTimeout);
     const message = error instanceof Error ? error.message : "Unknown error";
     const shortMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
     updateJob(job.id, { status: "failed", errorMessage: shortMessage, stepsJson: JSON.stringify(accumulatedSteps) });
     if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+    if (reviewIdForCleanup) updateReview(reviewIdForCleanup, { status: "interrupted" });
     removeJob(job.id);
     sendSSE({ step: getStep(), status: "error", label: shortMessage });
     res.end();

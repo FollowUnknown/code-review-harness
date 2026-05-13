@@ -81,7 +81,7 @@ export interface ReviewReport {
 
 // ---- Review Record (DB storage) ----
 
-export type ReviewStatus = "completed" | "draft";
+export type ReviewStatus = "completed" | "draft" | "reviewing" | "paused" | "interrupted";
 
 export interface ReviewRecord {
   id: string;
@@ -118,6 +118,7 @@ export interface ReviewListItem {
   critical_count: number;
   created_by: string | null;
   created_at: string;
+  subReportStats?: { completed: number; total: number; failed: number }; // v1.4.6
 }
 
 export interface ReviewFilter {
@@ -643,6 +644,12 @@ export interface SSEReviewStart {
   totalBatches: number;
   totalFiles: number;
   jobId?: string;
+  reviewId?: string;              // v1.4.6: for immediate navigation
+}
+
+export interface SSEReviewCreated {
+  reviewId: string;
+  reviewType: "mr" | "local" | "requirement";
 }
 
 export interface SSEBatchProgress {
@@ -698,6 +705,7 @@ export interface ReviewCheckpoint {
 // SSE payload discriminant union — sendSSE accepts any of these
 export type SSEPayload =
   | ProgressEvent
+  | ({ type: "review_created" } & SSEReviewCreated)
   | ({ type: "review_start" } & SSEReviewStart)
   | ({ type: "batch_result" } & SSEBatchResult)
   | ({ type: "paused" } & SSEPaused)
@@ -715,4 +723,24 @@ export interface CheckpointFilter {
   project?: string;
   status?: CheckpointStatus;
   reviewType?: ReviewType;
+}
+
+// ---- Review Sub Report (v1.4.6) ----
+
+export type SubReportStatus = "pending" | "reviewing" | "completed" | "failed";
+
+export interface ReviewSubReport {
+  id: number;
+  review_id: string;
+  project: string;
+  tech_stack: TechStack;
+  status: SubReportStatus;
+  report_json: string | null;
+  classification_json: string | null;
+  score: number | null;
+  issue_count: number | null;
+  critical_count: number;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
 }

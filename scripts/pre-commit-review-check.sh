@@ -62,7 +62,23 @@ if [ "$STAGED_HASH" != "$MARKED_HASH" ]; then
   exit 2
 fi
 
-# hash 匹配，允许 commit 并清除标记（一次性使用）
+# hash 匹配，Run E2E review quality gate
+echo ""
+echo "🔍 运行 AI 评审质量 E2E 测试..."
+E2E_OUTPUT=$(npx vitest run tests/e2e-review-quality.test.ts 2>&1)
+E2E_EXIT=$?
+if [ $E2E_EXIT -ne 0 ]; then
+  echo ""
+  echo "❌ COMMIT BLOCKED — AI 评审质量 E2E 测试未通过"
+  echo ""
+  echo "$E2E_OUTPUT" | tail -20
+  echo ""
+  echo "请修复评审质量问题后重新审查并提交"
+  exit 2
+fi
+echo "✅ E2E 评审质量测试通过"
+
+# 清除标记并允许 commit（一次性使用）
 rm -f "$MARKER"
 echo "✅ 代码审查已通过，允许提交。标记文件已清除。"
 exit 0

@@ -1,9 +1,9 @@
-import { getDb } from "../db";
+import { getDb, getReadDb } from "../db";
 
 // ---- CRUD ----
 
 export function getSetting(key: string): string | undefined {
-  const db = getDb();
+  const db = getReadDb();
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string } | undefined;
   return row?.value;
 }

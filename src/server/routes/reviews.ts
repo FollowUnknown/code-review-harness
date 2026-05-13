@@ -17,6 +17,8 @@ import { saveLLMLog } from "../services/llm-logger";
 import { getDimensionsForProject } from "../services/dimensions";
 import { inferTechStack } from "../services/techstack";
 import { getDb } from "../db";
+import { listSubReports } from "../services/review-sub-report-store";
+import { listCheckpoints } from "../services/review-checkpoint-store";
 import type { ReviewResponse, ReviewFilter, ContinueReviewRequest, KnowledgeDisposition } from "../../shared/types";
 
 const router = Router();
@@ -32,6 +34,19 @@ router.get("/", (req: Request, res: Response) => {
     pageSize: Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20)),
   };
   const result = listReviews(filter);
+
+  // v1.4.6: enrich requirement reviews with sub_report stats
+  for (const item of result.items) {
+    if (item.mr_url.startsWith("requirement://")) {
+      const subs = listSubReports(item.id);
+      item.subReportStats = {
+        completed: subs.filter((s) => s.status === "completed").length,
+        total: subs.length,
+        failed: subs.filter((s) => s.status === "failed").length,
+      };
+    }
+  }
+
   res.json(result);
 });
 
@@ -89,6 +104,34 @@ router.get("/:id", (req: Request<{ id: string }>, res: Response) => {
   }
 
   res.json({ record, response });
+});
+
+// GET /:id/checkpoint — Find associated checkpoint for pause/resume (v1.4.6)
+router.get("/:id/checkpoint", (req: Request<{ id: string }>, res: Response) => {
+  const record = findReviewById(req.params.id);
+  if (!record) {
+    res.status(404).json({ error: "Review not found" });
+    return;
+  }
+  // Find paused/interrupted checkpoints for requirement reviews matching this reviewId
+  const checkpoints = listCheckpoints({ reviewType: "requirement" }).filter(
+    (cp) => (cp.status === "paused" || cp.status === "interrupted")
+      && (cp.accumulatedStats.includes(req.params.id)
+        // Fallback: match by project_id when accumulatedStats is empty (early failure)
+        || (cp.projectId === record.product_line_id && cp.accumulatedStats === "{}"))
+  );
+  res.json(checkpoints.length > 0 ? checkpoints[0] : null);
+});
+
+// GET /:id/sub-reports — Sub-reports for requirement review (v1.4.6)
+router.get("/:id/sub-reports", (req: Request<{ id: string }>, res: Response) => {
+  const record = findReviewById(req.params.id);
+  if (!record) {
+    res.status(404).json({ error: "Review not found" });
+    return;
+  }
+  const subs = listSubReports(req.params.id);
+  res.json(subs);
 });
 
 // DELETE /:id — Delete review (owner or admin only)

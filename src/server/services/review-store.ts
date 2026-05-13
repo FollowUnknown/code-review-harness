@@ -1,4 +1,4 @@
-import { getDb } from "../db";
+import { getDb, getReadDb } from "../db";
 import type { ReviewRecord, ReviewListItem, ReviewFilter, PaginatedResult, ReviewReport } from "../../shared/types";
 
 export function saveReviewRecord(record: Omit<ReviewRecord, "created_at" | "updated_at"> & { knowledge_dispositions_json?: string }): string {
@@ -20,14 +20,14 @@ export function saveReviewRecord(record: Omit<ReviewRecord, "created_at" | "upda
 }
 
 export function findReviewById(id: string): ReviewRecord | null {
-  const db = getDb();
+  const db = getReadDb();
   const row = db.prepare("SELECT * FROM reviews WHERE id = ?").get(id) as Record<string, unknown> | undefined;
   if (!row) return null;
   return mapRowToRecord(row);
 }
 
 export function listReviews(filter: ReviewFilter): PaginatedResult<ReviewListItem> {
-  const db = getDb();
+  const db = getReadDb();
   const conditions: string[] = [];
   const params: unknown[] = [];
 
@@ -56,7 +56,7 @@ export function listReviews(filter: ReviewFilter): PaginatedResult<ReviewListIte
   };
 }
 
-export function updateReview(id: string, patch: Partial<Pick<ReviewRecord, "status" | "report_json" | "classification_json" | "requirement_json" | "reviewed_commit_sha" | "passed" | "avg_score" | "issue_count" | "critical_count">>): boolean {
+export function updateReview(id: string, patch: Partial<Pick<ReviewRecord, "status" | "report_json" | "classification_json" | "requirement_json" | "mr_meta_json" | "reviewed_commit_sha" | "passed" | "avg_score" | "issue_count" | "critical_count">>): boolean {
   const db = getDb();
   const existing = db.prepare("SELECT id FROM reviews WHERE id = ?").get(id);
   if (!existing) return false;
@@ -68,6 +68,7 @@ export function updateReview(id: string, patch: Partial<Pick<ReviewRecord, "stat
   if (patch.report_json !== undefined) { sets.push("report_json = ?"); values.push(patch.report_json); }
   if (patch.classification_json !== undefined) { sets.push("classification_json = ?"); values.push(patch.classification_json); }
   if (patch.requirement_json !== undefined) { sets.push("requirement_json = ?"); values.push(patch.requirement_json); }
+  if (patch.mr_meta_json !== undefined) { sets.push("mr_meta_json = ?"); values.push(patch.mr_meta_json); }
   if (patch.reviewed_commit_sha !== undefined) { sets.push("reviewed_commit_sha = ?"); values.push(patch.reviewed_commit_sha); }
   if (patch.passed !== undefined) { sets.push("passed = ?"); values.push(patch.passed ? 1 : 0); }
   if (patch.avg_score !== undefined) { sets.push("avg_score = ?"); values.push(patch.avg_score); }
@@ -108,7 +109,7 @@ function mapRowToRecord(row: Record<string, unknown>): ReviewRecord {
     project: row.project as string | null,
     product_line_id: row.product_line_id as string | null,
     author: row.author as string | null,
-    status: row.status as "completed" | "draft",
+    status: row.status as ReviewRecord["status"],
     report_json: row.report_json as string,
     classification_json: row.classification_json as string | null,
     requirement_json: row.requirement_json as string | null,
@@ -132,7 +133,7 @@ function mapRowToListItem(row: Record<string, unknown>): ReviewListItem {
     project: row.project as string | null,
     product_line_id: row.product_line_id as string | null,
     author: row.author as string | null,
-    status: row.status as "completed" | "draft",
+    status: row.status as ReviewListItem["status"],
     passed: row.passed === null ? null : row.passed === 1,
     avg_score: row.avg_score as number | null,
     issue_count: row.issue_count as number | null,

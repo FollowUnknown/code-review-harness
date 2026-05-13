@@ -136,6 +136,15 @@ describe("E2E: AI review quality for Java backend code", () => {
     const result = await callLLM(systemPrompt, userMessage, llmConfig);
     const report = parseReviewResponse(result.text, dimensions);
 
+    // ---- Core assertion: parseReviewResponse must NOT hit the fallback ----
+    // The fallback produces "AI 返回格式异常", which means:
+    //   fixUnescapedQuotes failed to recover LLM's unescaped quotes in JSON.
+    // See fixbug-0011278 for the fix to fixUnescapedQuotes.
+    expect(
+      report.issues.every(i => !i.message.includes("AI 返回格式异常"))
+    ).toBe(true);
+    expect(report.summary).not.toBe("评审结果解析失败");
+
     console.log("\n=== AI Review Result ===");
     console.log("Passed:", report.passed);
     console.log("\nScores:");

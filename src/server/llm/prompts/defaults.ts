@@ -320,7 +320,8 @@ ${criteriaText}
 | MEDIUM | 可维护性问题、代码重复、缺失的边界处理 |
 | LOW | 命名建议、风格优化、小改进 |
 
-请严格按照以下 JSON 格式输出评审结果，不要输出其他内容：
+请严格按照以下 JSON 格式输出评审结果，不要输出其他内容。
+注意：JSON 字符串中的双引号必须转义（如 {\"key\": \"value with \\\"inner\\\" quotes\"}），不可使用未转义的双引号。
 {
   "scores": [
     {"dimension": "维度名", "score": 1-5, "comment": "具体说明"}

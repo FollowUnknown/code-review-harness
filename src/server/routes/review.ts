@@ -7,7 +7,7 @@ import { getKnowledgeForReview, extractLearnings, suggestDispositions, trackKnow
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
 import { buildRequirementPrompt } from "../services/requirement";
 import { buildKnowledgePrompt } from "../services/knowledge";
-import { callLLM, getLLMConfig } from "../llm";
+import { callLLM, getLLMConfig, validateLLMKey } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { getDimensionsForProject } from "../services/dimensions";
 import { inferTechStack } from "../services/techstack";
@@ -38,8 +38,8 @@ router.post("/review", async (req: Request, res: Response) => {
       res.status(404).json({ error: "Checkpoint not found" });
       return;
     }
-    if (cp.status !== "paused") {
-      res.status(400).json({ error: `Checkpoint status is "${cp.status}", expected "paused"` });
+    if (cp.status !== "paused" && cp.status !== "interrupted") {
+      res.status(400).json({ error: `Checkpoint status is "${cp.status}", expected "paused" or "interrupted"` });
       return;
     }
   }
@@ -63,7 +63,27 @@ router.post("/review", async (req: Request, res: Response) => {
   let checkpointId: string | null = null;
   let abortTimeout: ReturnType<typeof setTimeout> | null = null;
   const reviewId = `R-${randomUUID().slice(0, 8)}`;
+
+  // G1: Validate LLM key early
+  const keyError = await validateLLMKey(llmConfig);
+  if (keyError) {
+    sendSSE({ step: 0, status: "error", label: keyError });
+    res.end();
+    return;
+  }
+
+  // G2: Global SSE timeout
+  const timeoutMinutes = parseInt(process.env.REVIEW_TIMEOUT_MINUTES || "30", 10);
+  const globalTimeout = setTimeout(() => {
+    if (aborted) return;
+    aborted = true;
+    sendSSE({ step: 0, status: "error", label: `评审超时（${timeoutMinutes}分钟），请检查 LLM 配置后重试` });
+    if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+    res.end();
+  }, timeoutMinutes * 60_000);
+
   res.on("close", () => {
+    clearTimeout(globalTimeout);
     abortTimeout = setTimeout(() => {
       if (checkpointId) {
         updateCheckpoint(checkpointId, { status: "interrupted" });
@@ -320,6 +340,7 @@ router.post("/review", async (req: Request, res: Response) => {
             },
           });
           if (abortTimeout) clearTimeout(abortTimeout);
+          clearTimeout(globalTimeout);
           res.end();
           return;
         }
@@ -394,9 +415,11 @@ router.post("/review", async (req: Request, res: Response) => {
 
     sendSSE({ step: getStep() + 1, status: "done", label: "COMPLETE", detail: JSON.stringify(response) });
     completeCheckpoint(checkpointId);
+    clearTimeout(globalTimeout);
     if (abortTimeout) clearTimeout(abortTimeout);
     res.end();
   } catch (err) {
+    clearTimeout(globalTimeout);
     if (abortTimeout) clearTimeout(abortTimeout);
     if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
     removeJob(reviewId);

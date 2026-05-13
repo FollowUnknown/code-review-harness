@@ -2133,3 +2133,306 @@
 [AUDIT] Edit on src/client/components/ProgressStepper.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
 [2026-05-12T17:48:58Z] Write docs/contracts/2026-05-13-v1.4.6-requirement-review-records.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
 [2026-05-12T17:49:14Z] Write docs/versions/v1.4.6/README.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[2026-05-12T17:51:40Z] Edit docs/contracts/2026-05-13-v1.4.6-requirement-review-records.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[2026-05-12T17:52:09Z] Edit docs/contracts/2026-05-13-v1.4.6-requirement-review-records.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[2026-05-12T17:52:30Z] Edit src/shared/types.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/shared/types.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T17:55:00Z] Edit src/shared/types.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/shared/types.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T17:55:00Z] Edit src/server/db.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T17:55:33Z] Edit src/server/db.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T17:55:33Z] Write src/server/services/review-sub-report-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Write on src/server/services/review-sub-report-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T17:55:41Z] Edit src/server/services/review-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/review-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T17:56:00Z] Edit src/server/services/review-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/review-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T17:56:00Z] Edit src/server/services/review-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/review-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T17:58:08Z] Edit src/shared/types.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/shared/types.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T17:58:08Z] Edit src/shared/types.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/shared/types.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T17:58:17Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T17:59:23Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:00:06Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:00:15Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:00:33Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:00:45Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:01:08Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:01:20Z] Edit src/server/services/review-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/review-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:01:26Z] Edit src/server/services/review-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/review-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:02:14Z] Edit src/server/services/sse-helper.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/sse-helper.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:02:14Z] Edit src/server/services/sse-helper.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/sse-helper.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:02:14Z] Edit src/server/services/sse-helper.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/sse-helper.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:02:21Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:02:59Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:05:48Z] Edit src/shared/types.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/shared/types.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:06:04Z] Edit src/server/routes/reviews.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/reviews.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:06:11Z] Edit src/server/routes/reviews.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/reviews.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:08:18Z] Write src/client/pages/ReviewListPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Write on src/client/pages/ReviewListPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:08:48Z] Edit src/client/App.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:08:53Z] Edit src/client/App.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:09:33Z] Write src/client/pages/RequirementReviewDetailPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Write on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:09:40Z] Edit src/server/routes/reviews.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/reviews.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:10:36Z] Edit src/server/routes/reviews.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/reviews.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:10:45Z] Edit src/server/routes/reviews.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/reviews.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:12:25Z] Edit src/server/routes/reviews.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/reviews.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:13:21Z] Write src/client/pages/RequirementReviewDetailPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Write on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:13:54Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:14:01Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:14:31Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:15:09Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:21:50Z] Edit src/server/db.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:27:46Z] Edit src/client/pages/ReviewListPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/ReviewListPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:34:32Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:40:36Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:40:36Z] Edit src/client/pages/ReviewListPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/ReviewListPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:42:50Z] Edit src/server/db.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:43:05Z] Edit src/server/db.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:47:09Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:47:26Z] Edit src/server/routes/review.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:47:26Z] Edit src/server/routes/review-local.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:47:44Z] Edit src/server/routes/reviews.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/reviews.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:54:36Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:54:46Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T18:56:28Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:01:34Z] Write docs/contracts/2026-05-13-llm-validation-sse-timeout.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[2026-05-12T19:02:10Z] Edit docs/contracts/2026-05-13-llm-validation-sse-timeout.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[2026-05-12T19:02:18Z] Edit docs/contracts/2026-05-13-llm-validation-sse-timeout.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[2026-05-12T19:02:30Z] Edit src/server/llm/index.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/llm/index.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:02:46Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:03:05Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:03:26Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:03:44Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:04:04Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:04:16Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:04:30Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:04:42Z] Edit src/server/routes/review.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:05:09Z] Edit src/server/routes/review.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:05:27Z] Edit src/server/routes/review.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:05:37Z] Edit src/server/routes/review.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:05:48Z] Edit src/server/routes/review-local.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:06:15Z] Edit src/server/routes/review-local.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:06:30Z] Edit src/server/routes/review-local.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:06:46Z] Edit src/server/routes/review-local.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:06:55Z] Edit src/server/routes/review-local.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:07:11Z] Edit src/server/routes/review-local.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:12:47Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:15:11Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:17:32Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:19:29Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:19:46Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:21:52Z] Write src/client/components/Toast.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Write on src/client/components/Toast.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:23:20Z] Edit src/client/App.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:23:26Z] Edit src/client/App.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:23:32Z] Edit src/client/App.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:23:57Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:24:08Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:24:18Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:24:23Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:24:47Z] Edit src/client/pages/LocalReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/LocalReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:24:53Z] Edit src/client/pages/LocalReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/LocalReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:24:57Z] Edit src/client/pages/LocalReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/LocalReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:25:20Z] Edit src/client/pages/LocalReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/LocalReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:25:32Z] Edit src/client/pages/LocalReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/LocalReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:25:54Z] Edit src/client/components/ProgressStepper.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/components/ProgressStepper.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:25:59Z] Edit src/client/components/ProgressStepper.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/components/ProgressStepper.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:26:08Z] Edit src/client/components/ProgressStepper.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/components/ProgressStepper.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:26:12Z] Edit src/client/components/ProgressStepper.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/components/ProgressStepper.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:26:19Z] Edit src/client/components/ProgressStepper.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/components/ProgressStepper.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:26:39Z] Edit src/client/pages/LocalReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/LocalReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:31:08Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-12T19:31:21Z] Edit src/client/pages/RequirementReviewPage.tsx session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T00:17:23Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T00:17:38Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T00:17:56Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T00:18:05Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:15:22Z] Edit src/server/services/auth.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/auth.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:15:38Z] Edit src/server/db.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:15:47Z] Edit src/server/db.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:15:59Z] Edit src/server/db.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:16:15Z] Edit src/server/services/settings.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/settings.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:16:21Z] Edit src/server/services/auth.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/auth.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:16:29Z] Edit src/server/services/auth.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/auth.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:16:39Z] Edit src/server/services/auth.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/auth.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:16:47Z] Edit src/server/services/auth.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/auth.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:19:11Z] Edit src/server/services/review-job-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/review-job-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:19:25Z] Edit src/server/services/review-job-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/review-job-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:19:47Z] Edit src/server/services/review-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/review-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:20:02Z] Edit src/server/services/review-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/review-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:20:43Z] Edit src/server/services/review-checkpoint-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/review-checkpoint-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:21:01Z] Edit src/server/services/review-checkpoint-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/review-checkpoint-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:21:33Z] Edit src/server/services/review-sub-report-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/review-sub-report-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:21:47Z] Edit src/server/services/review-sub-report-store.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/services/review-sub-report-store.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:37:46Z] Edit sessions/2026-05-13.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[2026-05-13T03:38:20Z] Edit docs/architecture/implicit-contracts.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[2026-05-13T03:38:31Z] Write /Users/tzknow/.claude/projects/-Users-tzknow-Documents-do1-project-codeReview/memory/feedback_contract-no-bypass.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Write on /Users/tzknow/.claude/projects/-Users-tzknow-Documents-do1-project-codeReview/memory/feedback_contract-no-bypass.md - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:39:11Z] Edit /Users/tzknow/.claude/projects/-Users-tzknow-Documents-do1-project-codeReview/memory/MEMORY.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on /Users/tzknow/.claude/projects/-Users-tzknow-Documents-do1-project-codeReview/memory/MEMORY.md - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:39:35Z] Edit CLAUDE.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[2026-05-13T03:40:38Z] Write docs/contracts/2026-05-13-toast-db-resume-fix.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[2026-05-13T03:47:56Z] Edit src/server/routes/review-checkpoint-routes.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-checkpoint-routes.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T03:48:17Z] Edit src/server/routes/review-checkpoint-routes.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-checkpoint-routes.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T04:05:29Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T04:06:01Z] Edit src/server/routes/review-local.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T04:07:55Z] Edit src/server/routes/review-requirement.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T04:08:08Z] Edit src/server/routes/review-local.ts session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T04:08:51Z] Edit CLAUDE.md session=38712cc3-59ce-4dc1-91f3-97ca876e8352
+[2026-05-13T05:00:31Z] Write /Users/tzknow/.claude/plans/agile-baking-reef.md session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[AUDIT] Write on /Users/tzknow/.claude/plans/agile-baking-reef.md - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T05:43:19Z] Edit src/server/db.ts session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T05:43:25Z] Edit src/server/db.ts session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T05:47:22Z] Edit src/server/db.ts session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T05:47:34Z] Edit src/server/db.ts session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T06:00:48Z] Write docs/contracts/2026-05-13-sub-report-detail.md session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[2026-05-13T06:01:05Z] Write docs/contracts/2026-05-13-fix-sub-report-fk.md session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[2026-05-13T06:01:14Z] Edit docs/contracts/2026-05-13-fix-sub-report-fk.md session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[2026-05-13T06:03:49Z] Edit docs/contracts/2026-05-13-fix-sub-report-fk.md session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[2026-05-13T06:12:34Z] Edit src/server/services/reviewer.ts session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[AUDIT] Edit on src/server/services/reviewer.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T06:13:21Z] Edit src/server/llm/prompts/defaults.ts session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[AUDIT] Edit on src/server/llm/prompts/defaults.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T06:15:03Z] Edit tests/reviewer.test.ts session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[2026-05-13T06:20:10Z] Edit tests/e2e-review-quality.test.ts session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[2026-05-13T06:21:34Z] Edit scripts/pre-commit-review-check.sh session=91642d29-19b5-405a-84b0-06c9151b3a4b
+[2026-05-13T06:36:31Z] Edit tests/server/services/review-checkpoint-store.test.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[2026-05-13T06:36:46Z] Edit tests/server/services/review-checkpoint-store.test.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[2026-05-13T06:36:55Z] Edit tests/server/services/review-checkpoint-store.test.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[2026-05-13T06:37:02Z] Edit tests/server/services/review-checkpoint-store.test.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[2026-05-13T06:37:06Z] Edit tests/server/routes/review-checkpoint-routes.test.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[2026-05-13T06:37:17Z] Edit tests/server/routes/review-checkpoint-routes.test.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[2026-05-13T06:37:27Z] Edit tests/server/routes/review-checkpoint-routes.test.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[2026-05-13T06:37:33Z] Edit tests/server/routes/review-checkpoint-routes.test.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[2026-05-13T06:38:11Z] Edit src/server/db.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T06:39:23Z] Edit tests/server/services/review-checkpoint-store.test.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[2026-05-13T06:39:42Z] Edit tests/server/routes/review-checkpoint-routes.test.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[2026-05-13T06:40:53Z] Edit tests/server/services/review-checkpoint-store.test.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[2026-05-13T06:43:23Z] Edit tests/server/services/review-checkpoint-store.test.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[2026-05-13T06:47:38Z] Edit tests/server/services/review-checkpoint-store.test.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[2026-05-13T06:48:09Z] Edit src/server/db.ts session=b781bd9e-fefa-4a0b-9b34-6381bd18c754
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T06:52:36Z] Edit docs/contracts/2026-05-13-sub-report-detail.md session=1c4f2ea5-9b48-4c1d-bb59-194a5682321f

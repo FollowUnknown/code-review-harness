@@ -5,11 +5,13 @@ import { FileSelectorDialog } from "../components/FileSelectorDialog";
 import { ReviewProgress } from "../components/ReviewProgress";
 import type { BatchResultItem } from "../components/ReviewProgress";
 import type { DiffPreviewResponse } from "../../shared/types";
+import { useToast } from "../components/Toast";
 
 const API_BASE = "";
 
 export function LocalReviewPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [project, setProject] = useState("");
   const [sourceBranch, setSourceBranch] = useState("");
   const [targetBranch, setTargetBranch] = useState("");
@@ -366,6 +368,7 @@ export function LocalReviewPage() {
       await startReview([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
+      toast(err instanceof Error ? err.message : "Unknown error", "error");
       setLoading(false);
     }
   };
@@ -407,6 +410,7 @@ export function LocalReviewPage() {
           return;
         }
         setError(data.error || "Unknown error");
+        toast(data.error || "Unknown error", "error");
         setLoading(false);
         return;
       }
@@ -495,6 +499,7 @@ export function LocalReviewPage() {
         return;
       }
       setError(err instanceof Error ? err.message : "Unknown error");
+      toast(err instanceof Error ? err.message : "Unknown error", "error");
     } finally {
       setLoading(false);
     }

@@ -13,12 +13,13 @@ import {
   suggestDispositions,
 } from "../services/knowledge";
 import { parseReviewResponse, mergeReports } from "../services/reviewer";
-import { callLLM, getLLMConfig } from "../llm";
+import { callLLM, getLLMConfig, validateLLMKey } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { getDimensionsForProject } from "../services/dimensions";
 import { inferTechStack } from "../services/techstack";
 import { fetchCompareDiffsForBranches } from "../services/gitlab";
-import { saveReviewRecord, computeReviewStats } from "../services/review-store";
+import { saveReviewRecord, updateReview, computeReviewStats } from "../services/review-store";
+import { createSubReport, updateSubReport, listSubReports } from "../services/review-sub-report-store";
 import { saveLLMLog } from "../services/llm-logger";
 import {
   buildMultiProjectScanContext,
@@ -231,8 +232,8 @@ router.post("/requirement", async (req: Request, res: Response) => {
       res.status(404).json({ error: "Checkpoint not found" });
       return;
     }
-    if (cp.status !== "paused") {
-      res.status(400).json({ error: `Checkpoint status is "${cp.status}", expected "paused"` });
+    if (cp.status !== "paused" && cp.status !== "interrupted") {
+      res.status(400).json({ error: `Checkpoint status is "${cp.status}", expected "paused" or "interrupted"` });
       return;
     }
   }
@@ -243,9 +244,25 @@ router.post("/requirement", async (req: Request, res: Response) => {
     return;
   }
 
-  // Prevent duplicate reviews
+  // G1: Validate LLM key before any expensive work (also covers resume path)
+  const keyError = await validateLLMKey(llmConfig);
+  if (keyError) {
+    res.status(400).json({ error: keyError });
+    return;
+  }
+
+  // G3: Clean stale running jobs before checking duplicates
   const userId = (req as Request & { user?: { id: string } }).user?.id || null;
   if (userId) {
+    const activeJob = findActiveJobByUser(userId);
+    if (activeJob && activeJob.status === "running") {
+      // Stale running job from a previous crash — clean it up
+      updateJob(activeJob.id, { status: "failed", errorMessage: "上一次评审异常中断，已自动清理" });
+    }
+  }
+
+  // Prevent duplicate reviews (skip for resume — resume always creates a fresh job)
+  if (userId && !resumeCheckpointId) {
     const activeJob = findActiveJobByUser(userId);
     if (activeJob && activeJob.status === "running") {
       res.status(409).json({ error: "已有评审正在进行中，请等待完成后再发起", jobId: activeJob.id });
@@ -292,7 +309,22 @@ router.post("/requirement", async (req: Request, res: Response) => {
   let aborted = false;
   let checkpointId: string | null = null;
   let abortTimeout: ReturnType<typeof setTimeout> | null = null;
+  let reviewIdForCleanup: string | null = null;
+
+  // G2: Global SSE timeout — prevent hanging forever on LLM/network issues
+  const timeoutMinutes = parseInt(process.env.REVIEW_TIMEOUT_MINUTES || "30", 10);
+  const globalTimeout = setTimeout(() => {
+    if (aborted) return;
+    aborted = true;
+    sendSSE({ step: 0, status: "error", label: `评审超时（${timeoutMinutes}分钟），请检查 LLM 配置后重试` });
+    updateJob(job.id, { status: "failed", errorMessage: `评审超时（${timeoutMinutes}分钟）` });
+    if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+    if (reviewIdForCleanup) updateReview(reviewIdForCleanup, { status: "interrupted" });
+    res.end();
+  }, timeoutMinutes * 60_000);
+
   res.on("close", () => {
+    clearTimeout(globalTimeout);
     // Wait 60s — if resumed within window, checkpoint stays paused
     abortTimeout = setTimeout(() => {
       const currentJob = findJobById(job.id);
@@ -300,6 +332,7 @@ router.post("/requirement", async (req: Request, res: Response) => {
         aborted = true;
         updateJob(job.id, { status: "aborted", errorMessage: "Client disconnected" });
         if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+        if (reviewIdForCleanup) updateReview(reviewIdForCleanup, { status: "interrupted" });
       }
     }, 60_000);
   });
@@ -372,17 +405,10 @@ router.post("/requirement", async (req: Request, res: Response) => {
     completeStep(`foundation: ${sharedCache.foundation.length}, product: ${sharedCache.product.length}, integration: ${sharedCache.integration.length}`);
 
     // Step 4: Review per tech-stack group, per project
-    const reviewId = `R-${randomUUID().slice(0, 8)}`;
-    const techStackReports: TechStackGroupReport[] = [];
-    const allProjectReports: Array<{
-      project: string;
-      report: ReviewReport;
-      techStack: TechStack;
-    }> = [];
-
     // v1.4.4: resume context from checkpoint
     let resumeTechStack: string | null = null;
     let resumeProjectIndex = -1;
+    let reviewId: string;
 
     if (resumeCheckpointId) {
       const cp = findCheckpointById(resumeCheckpointId)!;
@@ -392,13 +418,21 @@ router.post("/requirement", async (req: Request, res: Response) => {
         const stats = JSON.parse(cp.accumulatedStats || "{}");
         resumeTechStack = stats.techStack || null;
         resumeProjectIndex = typeof stats.projectIndex === "number" ? stats.projectIndex : -1;
-      } catch { /* ignore */ }
+        reviewId = stats.reviewId || `R-${randomUUID().slice(0, 8)}`;
+      } catch {
+        reviewId = `R-${randomUUID().slice(0, 8)}`;
+      }
+      reviewIdForCleanup = reviewId;
       sendEvent("resumed", {
         checkpointId: cp.id,
         remainingBatches: (cp.totalBatches || 0) - cp.currentBatch,
       });
+      // v1.4.6: resume → update existing record to "reviewing"
+      updateReview(reviewId, { status: "reviewing" });
     } else {
-      // v1.4.4: create checkpoint for pause/resume
+      reviewId = `R-${randomUUID().slice(0, 8)}`;
+      reviewIdForCleanup = reviewId;
+
       checkpointId = createCheckpoint({
         reviewType: "requirement",
         projectId: productLine,
@@ -411,6 +445,67 @@ router.post("/requirement", async (req: Request, res: Response) => {
         jobId: job.id,
         createdBy: userId ?? undefined,
       }).id;
+
+      // v1.4.6: create reviews record immediately (status: reviewing)
+      saveReviewRecord({
+        id: reviewId,
+        mr_url: `requirement://${productLine}/${sourceBranch}..${targetBranch}`,
+        project: productLine,
+        product_line_id: productLine,
+        author: null,
+        status: "reviewing",
+        report_json: JSON.stringify({
+          reviewId, productLine, sourceBranch, targetBranch,
+          requirement, requirementId,
+          totalProjects: multiCtx.projectCount,
+          totalFiles: multiCtx.totalFiles,
+          totalIssues: 0, criticalCount: 0,
+          overallPassed: false, overallScore: 0,
+          techStackReports: [],
+        }),
+        classification_json: null,
+        requirement_json: requirement ? JSON.stringify({ requirement, requirementId }) : null,
+        mr_meta_json: JSON.stringify({
+          type: "requirement", productLine,
+          techStackGroups: {},
+          sourceBranch, targetBranch,
+        }),
+        reviewed_commit_sha: null,
+        passed: null,
+        avg_score: null,
+        issue_count: null,
+        critical_count: 0,
+        created_by: userId,
+        knowledge_dispositions_json: JSON.stringify([]),
+      });
+    }
+
+    // v1.4.6: emit review_created so frontend can navigate immediately
+    sendEvent("review_created", {
+      reviewId,
+      reviewType: "requirement",
+    });
+
+    const techStackReports: TechStackGroupReport[] = [];
+    const allProjectReports: Array<{
+      project: string;
+      report: ReviewReport;
+      techStack: TechStack;
+    }> = [];
+
+    // v1.4.4: on resume, load completed sub-reports so skipped groups/projects contribute to final report
+    let completedSubReports: Map<string, { report: ReviewReport; classification: any }> | null = null;
+    if (resumeCheckpointId) {
+      completedSubReports = new Map();
+      const subs = listSubReports(reviewId);
+      for (const sub of subs) {
+        if (sub.status === "completed" && sub.report_json) {
+          completedSubReports.set(sub.project, {
+            report: JSON.parse(sub.report_json),
+            classification: sub.classification_json ? JSON.parse(sub.classification_json) : null,
+          });
+        }
+      }
     }
 
     // v1.4.4: emit review_start early so client sees progress ASAP
@@ -419,14 +514,59 @@ router.post("/requirement", async (req: Request, res: Response) => {
       totalBatches: multiCtx.projectCount,
       totalFiles: multiCtx.totalFiles,
       jobId: job.id,
+      reviewId,
     });
 
     for (const [techStack, groupResults] of techGroups) {
       if (aborted) break;
 
-      // v1.4.4: skip completed techStack groups on resume
+      // v1.4.4: skip completed techStack groups on resume — but load their results
       if (resumeTechStack && techStack !== resumeTechStack) {
-        // Collect results from previous groups (already saved to checkpoint)
+        if (completedSubReports) {
+          const projectReports: TechStackGroupReport["projectReports"] = [];
+          for (const scanItem of groupResults) {
+            const saved = completedSubReports.get(scanItem.project);
+            if (saved) {
+              projectReports.push({
+                project: scanItem.project,
+                report: saved.report,
+                classification: saved.classification,
+              });
+              allProjectReports.push({ project: scanItem.project, report: saved.report, techStack });
+            }
+          }
+          if (projectReports.length > 0) {
+            const totalFiles = groupResults.reduce((sum, r) => sum + r.diffCount, 0);
+            const allIssues = projectReports.flatMap((pr) => pr.report.issues);
+            const criticalCount = allIssues.filter((i) => i.severity === "CRITICAL").length;
+            let totalWeight = 0;
+            let weightedScoreSum = 0;
+            for (const pr of projectReports) {
+              const fileCount = groupResults.find((r) => r.project === pr.project)?.diffCount ?? 1;
+              const avgScore = pr.report.scores.length > 0
+                ? pr.report.scores.reduce((s, sc) => s + sc.score, 0) / pr.report.scores.length
+                : 3;
+              totalWeight += fileCount;
+              weightedScoreSum += avgScore * fileCount;
+            }
+            const groupScore = totalWeight > 0
+              ? Math.round(weightedScoreSum / totalWeight * 10) / 10
+              : 3;
+            techStackReports.push({
+              techStack,
+              dimensionSetName: techStack === "java-backend" ? "Java 后端维度集"
+                : techStack === "vue-frontend" ? "Vue 前端维度集"
+                : "通用维度集",
+              projectCount: groupResults.length,
+              totalFiles,
+              totalIssues: allIssues.length,
+              criticalCount,
+              groupScore,
+              groupPassed: projectReports.every((pr) => pr.report.passed),
+              projectReports,
+            });
+          }
+        }
         continue;
       }
 
@@ -440,8 +580,17 @@ router.post("/requirement", async (req: Request, res: Response) => {
       for (let pi = 0; pi < groupResults.length; pi++) {
         if (aborted) break;
 
-        // v1.4.4: skip completed projects within a techStack group on resume
+        // v1.4.4: skip completed projects within a techStack group on resume — load their results
         if (resumeTechStack && techStack === resumeTechStack && pi < resumeProjectIndex) {
+          const saved = completedSubReports?.get(groupResults[pi].project);
+          if (saved) {
+            projectReports.push({
+              project: groupResults[pi].project,
+              report: saved.report,
+              classification: saved.classification,
+            });
+            allProjectReports.push({ project: groupResults[pi].project, report: saved.report, techStack });
+          }
           continue;
         }
 
@@ -453,6 +602,10 @@ router.post("/requirement", async (req: Request, res: Response) => {
           `Reviewing [${techStack}] ${scanItem.project}`,
           `(${pi + 1}/${groupResults.length})`
         );
+
+        // v1.4.6: create sub_report for this project
+        const subReportId = createSubReport(reviewId, scanItem.project, scanItem.techStack);
+        updateSubReport(subReportId, { status: "reviewing" });
 
         try {
           const projDiffs = excludedFiles?.length
@@ -574,6 +727,7 @@ router.post("/requirement", async (req: Request, res: Response) => {
                   }))
                 ),
                 accumulatedStats: JSON.stringify({
+                  reviewId,
                   techStack,
                   projectIndex: pi,
                   project: scanItem.project,
@@ -598,12 +752,15 @@ router.post("/requirement", async (req: Request, res: Response) => {
                   }))
                 ),
                 accumulatedStats: JSON.stringify({
+                  reviewId,
                   techStack,
                   projectIndex: pi,
                   project: scanItem.project,
                 }),
               });
               updateJob(job.id, { status: "paused", stepsJson: JSON.stringify(accumulatedSteps) });
+              // v1.4.6: update main record status to paused
+              updateReview(reviewId, { status: "paused" });
               sendEvent("paused", {
                 checkpointId,
                 progress: {
@@ -639,6 +796,17 @@ router.post("/requirement", async (req: Request, res: Response) => {
           }
 
           completeStep(`${projDiffs.length} files reviewed, ${report.issues.length} issues`);
+
+          // v1.4.6: update sub_report with completed result
+          const projStats = computeReviewStats(report);
+          updateSubReport(subReportId, {
+            status: "completed",
+            report_json: JSON.stringify(report),
+            classification_json: JSON.stringify(classification),
+            score: projStats.avgScore,
+            issue_count: projStats.issueCount,
+            critical_count: projStats.criticalCount,
+          });
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           projectReports.push({
@@ -659,6 +827,12 @@ router.post("/requirement", async (req: Request, res: Response) => {
             error: msg,
           });
           completeStep(`Error: ${msg.slice(0, 100)}`);
+
+          // v1.4.6: update sub_report with failed status
+          updateSubReport(subReportId, {
+            status: "failed",
+            error_message: msg.slice(0, 500),
+          });
         }
       }
 
@@ -743,7 +917,7 @@ router.post("/requirement", async (req: Request, res: Response) => {
       crossStackIssues,
     };
 
-    // Save review record
+    // v1.4.6: update existing record to completed (already created at start)
     const stats = computeReviewStats({
       contractTitle: "Code Review",
       timestamp: new Date().toISOString(),
@@ -753,16 +927,9 @@ router.post("/requirement", async (req: Request, res: Response) => {
       summary: "",
     });
 
-    saveReviewRecord({
-      id: reviewId,
-      mr_url: `requirement://${productLine}/${sourceBranch}..${targetBranch}`,
-      project: productLine,
-      product_line_id: productLine,
-      author: null,
+    updateReview(reviewId, {
       status: "completed",
       report_json: JSON.stringify(finalReport),
-      classification_json: null,
-      requirement_json: requirement ? JSON.stringify({ requirement, requirementId }) : null,
       mr_meta_json: JSON.stringify({
         type: "requirement",
         productLine,
@@ -775,13 +942,10 @@ router.post("/requirement", async (req: Request, res: Response) => {
         sourceBranch,
         targetBranch,
       }),
-      reviewed_commit_sha: null,
       passed: finalReport.overallPassed,
       avg_score: overallScore,
       issue_count: allIssues.length,
       critical_count: totalCritical,
-      created_by: userId,
-      knowledge_dispositions_json: JSON.stringify(suggestDispositions(allIssues)),
     });
 
     completeStep();
@@ -790,14 +954,17 @@ router.post("/requirement", async (req: Request, res: Response) => {
 
     sendSSE({ step: getStep() + 1, status: "done", label: "COMPLETE", detail: JSON.stringify({ reviewId, report: finalReport }) });
     completeCheckpoint(checkpointId);
+    clearTimeout(globalTimeout);
     if (abortTimeout) clearTimeout(abortTimeout);
     res.end();
   } catch (error) {
+    clearTimeout(globalTimeout);
     if (abortTimeout) clearTimeout(abortTimeout);
     const message = error instanceof Error ? error.message : "Unknown error";
     const shortMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
     updateJob(job.id, { status: "failed", errorMessage: shortMessage, stepsJson: JSON.stringify(accumulatedSteps) });
     if (checkpointId) updateCheckpoint(checkpointId, { status: "interrupted" });
+    if (reviewIdForCleanup) updateReview(reviewIdForCleanup, { status: "interrupted" });
     removeJob(job.id);
     sendSSE({ step: getStep(), status: "error", label: shortMessage });
     res.end();

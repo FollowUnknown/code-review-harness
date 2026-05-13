@@ -1,4 +1,4 @@
-import { getDb } from "../db";
+import { getDb, getReadDb } from "../db";
 import type { ReviewJob, ReviewJobStatus } from "../../shared/types";
 
 export interface CreateJobParams {
@@ -52,13 +52,13 @@ export function createJob(params: CreateJobParams): ReviewJob {
 }
 
 export function findJobById(id: string): ReviewJob | null {
-  const db = getDb();
+  const db = getReadDb();
   const row = db.prepare("SELECT * FROM review_jobs WHERE id = ?").get(id) as Record<string, unknown> | undefined;
   return row ? mapRowToJob(row) : null;
 }
 
 export function findActiveJobByUser(userId: string): ReviewJob | null {
-  const db = getDb();
+  const db = getReadDb();
   // Prefer running job, fall back to most recent completed/failed job
   const row = db.prepare(
     "SELECT * FROM review_jobs WHERE created_by = ? AND status = 'running' ORDER BY created_at DESC LIMIT 1"

@@ -6,6 +6,8 @@ import {
   deleteCheckpoint,
   abandonCheckpoint,
 } from "../services/review-checkpoint-store";
+import { updateJob } from "../services/review-job-store";
+import { updateReview } from "../services/review-store";
 import type { PauseRequest, ResumeRequest, CheckpointFilter } from "../../shared/types";
 
 const router = Router();
@@ -75,6 +77,17 @@ router.delete("/checkpoints/:id", (req: Request, res: Response) => {
 
   if (abandon) {
     abandonCheckpoint(id);
+    // Sync: mark the associated job as failed so it doesn't trigger paused UI on reload
+    if (checkpoint.jobId) {
+      updateJob(checkpoint.jobId, { status: "failed", errorMessage: "评审已放弃" });
+    }
+    // Sync: mark the associated review as interrupted so it doesn't show as active
+    if (checkpoint.accumulatedStats) {
+      try {
+        const stats = JSON.parse(checkpoint.accumulatedStats as string || "{}");
+        if (stats.reviewId) updateReview(stats.reviewId, { status: "interrupted" });
+      } catch { /* ignore */ }
+    }
     res.json({ success: true, action: "abandoned", id });
   } else {
     deleteCheckpoint(id);

@@ -5,6 +5,7 @@ import { REVIEW_DIMENSIONS } from "../shared/constants";
 import { JAVA_BACKEND_DIMENSIONS } from "./llm/prompts/defaults";
 
 let db: Database.Database | null = null;
+let readDb: Database.Database | null = null;
 
 function getDbPath(): string {
   if (process.env.KNOWLEDGE_DB_PATH) return process.env.KNOWLEDGE_DB_PATH;
@@ -17,9 +18,23 @@ export function getDb(): Database.Database {
   if (!db) {
     db = new Database(getDbPath());
     db.pragma("journal_mode = WAL");
+    db.pragma("busy_timeout = 5000");
     initialize(db);
   }
   return db;
+}
+
+// Read-only connection for GET requests and auth — avoids blocking on the writer connection.
+// Falls back to the writable connection for in-memory databases (":memory:"), which
+// do not support the readonly flag.
+export function getReadDb(): Database.Database {
+  if (getDbPath() === ":memory:") return getDb();
+  if (!readDb) {
+    readDb = new Database(getDbPath(), { readonly: true });
+    readDb.pragma("journal_mode = WAL");
+    readDb.pragma("busy_timeout = 5000");
+  }
+  return readDb;
 }
 
 function initialize(db: Database.Database): void {
@@ -299,6 +314,43 @@ function initialize(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_rc_project_status ON review_checkpoints(project_id, status);
   `);
 
+  // Migrate review_checkpoints CHECK to include 'interrupted' status
+  migrateCheckpointsStatusConstraint(db);
+
+  // Migrate reviews table status CHECK to include new statuses (v1.4.6)
+  // IMPORTANT: must run BEFORE creating review_sub_reports — if reviews is renamed
+  // (ALTER TABLE ... RENAME TO reviews_old), SQLite auto-updates FK references in
+  // existing child tables to point to the new name. Creating review_sub_reports
+  // after all reviews-table migrations avoids this issue.
+  migrateReviewsStatusConstraint(db);
+
+  // Review sub reports (v1.4.6) — per-project records under requirement review
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS review_sub_reports (
+      id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+      review_id           TEXT NOT NULL,
+      project             TEXT NOT NULL,
+      tech_stack          TEXT NOT NULL DEFAULT 'unknown'
+        CHECK(tech_stack IN ('java-backend', 'vue-frontend', 'mixed', 'unknown')),
+      status              TEXT NOT NULL DEFAULT 'pending'
+        CHECK(status IN ('pending', 'reviewing', 'completed', 'failed')),
+      report_json         TEXT,
+      classification_json TEXT,
+      score               REAL,
+      issue_count         INTEGER,
+      critical_count      INTEGER NOT NULL DEFAULT 0,
+      error_message       TEXT,
+      created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at          TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (review_id) REFERENCES reviews(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_rsr_review_id ON review_sub_reports(review_id);
+    CREATE INDEX IF NOT EXISTS idx_rsr_status ON review_sub_reports(status);
+  `);
+
+  // Fix review_sub_reports FK if it incorrectly references reviews_old (v1.4.6 hotfix)
+  migrateReviewSubReportsFK(db);
+
   // Migrate repo_mappings table with product_line_id, tech_stack (v1.4.0)
   migrateRepoMappingsTable(db);
 
@@ -539,6 +591,119 @@ function migrateRepoMappingsTable(db: Database.Database): void {
   }
 }
 
+function migrateReviewsStatusConstraint(db: Database.Database): void {
+  // SQLite cannot ALTER CHECK constraints — rebuild table if constraint is outdated
+  const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='reviews'").get() as { sql: string } | undefined;
+  if (!tableInfo?.sql) return;
+
+  // Only migrate if the old CHECK only had 'completed' and 'draft'
+  if (tableInfo.sql.includes("'reviewing'")) return; // already has new statuses
+
+  const migrate = db.transaction(() => {
+    db.exec("ALTER TABLE reviews RENAME TO reviews_old");
+
+    db.exec(`
+      CREATE TABLE reviews (
+        id TEXT PRIMARY KEY,
+        mr_url TEXT NOT NULL,
+        project TEXT,
+        product_line_id TEXT,
+        author TEXT,
+        status TEXT NOT NULL DEFAULT 'completed'
+          CHECK(status IN ('completed', 'draft', 'reviewing', 'paused', 'interrupted')),
+        report_json TEXT NOT NULL,
+        classification_json TEXT,
+        requirement_json TEXT,
+        mr_meta_json TEXT,
+        reviewed_commit_sha TEXT,
+        passed INTEGER,
+        avg_score REAL,
+        issue_count INTEGER,
+        critical_count INTEGER DEFAULT 0,
+        created_by TEXT,
+        knowledge_dispositions_json TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    db.exec(`
+      INSERT INTO reviews (id, mr_url, project, product_line_id, author, status,
+        report_json, classification_json, requirement_json, mr_meta_json,
+        reviewed_commit_sha, passed, avg_score, issue_count, critical_count,
+        created_by, knowledge_dispositions_json, created_at, updated_at)
+      SELECT id, mr_url, project, product_line_id, author, status,
+        report_json, classification_json, requirement_json, mr_meta_json,
+        reviewed_commit_sha, passed, avg_score, issue_count, critical_count,
+        created_by, knowledge_dispositions_json, created_at, updated_at
+      FROM reviews_old
+    `);
+
+    db.exec("DROP TABLE reviews_old");
+
+    db.exec("CREATE INDEX IF NOT EXISTS idx_reviews_project ON reviews(project)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_reviews_created_by ON reviews(created_by)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_reviews_product_line ON reviews(product_line_id)");
+  });
+
+  migrate();
+}
+
+function migrateCheckpointsStatusConstraint(db: Database.Database): void {
+  const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='review_checkpoints'").get() as { sql: string } | undefined;
+  if (!tableInfo?.sql) return;
+
+  // Only migrate if the old CHECK doesn't have 'interrupted'
+  if (tableInfo.sql.includes("'interrupted'")) return;
+
+  const migrate = db.transaction(() => {
+    db.exec("ALTER TABLE review_checkpoints RENAME TO review_checkpoints_old");
+
+    db.exec(`
+      CREATE TABLE review_checkpoints (
+        id                  TEXT PRIMARY KEY,
+        review_type         TEXT NOT NULL CHECK(review_type IN ('mr', 'local', 'requirement')),
+        project_id          TEXT NOT NULL,
+        source_branch       TEXT,
+        target_branch       TEXT,
+        status              TEXT NOT NULL DEFAULT 'running'
+          CHECK(status IN ('running', 'paused', 'completed', 'abandoned', 'interrupted')),
+        current_batch       INTEGER DEFAULT 0,
+        total_batches       INTEGER DEFAULT 0,
+        total_files         INTEGER DEFAULT 0,
+        reviewed_count      INTEGER DEFAULT 0,
+        batch_results       TEXT DEFAULT '[]',
+        accumulated_scores  TEXT DEFAULT '[]',
+        accumulated_stats   TEXT DEFAULT '{}',
+        job_id              TEXT,
+        created_by          TEXT,
+        created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+
+    db.exec(`
+      INSERT INTO review_checkpoints (id, review_type, project_id, source_branch, target_branch,
+        status, current_batch, total_batches, total_files, reviewed_count,
+        batch_results, accumulated_scores, accumulated_stats, job_id, created_by, created_at, updated_at)
+      SELECT id, review_type, project_id, source_branch, target_branch,
+        status, current_batch, total_batches, total_files, reviewed_count,
+        batch_results, accumulated_scores, accumulated_stats, job_id, created_by, created_at, updated_at
+      FROM review_checkpoints_old
+    `);
+
+    db.exec("DROP TABLE review_checkpoints_old");
+
+    db.exec("CREATE INDEX IF NOT EXISTS idx_rc_review_type ON review_checkpoints(review_type)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_rc_project ON review_checkpoints(project_id)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_rc_status ON review_checkpoints(status)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_rc_project_status ON review_checkpoints(project_id, status)");
+  });
+
+  migrate();
+}
+
 function migrateReviewJobsTable(db: Database.Database): void {
   const columns = db.prepare("PRAGMA table_info(review_jobs)").all() as Array<{ name: string }>;
   const colNames = new Set(columns.map((c) => c.name));
@@ -551,9 +716,82 @@ function migrateReviewJobsTable(db: Database.Database): void {
   }
 }
 
+/**
+ * Fix review_sub_reports FK if it incorrectly references "reviews_old" instead of "reviews".
+ * This can happen when the table was first created while a migration had renamed reviews → reviews_old,
+ * and CREATE TABLE IF NOT EXISTS preserved the stale FK reference.
+ *
+ * See: sessions/2026-05-13.md — "no such table: main.reviews_old" error
+ */
+function migrateReviewSubReportsFK(db: Database.Database): void {
+  const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='review_sub_reports'").get() as { sql: string } | undefined;
+  if (!tableInfo?.sql) return;
+
+  // Only migrate if FK references the wrong table
+  if (!tableInfo.sql.includes("reviews_old")) return;
+
+  // Temporarily disable FK checking — PRAGMA foreign_keys must be set outside a transaction,
+  // and existing data in review_sub_reports may reference review_ids that no longer exist in reviews.
+  const wasFkOn = db.pragma("foreign_keys", { simple: true }) === 1;
+  db.pragma("foreign_keys = OFF");
+
+  try {
+    const migrate = db.transaction(() => {
+      db.exec("ALTER TABLE review_sub_reports RENAME TO review_sub_reports_old");
+
+      db.exec(`
+        CREATE TABLE review_sub_reports (
+          id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+          review_id           TEXT NOT NULL,
+          project             TEXT NOT NULL,
+          tech_stack          TEXT NOT NULL DEFAULT 'unknown'
+            CHECK(tech_stack IN ('java-backend', 'vue-frontend', 'mixed', 'unknown')),
+          status              TEXT NOT NULL DEFAULT 'pending'
+            CHECK(status IN ('pending', 'reviewing', 'completed', 'failed')),
+          report_json         TEXT,
+          classification_json TEXT,
+          score               REAL,
+          issue_count         INTEGER,
+          critical_count      INTEGER NOT NULL DEFAULT 0,
+          error_message       TEXT,
+          created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at          TEXT NOT NULL DEFAULT (datetime('now')),
+          FOREIGN KEY (review_id) REFERENCES reviews(id) ON DELETE CASCADE
+        );
+      `);
+
+      db.exec(`
+        INSERT INTO review_sub_reports (id, review_id, project, tech_stack, status,
+          report_json, classification_json, score, issue_count, critical_count,
+          error_message, created_at, updated_at)
+        SELECT id, review_id, project, tech_stack, status,
+          report_json, classification_json, score, issue_count, critical_count,
+          error_message, created_at, updated_at
+        FROM review_sub_reports_old
+      `);
+
+      db.exec("DROP TABLE review_sub_reports_old");
+
+      db.exec("CREATE INDEX IF NOT EXISTS idx_rsr_review_id ON review_sub_reports(review_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_rsr_status ON review_sub_reports(status)");
+    });
+
+    migrate();
+  } finally {
+    // Restore FK enforcement to its original state
+    if (wasFkOn) {
+      db.pragma("foreign_keys = ON");
+    }
+  }
+}
+
 export function closeDb(): void {
   if (db) {
     db.close();
     db = null;
+  }
+  if (readDb) {
+    readDb.close();
+    readDb = null;
   }
 }

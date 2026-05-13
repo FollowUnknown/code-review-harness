@@ -36,6 +36,23 @@ function isRetryableError(err: unknown): boolean {
   return /\b429\b/.test(msg) || /(?:API|HTTP)\s+5[0-9]{2}\b/.test(msg);
 }
 
+/**
+ * Validate LLM API key by making a lightweight test call.
+ * Returns an error message if validation fails, or null if key is valid.
+ */
+export async function validateLLMKey(config: LLMConfig): Promise<string | null> {
+  try {
+    await callLLM("respond with ok", "test", config);
+    return null;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/\b40[1-3]\b/.test(msg) || /auth/i.test(msg) || /invalid.*key/i.test(msg)) {
+      return `LLM API key 无效或已过期: ${msg}`;
+    }
+    return `LLM 调用失败，请检查配置: ${msg}`;
+  }
+}
+
 export async function callLLM(
   system: string,
   user: string,

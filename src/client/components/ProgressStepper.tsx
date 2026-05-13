@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ReviewProgress } from "./ReviewProgress";
 import type { BatchResultItem } from "./ReviewProgress";
+import { useToast } from "./Toast";
 
 const API_BASE = "";
 
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props) {
+  const { toast } = useToast();
   const [steps, setSteps] = useState<ProgressStep[]>([]);
   const [failed, setFailed] = useState(false);
   const onCompleteRef = useRef(onComplete);
@@ -108,7 +110,9 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
 
         if (!res.ok) {
           const body = await res.json();
-          onErrorRef.current(body.error || `HTTP ${res.status}`);
+          const msg = body.error || `HTTP ${res.status}`;
+          onErrorRef.current(msg);
+          toast(msg, "error");
           return;
         }
 
@@ -182,6 +186,7 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
                 if (event.status === "error") {
                   setFailed(true);
                   onErrorRef.current(event.label);
+                  toast(event.label, "error");
                   return;
                 }
 
@@ -203,7 +208,9 @@ export function ProgressStepper({ mrUrl, lanhuUrl, onComplete, onError }: Props)
         }
       } catch (err) {
         if (!controller.signal.aborted) {
-          onErrorRef.current(err instanceof Error ? err.message : "Connection failed");
+          const msg = err instanceof Error ? err.message : "Connection failed";
+          onErrorRef.current(msg);
+          toast(msg, "error");
         }
       }
     }

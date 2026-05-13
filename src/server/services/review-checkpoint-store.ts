@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { getDb } from "../db";
+import { getDb, getReadDb } from "../db";
 import type {
   ReviewCheckpoint,
   ReviewType,
@@ -62,13 +62,13 @@ export function createCheckpoint(params: CreateCheckpointParams): ReviewCheckpoi
 // ---- Read ----
 
 export function findCheckpointById(id: string): ReviewCheckpoint | null {
-  const db = getDb();
+  const db = getReadDb();
   const row = db.prepare("SELECT * FROM review_checkpoints WHERE id = ?").get(id) as Record<string, unknown> | undefined;
   return row ? mapRowToCheckpoint(row) : null;
 }
 
 export function findCheckpointByJobId(jobId: string): ReviewCheckpoint | null {
-  const db = getDb();
+  const db = getReadDb();
   const row = db.prepare(
     "SELECT * FROM review_checkpoints WHERE job_id = ? ORDER BY created_at DESC LIMIT 1",
   ).get(jobId) as Record<string, unknown> | undefined;
@@ -76,7 +76,7 @@ export function findCheckpointByJobId(jobId: string): ReviewCheckpoint | null {
 }
 
 export function listCheckpoints(filter?: CheckpointFilter): ReviewCheckpoint[] {
-  const db = getDb();
+  const db = getReadDb();
   const clauses: string[] = [];
   const values: unknown[] = [];
 

@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { getDb, closeDb } from "../../../src/server/db";
 import { createCheckpoint, updateCheckpoint } from "../../../src/server/services/review-checkpoint-store";
+import { findReviewById, saveReviewRecord } from "../../../src/server/services/review-store";
+import { findJobById } from "../../../src/server/services/review-job-store";
 import type { Request, Response } from "express";
 
 process.env.KNOWLEDGE_DB_PATH = ":memory:";
@@ -254,6 +256,58 @@ describe("review-checkpoint-routes", () => {
       deleteHandler(req, res);
       expect(res._status).toBe(200);
       expect((res._json as any).action).toBe("abandoned");
+    });
+
+    it("abandon 时将关联 job 标记为 failed", () => {
+      const db = getDb();
+      const jobId = "JOB-abandon-test";
+      // 直接插入 job 记录，因为 createJob 会自生成 ID
+      db.prepare(
+        `INSERT INTO review_jobs (id, project, source_branch, target_branch, status, current_step, steps_json, review_type, created_at, updated_at)
+         VALUES (?, 'test', 'branch', 'main', 'running', 0, '[]', 'requirement', datetime('now'), datetime('now'))`
+      ).run(jobId);
+
+      const cp = createCheckpoint({
+        reviewType: "requirement", projectId: "p1", jobId,
+        totalBatches: 3, totalFiles: 30, currentBatch: 0, reviewedCount: 0,
+      });
+
+      const req = mockReq({ params: { id: cp.id }, query: { abandon: "true" } });
+      const res = mockRes();
+      deleteHandler(req, res);
+      expect(res._status).toBe(200);
+      expect((res._json as any).action).toBe("abandoned");
+
+      const job = findJobById(jobId);
+      expect(job).not.toBeNull();
+      expect(job!.status).toBe("failed");
+      expect(job!.errorMessage).toBe("评审已放弃");
+    });
+
+    it("abandon 时将关联 review 标记为 interrupted", () => {
+      const reviewId = "R-abandon-sync-test";
+      saveReviewRecord({
+        id: reviewId, mr_url: "url", project: "test", author: "dev",
+        status: "reviewing", report_json: "{}",
+        classification_json: null, requirement_json: null, mr_meta_json: null,
+        reviewed_commit_sha: null, passed: false, avg_score: null,
+        issue_count: 0, critical_count: 0, created_by: "tester",
+      });
+
+      const cp = createCheckpoint({
+        reviewType: "requirement", projectId: "p1",
+        totalBatches: 3, totalFiles: 30, currentBatch: 0, reviewedCount: 0,
+        accumulatedStats: JSON.stringify({ reviewId }),
+      });
+
+      const req = mockReq({ params: { id: cp.id }, query: { abandon: "true" } });
+      const res = mockRes();
+      deleteHandler(req, res);
+      expect(res._status).toBe(200);
+
+      const updated = findReviewById(reviewId);
+      expect(updated).not.toBeNull();
+      expect(updated!.status).toBe("interrupted");
     });
   });
 });

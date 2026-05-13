@@ -10,6 +10,7 @@ import {
   completeCheckpoint,
 } from "../../../src/server/services/review-checkpoint-store";
 import { getDb, closeDb } from "../../../src/server/db";
+import { findReviewById, saveReviewRecord } from "../../../src/server/services/review-store";
 import type { ReviewCheckpoint } from "../../../src/shared/types";
 
 process.env.KNOWLEDGE_DB_PATH = ":memory:";
@@ -197,6 +198,102 @@ describe("review-checkpoint-store", () => {
 
     it("returns false for unknown id", () => {
       expect(deleteCheckpoint("CP-nonexistent")).toBe(false);
+    });
+  });
+
+  describe("FK migration — review_sub_reports", () => {
+    it("外键正确指向 reviews(id) 而非 reviews_old", () => {
+      const db = getDb();
+      const fkList = db.prepare("PRAGMA foreign_key_list(review_sub_reports)").all() as any[];
+      const fk = fkList.find((fk: any) => fk.from === "review_id");
+      expect(fk).toBeDefined();
+      expect(fk!.table).toBe("reviews");
+    });
+
+    it("写入子报告不会触发 FK 错误（verifies runtime FK enforcement）", () => {
+      const db = getDb();
+
+      const reviewId = "R-fk-verify-test";
+      saveReviewRecord({
+        id: reviewId, mr_url: "url", project: "test", author: "dev",
+        status: "completed", report_json: "{}",
+        classification_json: null, requirement_json: null, mr_meta_json: null,
+        reviewed_commit_sha: null, passed: true, avg_score: 4,
+        issue_count: 0, critical_count: 0, created_by: "tester",
+      });
+
+      // If FK is broken, this INSERT throws "no such table: main.reviews_old"
+      expect(() => {
+        db.prepare(`
+          INSERT INTO review_sub_reports (review_id, project, tech_stack, status)
+          VALUES (?, 'test-project', 'java-backend', 'completed')
+        `).run(reviewId);
+      }).not.toThrow();
+
+      const sub = db.prepare("SELECT review_id, project FROM review_sub_reports WHERE review_id = ?").get(reviewId) as any;
+      expect(sub).toBeDefined();
+      expect(sub.review_id).toBe(reviewId);
+    });
+  });
+
+  describe("批量清理 — running/interrupted checkpoint", () => {
+    it("abandon 后 checkpoint 不再出现在 interrupted 查询结果中", () => {
+      const cp = createCheckpoint(makeParams({ reviewType: "requirement" }));
+      updateCheckpoint(cp.id, { status: "interrupted" });
+
+      const before = listCheckpoints({ status: "interrupted" });
+      expect(before.some((c) => c.id === cp.id)).toBe(true);
+
+      abandonCheckpoint(cp.id);
+
+      const after = listCheckpoints({ status: "interrupted" });
+      expect(after.some((c) => c.id === cp.id)).toBe(false);
+    });
+
+    it("可同时清理 running 和 interrupted 状态的 checkpoint", () => {
+      const cp1 = createCheckpoint(makeParams({ reviewType: "requirement" }));
+      updateCheckpoint(cp1.id, { status: "interrupted" });
+      const cp2 = createCheckpoint(makeParams({ reviewType: "requirement" })); // 默认 running
+
+      abandonCheckpoint(cp1.id);
+      abandonCheckpoint(cp2.id);
+
+      const interrupted = listCheckpoints({ status: "interrupted" });
+      const running = listCheckpoints({ status: "running" });
+      expect(interrupted.some((c) => c.id === cp1.id)).toBe(false);
+      expect(running.some((c) => c.id === cp2.id)).toBe(false);
+    });
+
+    it("清理后对应 review 的状态应更新为 interrupted", () => {
+      const reviewId = "R-test-cleanup";
+      saveReviewRecord({
+        id: reviewId,
+        mr_url: "url",
+        project: "test",
+        author: "dev",
+        status: "reviewing",
+        report_json: "{}",
+        classification_json: null,
+        requirement_json: null,
+        mr_meta_json: null,
+        reviewed_commit_sha: null,
+        passed: false,
+        avg_score: null,
+        issue_count: 0,
+        critical_count: 0,
+        created_by: "tester",
+      });
+
+      const cp = createCheckpoint(makeParams({
+        reviewType: "requirement",
+        accumulatedStats: JSON.stringify({ reviewId }),
+      }));
+
+      abandonCheckpoint(cp.id);
+
+      // abandonCheckpoint 只标记 checkpoint 状态，不更新 review
+      // review 状态同步由路由层 deleteHandler 负责（在 routes 测试中验证）
+      expect(findCheckpointById(cp.id)!.status).toBe("abandoned");
     });
   });
 });

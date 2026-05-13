@@ -62,6 +62,35 @@ describe("parseReviewResponse", () => {
     expect(result.summary).toContain("改进空间");
   });
 
+  it("recovers JSON with unescaped quotes containing Java-like code arguments (R-b5f05139 case)", () => {
+    // Real-world case: LLM generates `log.debug("跳过重复指标更新，id={}", id)` in suggestion field
+    // The `", id)` pattern triggers a false-positive structural comma detection
+    const input = JSON.stringify({
+      scores: [
+        { dimension: "数据结构选择", score: 5, comment: "使用 Set 进行重复判定" },
+        { dimension: "算法复杂度", score: 5, comment: "O(1) contains" },
+        { dimension: "日志与可观测性", score: 3, comment: "缺少日志" },
+      ],
+      issues: [
+        {
+          severity: "MEDIUM",
+          message: "跳过重复处理时未记录日志",
+          file: "AggsDocumentChangeListener.java",
+          line: 236,
+          suggestion: '在 continue 前添加 debug 级别日志，如 log.debug("跳过重复指标更新，id={}", id);',
+        },
+      ],
+      summary: "代码基本合格，建议补充日志",
+    });
+
+    const result = parseReviewResponse(input);
+    expect(result.scores).toHaveLength(3);
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0].suggestion).toContain('log.debug');
+    expect(result.issues[0].suggestion).toContain('跳过重复指标更新');
+    expect(result.summary).toBe("代码基本合格，建议补充日志");
+  });
+
   it("detects fail when CRITICAL issue present", () => {
     const input = JSON.stringify({
       scores: [

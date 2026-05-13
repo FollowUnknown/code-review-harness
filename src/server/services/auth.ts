@@ -1,19 +1,28 @@
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { getDb } from "../db";
+import { getDb, getReadDb } from "../db";
 import { getSetting, setSetting } from "./settings";
 import { User, UserRole } from "../../shared/types";
 
-// ---- JWT Secret ----
+// ---- JWT Secret (cached in memory to avoid DB contention) ----
+
+let cachedJwtSecret: string | null = null;
 
 export function getJwtSecret(): string {
+  if (cachedJwtSecret) return cachedJwtSecret;
   let secret = getSetting("jwt_secret");
   if (!secret) {
     secret = randomUUID();
     setSetting("jwt_secret", secret);
   }
+  cachedJwtSecret = secret;
   return secret;
+}
+
+// Called when settings are updated (e.g. admin changes JWT secret)
+export function invalidateJwtSecretCache(): void {
+  cachedJwtSecret = null;
 }
 
 // ---- User CRUD ----
@@ -96,7 +105,7 @@ export function verifyToken(token: string): { id: string; username: string; role
 }
 
 export function getUserById(id: string): User | null {
-  const db = getDb();
+  const db = getReadDb();
   const row = db.prepare(
     "SELECT id, username, display_name, role, created_at FROM users WHERE id = ?"
   ).get(id) as {
@@ -115,7 +124,7 @@ export function getUserById(id: string): User | null {
 }
 
 export function getUserByUsername(username: string): User | null {
-  const db = getDb();
+  const db = getReadDb();
   const row = db.prepare(
     "SELECT id, username, display_name, role, created_at FROM users WHERE username = ?"
   ).get(username) as {
@@ -134,7 +143,7 @@ export function getUserByUsername(username: string): User | null {
 }
 
 export function listUsers(): User[] {
-  const db = getDb();
+  const db = getReadDb();
   const rows = db.prepare(
     "SELECT id, username, display_name, role, created_at FROM users ORDER BY created_at"
   ).all() as Array<{

@@ -2,6 +2,7 @@ import type { Response } from "express";
 import type {
   ProgressEvent,
   SSEPayload,
+  SSEReviewCreated,
   SSEReviewStart,
   SSEBatchResult,
   SSEPaused,
@@ -23,6 +24,7 @@ export interface SSEHelpers {
   nextStep(label: string, detail?: string): void;
   completeStep(detail?: string): void;
   getStep(): number;
+  sendEvent(type: "review_created", data: SSEReviewCreated): void;
   sendEvent(type: "review_start", data: SSEReviewStart): void;
   sendEvent(type: "batch_result", data: SSEBatchResult): void;
   sendEvent(type: "paused", data: SSEPaused): void;
@@ -53,8 +55,8 @@ export function createSSEHelpers(res: Response): SSEHelpers {
   }
 
   function sendEvent(
-    type: "review_start" | "batch_result" | "paused" | "resumed",
-    data: SSEReviewStart | SSEBatchResult | SSEPaused | SSEResumed,
+    type: "review_created" | "review_start" | "batch_result" | "paused" | "resumed",
+    data: SSEReviewCreated | SSEReviewStart | SSEBatchResult | SSEPaused | SSEResumed,
   ): void {
     sendSSE({ type, ...data } as SSEPayload);
   }

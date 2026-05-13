@@ -20,7 +20,9 @@ import { QualityPage } from "./pages/QualityPage";
 import { MemoryPage } from "./pages/MemoryPage";
 import { LocalReviewPage } from "./pages/LocalReviewPage";
 import { RequirementReviewPage } from "./pages/RequirementReviewPage";
+import { RequirementReviewDetailPage } from "./pages/RequirementReviewDetailPage";
 import { ProductLineManagePage } from "./pages/ProductLineManagePage";
+import { ToastProvider } from "./components/Toast";
 
 const API_BASE = "";
 
@@ -154,6 +156,7 @@ export default function App() {
   }
 
   return (
+    <ToastProvider>
     <div className="min-h-screen bg-[var(--color-bg-primary)] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
@@ -309,10 +312,12 @@ export default function App() {
           <Route path="/memory" element={<MemoryPage />} />
           <Route path="/local-review" element={<LocalReviewPage />} />
           <Route path="/requirement-review" element={<RequirementReviewPage />} />
+          <Route path="/requirement-review/:id" element={<RequirementReviewDetailPage />} />
           <Route path="/product-lines" element={<ProductLineManagePage />} />
         </Routes>
       </div>
     </div>
+    </ToastProvider>
   );
 }
 

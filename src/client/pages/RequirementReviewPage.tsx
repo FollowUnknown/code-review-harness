@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ReviewProgress } from "../components/ReviewProgress";
 import type { BatchResultItem } from "../components/ReviewProgress";
 import type { TechStack, ProjectScanResult, ProductLine } from "../../shared/types";
+import { useToast } from "../components/Toast";
 
 const API_BASE = "";
 
@@ -36,6 +37,9 @@ const TECH_STACK_LABELS: Record<TechStack, string> = {
 
 export function RequirementReviewPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { toast } = useToast();
+  const resumeCheckpointParam = searchParams.get("checkpointId");
   const [productLines, setProductLines] = useState<ProductLineOption[]>([]);
   const [productLine, setProductLine] = useState("");
   const [sourceBranch, setSourceBranch] = useState("");
@@ -281,6 +285,16 @@ export function RequirementReviewPage() {
         setIsInterrupted(cp.status === "interrupted");
         setCheckpointId(cp.id);
         if (cp.jobId) jobIdRef.current = cp.jobId;
+        // Show job error for interrupted checkpoints so user knows why it failed
+        if (cp.status === "interrupted" && cp.jobId) {
+          try {
+            const jobRes = await fetch(`${API_BASE}/api/review/requirement/${cp.jobId}`, { headers });
+            if (jobRes.ok) {
+              const job = await jobRes.json();
+              if (job.errorMessage) setError(job.errorMessage);
+            }
+          } catch { /* ignore */ }
+        }
         const saved = JSON.parse(cp.batchResults || "[]");
         setReviewBatchResults(
           saved.map((r: any) => ({
@@ -301,6 +315,62 @@ export function RequirementReviewPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // v1.4.6: auto-resume from detail page via URL query param
+  useEffect(() => {
+    if (!resumeCheckpointParam) return;
+    const cpId = resumeCheckpointParam;
+    (async () => {
+      try {
+        // Fetch paused/interrupted checkpoints and find the matching one
+        const [pausedRes, interruptedRes] = await Promise.all([
+          fetch(`${API_BASE}/api/review/checkpoints?status=paused&review_type=requirement`, { headers }),
+          fetch(`${API_BASE}/api/review/checkpoints?status=interrupted&review_type=requirement`, { headers }),
+        ]);
+        const paused = pausedRes.ok ? await pausedRes.json() : [];
+        const interrupted = interruptedRes.ok ? await interruptedRes.json() : [];
+        const all = [...(Array.isArray(paused) ? paused : []), ...(Array.isArray(interrupted) ? interrupted : [])];
+        const cp = all.find((c: any) => c.id === cpId);
+        if (!cp) return;
+
+        setProductLine(cp.projectId);
+        setSourceBranch(cp.sourceBranch || "");
+        setTargetBranch(cp.targetBranch || "");
+        setCheckpointId(cp.id);
+        setReviewTotalBatches(cp.totalBatches);
+        setReviewTotalFiles(cp.totalFiles);
+        setReviewCompletedBatches(cp.currentBatch);
+        setReviewReviewedFiles(cp.reviewedCount);
+        setShowReviewProgress(true);
+        setIsPaused(false);
+        setIsInterrupted(false);
+        if (cp.jobId) jobIdRef.current = cp.jobId;
+        const saved = JSON.parse(cp.batchResults || "[]");
+        setReviewBatchResults(saved.map((r: any) => ({
+          batchIndex: r.batchIndex ?? 0,
+          files: r.files ?? [],
+          issues: r.issues ?? [],
+          scores: r.scores,
+        })));
+
+        // Auto-start resume SSE
+        setLoading(true);
+        setSteps([]);
+        await startSSEStream({
+          productLine: cp.projectId,
+          sourceBranch: cp.sourceBranch || "",
+          targetBranch: cp.targetBranch || "",
+          checkpointId: cp.id,
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "恢复评审失败");
+        setIsPaused(false);
+        setIsInterrupted(true);
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeCheckpointParam]);
 
   // v1.4.4: pause/resume/abandon handlers
   const handlePause = async () => {
@@ -398,7 +468,7 @@ export function RequirementReviewPage() {
     });
   }
 
-  function handleStartReview() {
+  async function handleStartReview() {
     if (!previewData) return;
 
     setLoading(true);
@@ -418,7 +488,16 @@ export function RequirementReviewPage() {
       gitlabToken: gitlabToken || undefined,
     };
 
-    startSSEStream(body);
+    try {
+      await startSSEStream(body);
+    } catch (err) {
+      // Should not reach here (startSSEStream catches internally),
+      // but as safety net:
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setError(msg);
+      toast(msg, "error");
+      setLoading(false);
+    }
   }
 
   async function startSSEStream(body: Record<string, unknown>) {
@@ -436,7 +515,10 @@ export function RequirementReviewPage() {
           pollJobStatus(data.jobId);
           return;
         }
-        throw new Error(data.error || "Unknown error");
+        const errMsg = data.error || "Unknown error";
+        setError(errMsg);
+        toast(errMsg, "error");
+        return;
       }
 
       const reader = response.body?.getReader();
@@ -518,7 +600,9 @@ export function RequirementReviewPage() {
         pollJobStatus(jobIdRef.current);
         return;
       }
-      setError(err instanceof Error ? err.message : "Unknown error");
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setError(msg);
+      toast(msg, "error");
     } finally {
       setLoading(false);
     }
@@ -542,6 +626,14 @@ export function RequirementReviewPage() {
         </Link>
       </div>
 
+      {/* Global error banner — always visible at top */}
+      {error && (
+        <div className="bg-red-900/20 border border-red-800/50 rounded-xl p-4 flex items-start justify-between">
+          <p className="text-red-400 text-sm">{error}</p>
+          <button onClick={() => setError(null)} className="text-red-500/50 hover:text-red-400 text-xs ml-4 shrink-0">✕</button>
+        </div>
+      )}
+
       {loading && !showReviewProgress && productLine && (
         <div className="bg-blue-900/20 border border-blue-800/50 rounded-xl p-4 flex items-center gap-3">
           <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
@@ -555,15 +647,16 @@ export function RequirementReviewPage() {
       )}
 
       {(isPaused || isInterrupted) && showReviewProgress && productLine && (
-        <div className={`rounded-xl p-4 flex items-center gap-3 ${isInterrupted ? "bg-orange-900/20 border border-orange-800/50" : "bg-amber-900/20 border border-amber-800/50"}`}>
-          <div>
+        <div className={`rounded-xl p-4 space-y-2 ${isInterrupted ? "bg-orange-900/20 border border-orange-800/50" : "bg-amber-900/20 border border-amber-800/50"}`}>
+          <div className="flex items-center gap-3">
             <span className={`text-sm font-medium ${isInterrupted ? "text-orange-400" : "text-amber-400"}`}>
               {isInterrupted ? "评审中断" : "评审已暂停"}
             </span>
-            <span className="text-slate-400 text-xs ml-2">
+            <span className="text-slate-400 text-xs">
               {productLines.find((pl) => pl.id === productLine)?.name || productLine} ({sourceBranch} &rarr; {targetBranch})
             </span>
           </div>
+          {error && <p className="text-red-400 text-xs">{error}</p>}
         </div>
       )}
 
@@ -635,10 +728,6 @@ export function RequirementReviewPage() {
           {loading ? "Analyzing..." : "Preview Changes"}
         </button>
       </div>
-
-      {error && (
-        <div className="bg-red-900/20 border border-red-800/50 rounded-xl p-4 text-red-400 text-sm">{error}</div>
-      )}
 
       {/* Step 2: Preview Table */}
       <AnimatePresence>
