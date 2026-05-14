@@ -22,7 +22,7 @@ import repoMappingRouter from "./routes/repo-mapping";
 import llmRouter from "./llm/router";
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3006;
 
 app.use(cors());
 app.use(express.json());
@@ -56,10 +56,23 @@ app.get("/{*splat}", (_req, res) => {
   res.sendFile(path.join(process.cwd(), "dist/client/index.html"));
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   const resetCount = resetStuckJobs();
   if (resetCount > 0) {
     console.log(`Reset ${resetCount} stuck review jobs`);
   }
+});
+
+server.on("error", (error: NodeJS.ErrnoException) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(`\n端口 ${PORT} 已被占用，请先释放该端口或更换端口：`);
+    console.error(`  方式一：修改 .env 中的 PORT 值`);
+    console.error(`  方式二：运行 PORT=3002 npm start 指定其他端口`);
+    console.error(`  方式三：lsof -i :${PORT} 查找并终止占用进程\n`);
+    process.exit(1);
+  }
+  // 启动阶段致命错误（如 EACCES 权限不足），输出原始错误后退出
+  console.error("服务器启动失败:", error.message);
+  process.exit(1);
 });

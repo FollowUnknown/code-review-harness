@@ -26,3 +26,31 @@
 [2026-05-13T17:29:05Z] Edit scripts/session-on-stop.sh session=4c36f995-06a7-44f8-a560-dbc5226a4331
 [2026-05-13T17:29:05Z] Edit scripts/auto-record-session.sh session=4c36f995-06a7-44f8-a560-dbc5226a4331
 [2026-05-13T17:29:05Z] Edit scripts/check-session-on-stop.sh session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-14T03:59:58Z] Write docs/contracts/2026-05-14-port-conflict-detection.md session=577d436d-142c-4c92-b4cc-72005ef834cc
+[2026-05-14T04:01:15Z] Edit docs/contracts/2026-05-14-port-conflict-detection.md session=577d436d-142c-4c92-b4cc-72005ef834cc
+[2026-05-14T04:01:15Z] Edit src/server/index.ts session=577d436d-142c-4c92-b4cc-72005ef834cc
+[AUDIT] Edit on src/server/index.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-14T04:01:35Z] Edit docs/contracts/2026-05-14-port-conflict-detection.md session=577d436d-142c-4c92-b4cc-72005ef834cc
+[2026-05-14T04:03:34Z] Edit src/server/index.ts session=577d436d-142c-4c92-b4cc-72005ef834cc
+[AUDIT] Edit on src/server/index.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-14T04:03:46Z] Edit docs/contracts/2026-05-14-port-conflict-detection.md session=577d436d-142c-4c92-b4cc-72005ef834cc
+[2026-05-14T04:09:15Z] Write docs/contracts/2026-05-14-port-auto-increment.md session=577d436d-142c-4c92-b4cc-72005ef834cc
+[2026-05-14T04:32:58Z] Write docs/contracts/2026-05-14-port-auto-increment.md session=577d436d-142c-4c92-b4cc-72005ef834cc
+[2026-05-14T04:33:56Z] Edit docs/contracts/2026-05-14-port-auto-increment.md session=577d436d-142c-4c92-b4cc-72005ef834cc
+[2026-05-14T04:34:07Z] Edit src/server/index.ts session=577d436d-142c-4c92-b4cc-72005ef834cc
+[AUDIT] Edit on src/server/index.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-14T04:34:07Z] Edit vite.config.ts session=577d436d-142c-4c92-b4cc-72005ef834cc
+[AUDIT] Edit on vite.config.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-14T04:34:08Z] Edit package.json session=577d436d-142c-4c92-b4cc-72005ef834cc
+[2026-05-14T04:34:17Z] Edit docs/contracts/2026-05-14-port-auto-increment.md session=577d436d-142c-4c92-b4cc-72005ef834cc
+[2026-05-14T04:37:24Z] Write docs/contracts/2026-05-14-default-redirect-requirement-review.md session=577d436d-142c-4c92-b4cc-72005ef834cc
+[2026-05-14T04:38:34Z] Write docs/contracts/2026-05-14-default-redirect-requirement-review.md session=577d436d-142c-4c92-b4cc-72005ef834cc
+[2026-05-14T04:38:59Z] Edit src/client/App.tsx session=577d436d-142c-4c92-b4cc-72005ef834cc
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-14T04:39:06Z] Edit src/client/App.tsx session=577d436d-142c-4c92-b4cc-72005ef834cc
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-14T04:39:14Z] Edit src/client/App.tsx session=577d436d-142c-4c92-b4cc-72005ef834cc
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-14T04:39:27Z] Edit src/client/App.tsx session=577d436d-142c-4c92-b4cc-72005ef834cc
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-14T04:39:44Z] Edit docs/contracts/2026-05-14-default-redirect-requirement-review.md session=577d436d-142c-4c92-b4cc-72005ef834cc

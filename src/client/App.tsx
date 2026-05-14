@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { Routes, Route, Link, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, Link, Navigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ReviewResponse, User } from "../shared/types";
-import { ReviewForm } from "./components/ReviewForm";
-import { ReviewResult } from "./components/ReviewResult";
+import { User } from "../shared/types";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ProgressStepper } from "./components/ProgressStepper";
 import { PromptEditor } from "./components/PromptEditor";
@@ -298,7 +296,7 @@ export default function App() {
 
         {/* Routes */}
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<Navigate to="/requirement-review" replace />} />
           <Route path="/reviews" element={<ReviewListPage />} />
           <Route path="/reviews/:id" element={<ReviewDetailPage />} />
           <Route path="/plans" element={<PlanListPage />} />
@@ -317,81 +315,5 @@ export default function App() {
       </div>
     </div>
     </ToastProvider>
-  );
-}
-
-function HomePage() {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<ReviewResponse | null>(null);
-  const [reviewingUrl, setReviewingUrl] = useState<string | null>(null);
-  const [lanhuUrl, setLanhuUrl] = useState<string | undefined>(undefined);
-
-  function handleSubmit(mrUrl: string, lanhu?: string) {
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    setReviewingUrl(mrUrl);
-    setLanhuUrl(lanhu);
-  }
-
-  function handleComplete(data: unknown) {
-    setLoading(false);
-    setReviewingUrl(null);
-    const response = data as ReviewResponse;
-    setResult(response);
-    // Navigate to detail page if reviewId available
-    if (response.reviewId) {
-      navigate(`/reviews/${response.reviewId}`);
-    }
-  }
-
-  function handleError(message: string) {
-    setLoading(false);
-    setReviewingUrl(null);
-    setError(message);
-  }
-
-  return (
-    <>
-      {!result && !loading && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <ReviewForm onSubmit={handleSubmit} loading={loading} />
-        </motion.div>
-      )}
-
-      {loading && reviewingUrl && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <ProgressStepper
-            mrUrl={reviewingUrl}
-            lanhuUrl={lanhuUrl}
-            onComplete={handleComplete}
-            onError={handleError}
-          />
-        </motion.div>
-      )}
-
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm"
-          >
-            {error}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {result && !result.reviewId && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <ReviewResult data={result} onReset={() => setResult(null)} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
   );
 }
