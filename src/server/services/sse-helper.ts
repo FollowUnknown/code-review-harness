@@ -35,7 +35,11 @@ export function createSSEHelpers(res: Response): SSEHelpers {
   let step = 0;
 
   function sendSSE(event: SSEPayload): void {
-    res.write(`data: ${JSON.stringify(event)}\n\n`);
+    try {
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    } catch {
+      // Client disconnected — silently skip
+    }
   }
 
   function nextStep(label: string, detail?: string): void {

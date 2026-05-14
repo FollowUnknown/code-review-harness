@@ -308,7 +308,6 @@ router.post("/requirement", async (req: Request, res: Response) => {
 
   let aborted = false;
   let checkpointId: string | null = null;
-  let abortTimeout: ReturnType<typeof setTimeout> | null = null;
   let reviewIdForCleanup: string | null = null;
 
   // G2: Global SSE timeout — prevent hanging forever on LLM/network issues
@@ -325,16 +324,8 @@ router.post("/requirement", async (req: Request, res: Response) => {
 
   res.on("close", () => {
     clearTimeout(globalTimeout);
-    // Wait 60s — if resumed within window, checkpoint stays paused
-    abortTimeout = setTimeout(() => {
-      const currentJob = findJobById(job.id);
-      if (currentJob && currentJob.status === "running") {
-        aborted = true;
-        updateJob(job.id, { status: "aborted", errorMessage: "Client disconnected" });
-        if (checkpointId) abandonCheckpoint(checkpointId);
-        if (reviewIdForCleanup) updateReview(reviewIdForCleanup, { status: "interrupted" });
-      }
-    }, 60_000);
+    // Client disconnected (e.g. new tab opened) — review continues server-side.
+    // Frontend polling handles status updates. SSE writes silently skip (see sse-helper).
   });
 
   updateJob(job.id, { status: "running" });
@@ -784,7 +775,6 @@ router.post("/requirement", async (req: Request, res: Response) => {
                   totalFiles: projDiffs.length,
                 },
               });
-              if (abortTimeout) clearTimeout(abortTimeout);
               res.end();
               return;
             }
@@ -969,11 +959,9 @@ router.post("/requirement", async (req: Request, res: Response) => {
     sendSSE({ step: getStep() + 1, status: "done", label: "COMPLETE", detail: JSON.stringify({ reviewId, report: finalReport }) });
     completeCheckpoint(checkpointId);
     clearTimeout(globalTimeout);
-    if (abortTimeout) clearTimeout(abortTimeout);
     res.end();
   } catch (error) {
     clearTimeout(globalTimeout);
-    if (abortTimeout) clearTimeout(abortTimeout);
     const message = error instanceof Error ? error.message : "Unknown error";
     const shortMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
     updateJob(job.id, { status: "failed", errorMessage: shortMessage, stepsJson: JSON.stringify(accumulatedSteps) });
