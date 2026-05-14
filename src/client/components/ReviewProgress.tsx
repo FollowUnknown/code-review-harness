@@ -12,7 +12,7 @@ export interface BatchResultItem {
 }
 
 export interface ReviewProgressProps {
-  reviewType: "mr" | "local" | "requirement";
+  reviewType: "mr" | "requirement";
   totalBatches: number;
   totalFiles: number;
   completedBatches: number;

@@ -90,6 +90,8 @@ export function RequirementReviewPage() {
 
         if (job.status === "completed" && job.reviewId) {
           setReviewId(job.reviewId);
+          setSourceBranch(job.sourceBranch || "");
+          setTargetBranch(job.targetBranch || "");
           setLoading(false);
           return;
         }
@@ -221,6 +223,8 @@ export function RequirementReviewPage() {
           name: pl.name,
           description: pl.description,
         })));
+        // G1(v1.4.8): Default select first product line (functional setState avoids overriding recovery)
+        if (list.length > 0) setProductLine(prev => prev === "" ? list[0].id : prev);
       })
       .catch(() => {});
 
@@ -252,8 +256,6 @@ export function RequirementReviewPage() {
           jobIdRef.current = job.id;
           setLoading(true);
           pollJobStatus(job.id);
-        } else if (job.status === "completed" && job.reviewId) {
-          setReviewId(job.reviewId);
         }
       } catch { /* ignore */ }
     }
@@ -608,7 +610,13 @@ export function RequirementReviewPage() {
                 if (event.status === "done" && event.detail?.startsWith("{")) {
                   try {
                     const data = JSON.parse(event.detail);
-                    if (data.reviewId) setReviewId(data.reviewId);
+                    if (data.reviewId) {
+                      setReviewId(data.reviewId);
+                      if (data.report) {
+                        setSourceBranch(data.report.sourceBranch || "");
+                        setTargetBranch(data.report.targetBranch || "");
+                      }
+                    }
                   } catch { /* last event */ }
                 }
               } catch { /* skip malformed event */ }
@@ -861,10 +869,12 @@ export function RequirementReviewPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-green-900/20 border border-green-800/50 rounded-xl p-4"
         >
-          <span className="text-green-400 text-sm">Requirement review complete. </span>
+          <span className="text-green-400 text-sm">
+            Requirement review complete: {productLines.find(p => p.id === productLine)?.name ?? productLine} ({sourceBranch} → {targetBranch}).
+          </span>
           <button
             onClick={() => navigate(`/requirement-review/${reviewId}`)}
-            className="text-blue-400 underline text-sm"
+            className="text-blue-400 underline text-sm ml-2"
           >
             View Report
           </button>

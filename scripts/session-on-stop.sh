@@ -4,7 +4,7 @@
 # 退出码：0=通过, 1=警告, 2=阻断
 
 TODAY=$(date +%Y-%m-%d)
-SESSION_FILE="sessions/${TODAY}.md"
+SESSION_FILE="docs/sessions/${TODAY}.md"
 CWD="$(git rev-parse --show-toplevel 2>/dev/null || echo ".")"
 ERRORS=""
 
@@ -12,7 +12,7 @@ ERRORS=""
 if [ ! -f "$SESSION_FILE" ]; then
   echo ""
   echo "❌ SESSION BLOCKED — 当天 session 文件不存在"
-  echo "   缺少: sessions/${TODAY}.md"
+  echo "   缺少: docs/sessions/${TODAY}.md"
   echo "   请创建 session 文件后再结束会话。"
   ERRORS="${ERRORS} no-session"
 fi
@@ -22,7 +22,7 @@ if [ -f "$SESSION_FILE" ]; then
   if ! grep -q "## 今日总结" "$SESSION_FILE"; then
     echo ""
     echo "❌ SESSION BLOCKED — 缺少今日总结"
-    echo "   请在 sessions/${TODAY}.md 中补充 ## 今日总结 区块。"
+    echo "   请在 docs/sessions/${TODAY}.md 中补充 ## 今日总结 区块。"
     echo "   内容：完成了什么、未完成/待跟进、新产生的任务"
     ERRORS="${ERRORS} no-summary"
   fi
@@ -44,16 +44,16 @@ if [ -f "$SESSION_FILE" ]; then
 fi
 
 # ========== 检查 3: active-tasks.md 存在 ==========
-if [ ! -f "sessions/active-tasks.md" ]; then
+if [ ! -f "docs/sessions/active-tasks.md" ]; then
   echo ""
-  echo "❌ SESSION BLOCKED — sessions/active-tasks.md 不存在"
+  echo "❌ SESSION BLOCKED — docs/sessions/active-tasks.md 不存在"
   ERRORS="${ERRORS} no-active-tasks"
 fi
 
 # ========== 自动操作: Memory 快照 ==========
-if [ -f "$SESSION_FILE" ] && [ -d "sessions/memory" ]; then
+if [ -f "$SESSION_FILE" ] && [ -d "docs/sessions/archive/memory" ]; then
   # 创建 session memory 快照
-  MEMORY_DIR="sessions/memory/session"
+  MEMORY_DIR="docs/sessions/archive/memory/session"
   mkdir -p "$MEMORY_DIR" 2>/dev/null
 
   MEMORY_FILE="${MEMORY_DIR}/${TODAY}.json"
@@ -75,7 +75,7 @@ EOF
     echo "📝 Memory 快照已保存: ${MEMORY_FILE}"
 
     # 更新 stats
-    STATS_FILE="sessions/memory/stats.json"
+    STATS_FILE="docs/sessions/archive/memory/stats.json"
     if [ -f "$STATS_FILE" ]; then
       # 增加会话计数
       python3 -c "
@@ -104,7 +104,7 @@ fi
 
 echo ""
 echo "✅ Session 检查通过"
-echo "   - session 文件: sessions/${TODAY}.md"
+echo "   - session 文件: docs/sessions/${TODAY}.md"
 echo "   - 今日总结: 已填写"
 echo "   - active-tasks.md: 存在"
 echo "   - memory 快照: 已保存"

@@ -18,10 +18,10 @@ if [ -n "$CWD" ] && [ -n "$FILE_PATH" ]; then
   REL_PATH="${FILE_PATH#"$CWD"/}"
 fi
 
-AUDIT_LOG="${CWD}/sessions/execution/audit.log"
+AUDIT_LOG="${CWD}/docs/sessions/execution/audit.log"
 
 # 如果目标文件就是 audit.log 自身，跳过
-if [ "$REL_PATH" = "sessions/execution/audit.log" ]; then
+if [ "$REL_PATH" = "docs/sessions/execution/audit.log" ]; then
   exit 0
 fi
 
@@ -31,7 +31,7 @@ echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] ${TOOL_NAME} ${REL_PATH} session=${SESS
 
 # 白名单目录（直接放行，不检查 Contract）
 ALLOWED_PATTERNS=(
-  "sessions/"
+  "docs/sessions/"
   "docs/"
   "scripts/"
   ".claude/"
@@ -57,13 +57,13 @@ done
 
 # 检查 1: 当天 session 文件必须存在
 TODAY=$(date +%Y-%m-%d)
-SESSION_FILE="${CWD}/sessions/${TODAY}.md"
+SESSION_FILE="${CWD}/docs/sessions/${TODAY}.md"
 
 if [ ! -f "$SESSION_FILE" ]; then
   echo ""
   echo "❌ BLOCKED — 当天 session 文件不存在"
   echo ""
-  echo "  缺少: sessions/${TODAY}.md"
+  echo "  缺少: docs/sessions/${TODAY}.md"
   echo ""
   echo "  请先创建 session 文件，记录本次会话目标。"
   echo "  模板见 CLAUDE.md → 会话文件模板。"

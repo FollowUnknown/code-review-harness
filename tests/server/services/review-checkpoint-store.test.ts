@@ -26,7 +26,7 @@ afterEach(() => {
 
 function makeParams(overrides: Record<string, unknown> = {}) {
   return {
-    reviewType: "local" as const,
+    reviewType: "mr" as const,
     projectId: "test-project",
     sourceBranch: "feature/x",
     targetBranch: "main",
@@ -43,7 +43,7 @@ describe("review-checkpoint-store", () => {
     it("creates a checkpoint and returns it with all fields", () => {
       const cp = createCheckpoint(makeParams());
       expect(cp.id).toMatch(/^CP-/);
-      expect(cp.reviewType).toBe("local");
+      expect(cp.reviewType).toBe("mr");
       expect(cp.projectId).toBe("test-project");
       expect(cp.sourceBranch).toBe("feature/x");
       expect(cp.targetBranch).toBe("main");
@@ -95,14 +95,14 @@ describe("review-checkpoint-store", () => {
   describe("listCheckpoints", () => {
     it("lists all checkpoints without filters", () => {
       createCheckpoint(makeParams({ reviewType: "mr" }));
-      createCheckpoint(makeParams({ reviewType: "local" }));
+      createCheckpoint(makeParams({ reviewType: "requirement" }));
       const all = listCheckpoints();
       expect(all.length).toBeGreaterThanOrEqual(2);
     });
 
     it("filters by reviewType", () => {
       createCheckpoint(makeParams({ reviewType: "mr", projectId: "p1" }));
-      createCheckpoint(makeParams({ reviewType: "local", projectId: "p2" }));
+      createCheckpoint(makeParams({ reviewType: "requirement" }));
       const mr = listCheckpoints({ reviewType: "mr" });
       expect(mr.every((c) => c.reviewType === "mr")).toBe(true);
     });
@@ -124,7 +124,7 @@ describe("review-checkpoint-store", () => {
 
     it("combines multiple filters", () => {
       createCheckpoint(makeParams({ reviewType: "mr", projectId: "p1" }));
-      createCheckpoint(makeParams({ reviewType: "local", projectId: "p1" }));
+      createCheckpoint(makeParams({ reviewType: "requirement", projectId: "p1" }));
       const result = listCheckpoints({ reviewType: "mr", project: "p1" });
       expect(result.every((c) => c.reviewType === "mr" && c.projectId === "p1")).toBe(true);
     });

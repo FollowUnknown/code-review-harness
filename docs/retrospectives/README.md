@@ -18,4 +18,5 @@
 
 | 日期 | 范围 | 关键内容 |
 |------|------|---------|
-| [2026-04-28](2026-04-28.md) | `61c474c` ~ `11f11c1` (41 commits) | 项目启动 → 核心功能 → 知识平台 → Execution Superpower |
+| [2026-04-28](../archive/retrospectives/2026-04-28.md) | `61c474c` ~ `11f11c1` (41 commits) | 项目启动 → 核心功能 → 知识平台 → Execution Superpower |
+| 2026-05 (待补充) | v1.4.6 ~ v1.4.8 | UX 改进、local 模式移除、Session 闭环红线 — **回顾待补** |

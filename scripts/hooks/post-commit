@@ -1,0 +1,18 @@
+#!/bin/bash
+# git post-commit hook
+# 用途: commit 成功后写入 .claude/.commit-signal（含 commit hash + timestamp + session 路径）
+# 安装: git config core.hooksPath scripts/hooks
+# 退出码: 始终 0（非阻断）
+
+set -e
+
+COMMIT_HASH=$(git rev-parse HEAD)
+TIMESTAMP=$(date -Iseconds)
+DATE=$(date +%Y-%m-%d)
+SESSION_PATH="docs/sessions/${DATE}.md"
+
+mkdir -p .claude
+
+cat > .claude/.commit-signal << EOF
+{"commitHash":"${COMMIT_HASH}","timestamp":"${TIMESTAMP}","sessionPath":"${SESSION_PATH}"}
+EOF

@@ -1,0 +1,22 @@
+{
+  "date": "2026-05-13",
+  "context": "v1.4.6 completed, v1.4.7 in progress — agent-auto-trigger hook implemented",
+  "completedCount": 8,
+  "pendingCount": 1,
+  "versionChanges": {
+    "v1.4.6": "completed",
+    "v1.4.7": "in_progress — agent-auto-trigger hook done, auto-clear-after-commit pending"
+  },
+  "files": [
+    "docs/contracts/2026-05-13-agent-auto-trigger.md",
+    "docs/contracts/2026-05-13-auto-clear-after-commit.md",
+    "docs/versions/README.md",
+    "docs/versions/v1.4.6/README.md",
+    "docs/versions/v1.4.7/README.md",
+    "scripts/check-contract-status.sh",
+    ".claude/settings.local.json",
+    "sessions/active-tasks.md"
+  ],
+  "createdAt": "2026-05-13T19:45:00Z",
+  "nextTask": "auto-clear-after-commit — 等待 /clear 后重新开始"
+}

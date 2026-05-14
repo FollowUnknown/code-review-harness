@@ -6,7 +6,7 @@
 
 ## 红线（任何情况不可违反）
 
-1. **改之前先说清楚** — 要改什么、为什么改、边界在哪。不允许直接动手写代码
+1. **改之前必须先建 Contract** — 任何 `src/` 下的代码变更（新增/修改/删除），无论多小，先创建 Contract 明确范围再动手。没有"小改动不值得建 Contract"的豁免。即使是一行删除、一个变量改名、一段顺手清理，也必须先建 Contract
 2. **高风险路径专项审查** — SQL、配置文件、密钥、权限相关改动必须单独审查
 3. **proposal 边界不对就废弃重来** — 第一版 proposal 通常只是草案，不要硬着头皮执行
 4. **审查步骤必须分离** — verify、review、架构审查、SQL 审查各司其职，不能混在一起
@@ -23,6 +23,13 @@
 13. **DB Migration 红线** — DB 结构变更（建表、ALTER TABLE、加列、修 FK）必须使用带版本号的 Migration 文件，不得手动插入 `initialize()` 函数链或直接修改 `.db` 文件结构。Migration 文件必须可重入（重复执行不报错）
 
 14. **Session 闭环红线** — Contract 状态变更或代码提交后，必须在当天 session 文件的"会话记录"区块追加记录并同步更新 `active-tasks.md`。禁止出现"代码已提交但 session/active-tasks 无记录"或"Contract 已 completed 但 session 未归档"的状态漂移。对话结束时自动生成"今日总结"并更新所有待办状态
+
+15. **提交后自动清理红线** — git commit 成功后，post-commit hook 会在 `.claude/.commit-signal` 写入提交记录。下一轮对话启动时，AI 必须：
+    ① 检测 `.claude/.commit-signal` 是否存在
+    ② 如存在，读取内容并引导清理：追加 session 记录、同步 active-tasks.md
+    ③ 提示用户 `/clear` 开始新任务
+    ④ 完成后删除信号文件
+    禁止跳过清理流程直接进入新任务
 
 ---
 ## 当前阶段：Phase 2
@@ -45,6 +52,9 @@ AI 每次对话自动遵循以下规则，记录会话内容和任务清单。
 1. 读取 `sessions/active-tasks.md`（了解当前待办）
 2. 读取 `sessions/YYYY-MM-DD.md`（当天文件，如存在）
 3. 当天文件不存在时，基于模板创建，从 active-tasks.md 填写"今日目标"
+4. **检测提交信号** — 检查 `.claude/.commit-signal` 是否存在：
+   - 如存在，按红线第15条执行清理流程
+   - 如不存在，正常继续
 
 **规则 2：关键节点记录任务**
 满足以下任一条件时，在当天 session 的"会话记录"区块追加一条，同步更新 active-tasks.md：
@@ -61,61 +71,6 @@ AI 每次对话自动遵循以下规则，记录会话内容和任务清单。
 3. 已完成的任务从 active-tasks.md 移除（标记归档）
 
 **上下文控制：只读当天 session + active-tasks.md。历史文件按需 grep。**
-
-**规则 4：记忆召回**
-- 对话启动时：
-  1. 读取 `sessions/memory/session/{today}.json`，如存在则恢复活跃任务和上下文
-  2. 读取 `sessions/memory/project/*.json`，注入项目规则到规划上下文
-  3. 如 `sessions/memory/session/{today}.json` 不存在，基于 session 文件和 active-tasks.md 创建
-- 创建新 Contract 时：
-  1. 读取 `sessions/memory/project/conventions.json`，检查是否与已有规则冲突
-  2. 扫描 `sessions/memory/index.json` 按 tags 匹配相似 task memory，参考历史方案
-- 命中记忆时：
-  1. 更新 `sessions/memory/index.json` 中对应条目 `hitCount++` 和 `lastHitAt`
-  2. 如 `hitCount ≥ 3` 且距创建 ≥ 1d，执行 task → project 升级
-- Run/Repair 完成后：
-  1. 从 execution 数据提取 TaskMemory，写入 `sessions/memory/task/{run-id}.json`
-  2. 更新 `sessions/memory/index.json` 添加条目
-  3. 标记 execution 记录 `extractedForMemory: true`
-- 会话结束时：
-  1. 更新当日 `sessions/memory/session/{date}.json` 的上下文快照
-  2. 更新 `sessions/memory/stats.json` 中的计数
-
-### Execution 记录规则（Phase 3）
-
-AI 在以下场景**自动**写入 `sessions/execution/` 记录：
-
-**触发 1：Contract 状态变更 → 写入 Checkpoint**
-- 每次 Contract 状态流转（draft→confirmed→in_progress→review_pending→completed）
-- 写入 `sessions/execution/checkpoints/checkpoint-{YYYYMMDD}-{NNN}.json`
-- 包含 `memoryLayer` 字段（为 Phase 4 Memory 预埋）
-
-**触发 2：写了/改了代码 → 写入 Run 阶段记录**
-- 按当前阶段写入对应文件：
-  - Planning 阶段 → `runs/{run-id}/plan.json`
-  - Implementation 阶段 → `runs/{run-id}/implementation.json`
-  - Review 阶段 → `runs/{run-id}/review.json`
-- 包含 `extractedForMemory` 字段（为 Phase 4 Memory 预埋）
-
-**触发 3：评审失败后修复 → 写入 Repair 记录**
-- 评审不通过 → 创建 `repairs/{repair-id}/original-review.json`
-- 制定修复计划 → 写入 `repairs/{repair-id}/fix-plan.json`
-- 修复后验证 → 写入 `repairs/{repair-id}/verification.json`
-- 重试结果 → 写入 `repairs/{repair-id}/retry-result.json`
-- 包含 `extractedForKnowledge` 字段（为 Phase 4 Memory 预埋）
-
-**触发 4：Agent 切换 → 更新 Run 阶段**
-- Planner → Generator → Evaluator 切换时
-- 自动关联到当前 Run，写入对应阶段记录
-
-**命名规范**：
-- run-id: `run-{YYYYMMDD}-{NNN}`
-- repair-id: `repair-{YYYYMMDD}-{NNN}`
-- checkpoint-id: `checkpoint-{YYYYMMDD}-{NNN}`
-- Schema 定义：`sessions/execution/{runs|repairs|checkpoints}/schemas/`
-
-**任务关联**：
-- active-tasks.md 中的任务可通过 `executionRunId`、`executionRepairId` 关联到 Execution 记录
 
 ### 会话文件模板
 
@@ -318,14 +273,10 @@ in_progress → review_pending  →  code-reviewer agent 自动触发
 ## 知识组织
 
 ```
-sessions/                       # 会话机制（运营日志，与 docs/ 分离）
+docs/sessions/                   # 会话机制（运营日志）
 ├── active-tasks.md          # 跨天活跃任务汇总
 ├── YYYY-MM-DD.md            # 每日会话记录
-└── execution/               # Phase 3 Execution 证据
-    ├── runs/                # Run 执行记录（plan/implementation/review）
-    ├── repairs/             # 修复回环记录
-    ├── checkpoints/         # 阶段检查点
-    └── README.md            # 目录说明
+└── archive/                 # 归档（history/memory/execution）
 
 docs/                            # 项目知识（参考型）
 ├── contracts/

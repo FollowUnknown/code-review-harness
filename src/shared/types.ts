@@ -640,7 +640,7 @@ export interface ProgressEvent {
 // ---- SSE Streaming Events (v1.4.4) ----
 
 export interface SSEReviewStart {
-  reviewType: "mr" | "local" | "requirement";
+  reviewType: "mr" | "requirement";
   totalBatches: number;
   totalFiles: number;
   jobId?: string;
@@ -649,7 +649,7 @@ export interface SSEReviewStart {
 
 export interface SSEReviewCreated {
   reviewId: string;
-  reviewType: "mr" | "local" | "requirement";
+  reviewType: "mr" | "requirement";
 }
 
 export interface SSEBatchProgress {
@@ -679,7 +679,7 @@ export interface SSEResumed {
 
 // ---- Review Checkpoint (v1.4.4) ----
 
-export type ReviewType = "mr" | "local" | "requirement";
+export type ReviewType = "mr" | "requirement";
 export type CheckpointStatus = "running" | "paused" | "completed" | "abandoned" | "interrupted";
 
 export interface ReviewCheckpoint {

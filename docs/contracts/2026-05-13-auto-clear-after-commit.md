@@ -1,7 +1,7 @@
 # Contract: git commit 后自动 /clear 上下文
 
 > 日期: 2026-05-13
-> 状态: draft
+> 状态: completed
 > 类型: Platform Task
 > 版本: v1.4.7
 

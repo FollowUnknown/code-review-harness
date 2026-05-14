@@ -1,5 +1,13 @@
 # 本地源码扫描架构设计
 
+> ⚠️ **已废弃** — v1.4.8 已移除 local 模式。此文档保留仅作历史参考。
+>
+> 状态: **废弃 (Deprecated)**
+> 移除版本: v1.4.8
+> 替代方案: GitLab API + MR 模式（`src/server/routes/review-mr.ts`）
+>
+> ---
+>
 > 版本: v1.0 (Architecture Phase)
 > 日期: 2026-04-28
 > 状态: 待确认

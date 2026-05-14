@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-MEMORY_DIR="${1:-sessions/memory}"
+MEMORY_DIR="${1:-docs/sessions/archive/memory}"
 INDEX_FILE="$MEMORY_DIR/index.json"
 STATS_FILE="$MEMORY_DIR/stats.json"
 TODAY=$(date -u +%Y-%m-%d)

@@ -3,7 +3,7 @@
 # 在 Edit|Write 操作后调用，确保关键节点被记录
 
 TODAY=$(date +%Y-%m-%d)
-SESSION_FILE="sessions/${TODAY}.md"
+SESSION_FILE="docs/sessions/${TODAY}.md"
 
 # 如果 session 文件不存在，提醒创建
 if [ ! -f "$SESSION_FILE" ]; then

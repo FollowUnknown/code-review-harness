@@ -20,12 +20,12 @@ if ! echo "$REL_PATH" | grep -q "^src/"; then
 fi
 
 TODAY=$(date +%Y-%m-%d)
-SESSION_FILE="${CWD}/sessions/${TODAY}.md"
+SESSION_FILE="${CWD}/docs/sessions/${TODAY}.md"
 
 # 如果 session 文件不存在，提醒但不阻断
 if [ ! -f "$SESSION_FILE" ]; then
   echo ""
-  echo "⚠️  自动记录跳过: sessions/${TODAY}.md 不存在"
+  echo "⚠️  自动记录跳过: docs/sessions/${TODAY}.md 不存在"
   echo "   建议创建 session 文件以跟踪变更"
   exit 0
 fi
@@ -68,6 +68,6 @@ else
   echo "- ${TOOL_NAME} on src/ 文件（自动记录）" >> "$SESSION_FILE"
 fi
 
-echo "📝 自动记录: sessions/${TODAY}.md ← ${REL_PATH}"
+echo "📝 自动记录: docs/sessions/${TODAY}.md ← ${REL_PATH}"
 
 exit 0

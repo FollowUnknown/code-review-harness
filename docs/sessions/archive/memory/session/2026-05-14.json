@@ -1,0 +1,9 @@
+{
+  "date": "2026-05-14",
+  "context": "Auto-generated from session file",
+  "completedCount": 0
+0,
+  "pendingCount": 1,
+  "files": [".claude/settings.local.json","CLAUDE.md","docs/architecture/local-code-scan.md","docs/contracts/2026-05-13-auto-clear-after-commit.md","docs/product/index.md","docs/retrospectives/README.md","docs/versions/README.md","docs/versions/v1.4.6/README.md","sessions/2026-05-13.md","sessions/active-tasks.md","sessions/execution/audit.log","sessions/memory/session/2026-05-13.json","src/client/App.tsx","src/client/components/ReviewProgress.tsx","src/client/pages/LocalReviewPage.tsx","src/client/pages/RequirementReviewPage.tsx","src/server/db.ts","src/server/index.ts","src/server/routes/review-local.ts","src/server/services/local-scan/index.ts","src/server/services/sse-helper.ts","src/shared/types.ts","tests/server/routes/review-checkpoint-routes.test.ts","tests/server/services/review-checkpoint-store.test.ts"],
+  "createdAt": "2026-05-13T16:31:12Z"
+}

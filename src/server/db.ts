@@ -290,7 +290,7 @@ function initialize(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS review_checkpoints (
       id                  TEXT PRIMARY KEY,
-      review_type         TEXT NOT NULL CHECK(review_type IN ('mr', 'local', 'requirement')),
+      review_type         TEXT NOT NULL CHECK(review_type IN ('mr', 'requirement')),
       project_id          TEXT NOT NULL,
       source_branch       TEXT,
       target_branch       TEXT,
@@ -666,7 +666,7 @@ function migrateCheckpointsStatusConstraint(db: Database.Database): void {
     db.exec(`
       CREATE TABLE review_checkpoints (
         id                  TEXT PRIMARY KEY,
-        review_type         TEXT NOT NULL CHECK(review_type IN ('mr', 'local', 'requirement')),
+        review_type         TEXT NOT NULL CHECK(review_type IN ('mr', 'requirement')),
         project_id          TEXT NOT NULL,
         source_branch       TEXT,
         target_branch       TEXT,

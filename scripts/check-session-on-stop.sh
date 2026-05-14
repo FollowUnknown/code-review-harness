@@ -3,7 +3,7 @@
 # 在 ~/.claude/settings.local.json Stop hooks 中调用
 
 TODAY=$(date +%Y-%m-%d)
-SESSION_FILE="sessions/${TODAY}.md"
+SESSION_FILE="docs/sessions/${TODAY}.md"
 
 # 1. 检查 session 文件是否存在
 if [ ! -f "$SESSION_FILE" ]; then
@@ -24,10 +24,10 @@ if ! grep -q "## 今日总结" "$SESSION_FILE"; then
 fi
 
 # 3. 检查 active-tasks.md 是否存在
-if [ ! -f "sessions/active-tasks.md" ]; then
+if [ ! -f "docs/sessions/active-tasks.md" ]; then
   echo ""
   echo "⚠️  SESSION CHECK FAILED"
-  echo "   sessions/active-tasks.md 不存在"
+  echo "   docs/sessions/active-tasks.md 不存在"
   exit 1
 fi
 

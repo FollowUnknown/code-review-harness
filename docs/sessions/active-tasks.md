@@ -13,11 +13,6 @@
 - [x] V120-Phase2: Prompt 增强 + 反馈闭环 (TASK-204/208/209)
 - [x] V120-Phase3: 生命周期 + 质量量化 (TASK-207/210/211)
 
-### P1 — 重要
-- [ ] TASK-002: OpenCodeServer 本地源码扫描（第二期，来源: 2026-04-22）→ **已映射到 v1.3.0**
-- [ ] TASK-003: 前端组件测试补充（来源: 2026-04-22）→ **已映射到 v1.0.0**
-- [ ] TASK-004: 用户管理模块 — 管理员邀请成员、角色管理、用户列表页（来源: 2026-04-23）→ **已映射到 v1.1.5**
-
 ### 版本迭代规划
 
 | 版本 | 周期 | 核心目标 | Superpower Phase | 状态 |
@@ -25,18 +20,16 @@
 | [v1.1.0](../docs/versions/v1.1.0/README.md) | 04/28 | Execution 层补充 | Phase 3 Execution | ✅ 已完成 |
 | [v1.1.5](../docs/versions/v1.1.5/README.md) | 04/28 | 用户管理与 Knowledge 审核 | Phase 3 (补充) | ✅ 已完成 |
 | [v1.2.0](../docs/versions/v1.2.0/README.md) | 04/28 | Knowledge 精准召回 + 评审质量 | Phase 4 Memory (CodeReview) | ✅ 已完成 (11/11 tasks) |
-| [v1.2.5](../docs/versions/v1.2.5/README.md) | 待定 | Harness Memory 分层系统 | Phase 4 Memory (Harness) | ⚪ 待启动 |
-| [v1.3.0](../docs/versions/v1.3.0/README.md) | 待定 | Capability 基础 | Phase 5 (基础) | ⚪ 待启动 |
 | [v1.3.5](../docs/versions/v1.3.5/plan.md) | 05/02 | 文件选择过滤器 | Diff Preview + FileSelector | ✅ 已完成 |
 | [v1.3.6](../docs/versions/v1.3.6/README.md) | 05/06 | 知识库闭环 + 评审质量 | Knowledge Loop + Quality | ✅ 已完成 |
 | [v1.3.7](../docs/versions/v1.3.7/README.md) | 05/06 | 多技术栈评审 | Tech-stack aware review | ✅ 已完成 |
-| [v1.4.0](../docs/versions/v1.4.0/README.md) | 待定 | Capability 高级 | Phase 5 (高级) | ⚪ 待启动 |
 | [v1.4.1](../docs/versions/v1.4.1/README.md) | 05/11 | 页面崩溃修复 | Bugfix | ✅ 已完成 |
 | [v1.4.2](../docs/versions/v1.4.2/README.md) | 05/11 | Phase 2 治理 + Contract 规范化 | Governance | ✅ 已完成 |
 | [v1.4.3](../docs/versions/v1.4.3/README.md) | 05/11 | Knowledge 导入 + Drawer 优化 | Knowledge | ✅ 已完成 |
 | [v1.4.4](../docs/versions/v1.4.4/README.md) | 05/12 | 渐进式报告 + 暂停恢复 | UX + Recovery | ✅ 已完成 |
 | [v1.4.5](../docs/versions/v1.4.5/README.md) | 05/12 | GitLab API Preview | Integration | ✅ 已完成 |
-| [v1.4.6](../docs/versions/v1.4.6/README.md) | 05/13 | 需求评审子报告 + 详情下钻 | Requirement Review | 🔄 开发中 |
+| [v1.4.6](../docs/versions/v1.4.6/README.md) | 05/13 | 需求评审记录管理 + 暂停恢复 | Phase 2 | ✅ 已完成 |
+| [v1.4.7](../docs/versions/v1.4.7/README.md) | 05/13 | 提交后自动清理 | Phase 2 | ✅ 已完成 |
 
 ### 待跟进项（Contract 分析发现）
 - [x] **v1.4.4-recovery-flow 残留**：4 个测试文件未确认（review-pause-controller.test.ts、review-checkpoint-store.test.ts、sse-helper.test.ts、review-checkpoint-routes.test.ts）→ **✅ 已确认，Contract 已归档**

@@ -18,7 +18,6 @@ import { DimensionSetPage } from "./pages/DimensionSetPage";
 import { UserManagementPage } from "./pages/UserManagementPage";
 import { QualityPage } from "./pages/QualityPage";
 import { MemoryPage } from "./pages/MemoryPage";
-import { LocalReviewPage } from "./pages/LocalReviewPage";
 import { RequirementReviewPage } from "./pages/RequirementReviewPage";
 import { RequirementReviewDetailPage } from "./pages/RequirementReviewDetailPage";
 import { SubReportDetailPage } from "./pages/SubReportDetailPage";
@@ -175,7 +174,6 @@ export default function App() {
 
             {/* Primary actions */}
             <NavLink to="/reviews">History</NavLink>
-            <NavLink to="/local-review">Local</NavLink>
             <NavLink to="/requirement-review">Requirement</NavLink>
 
             {/* Divider */}
@@ -311,7 +309,6 @@ export default function App() {
           <Route path="/users" element={<UserManagementPage currentUser={authUser} />} />
           <Route path="/quality" element={<QualityPage />} />
           <Route path="/memory" element={<MemoryPage />} />
-          <Route path="/local-review" element={<LocalReviewPage />} />
           <Route path="/requirement-review" element={<RequirementReviewPage />} />
           <Route path="/requirement-review/:id" element={<RequirementReviewDetailPage />} />
           <Route path="/requirement-review/:reviewId/projects/:projectName" element={<SubReportDetailPage />} />

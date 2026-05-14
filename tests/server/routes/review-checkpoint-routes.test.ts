@@ -169,7 +169,7 @@ describe("review-checkpoint-routes", () => {
         totalBatches: 3, totalFiles: 30, currentBatch: 0, reviewedCount: 0,
       });
       createCheckpoint({
-        reviewType: "local", projectId: "p1",
+        reviewType: "requirement", projectId: "p1",
         totalBatches: 5, totalFiles: 50, currentBatch: 0, reviewedCount: 0,
       });
       const req = mockReq();
@@ -199,14 +199,14 @@ describe("review-checkpoint-routes", () => {
         totalBatches: 3, totalFiles: 30, currentBatch: 0, reviewedCount: 0,
       });
       createCheckpoint({
-        reviewType: "local", projectId: "p2",
+        reviewType: "requirement", projectId: "p2",
         totalBatches: 5, totalFiles: 50, currentBatch: 0, reviewedCount: 0,
       });
-      const req = mockReq({ query: { review_type: "local" } });
+      const req = mockReq({ query: { review_type: "requirement" } });
       const res = mockRes();
       checkpointsHandler(req, res);
       const items = res._json as any[];
-      expect(items.every((c: any) => c.reviewType === "local")).toBe(true);
+      expect(items.every((c: any) => c.reviewType === "requirement")).toBe(true);
     });
 
     it("filters by project", () => {

@@ -2587,3 +2587,151 @@
 [2026-05-13T10:01:07Z] Edit tests/verify/v1.4.6-pause-resume-e2e.test.ts session=99f751ec-dc48-4693-aadf-fc7b21d1772a
 [2026-05-13T10:01:22Z] Edit tests/verify/v1.4.6-pause-resume-e2e.test.ts session=99f751ec-dc48-4693-aadf-fc7b21d1772a
 [2026-05-13T10:02:41Z] Edit tests/verify/v1.4.6-pause-resume-e2e.test.ts session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T10:43:09Z] Edit src/client/pages/RequirementReviewPage.tsx session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T10:43:29Z] Edit src/client/pages/RequirementReviewPage.tsx session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T10:46:47Z] Write docs/contracts/2026-05-13-pause-resume-ui-fix.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T10:47:06Z] Edit sessions/2026-05-13.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T10:47:10Z] Edit sessions/active-tasks.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:28:50Z] Write tests/client/pages/RequirementReviewDetailPage.test.ts session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:29:13Z] Edit vitest.config.ts session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on vitest.config.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T13:29:25Z] Edit tests/client/pages/RequirementReviewDetailPage.test.tsx session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:29:27Z] Edit tests/client/pages/RequirementReviewDetailPage.test.tsx session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:29:40Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T13:29:45Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T13:29:51Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T13:30:06Z] Edit src/client/pages/RequirementReviewDetailPage.tsx session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on src/client/pages/RequirementReviewDetailPage.tsx - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T13:30:19Z] Edit docs/contracts/2026-05-13-v1.4.6-requirement-review-records.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:30:30Z] Edit sessions/active-tasks.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:30:35Z] Edit sessions/2026-05-13.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:37:31Z] Edit src/server/routes/review.ts session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on src/server/routes/review.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T13:37:31Z] Edit src/server/routes/review.ts session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on src/server/routes/review.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T13:37:31Z] Edit src/server/routes/review-requirement.ts session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T13:37:31Z] Edit src/server/routes/review-requirement.ts session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T13:37:31Z] Edit src/server/routes/review-local.ts session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T13:37:31Z] Edit src/server/routes/review-local.ts session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on src/server/routes/review-local.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T13:37:50Z] Edit src/server/routes/review.ts session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[AUDIT] Edit on src/server/routes/review.ts - allowed (contract: 2026-05-12-v1.4.4-recovery-flow.md)
+[2026-05-13T13:45:48Z] Edit docs/contracts/2026-05-12-v1.4.4-recovery-flow.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:45:48Z] Edit docs/versions/v1.4.4/README.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:45:48Z] Edit docs/versions/v1.4.5/README.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:45:48Z] Edit docs/versions/v1.4.6/README.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:45:48Z] Edit docs/versions/README.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:47:10Z] Edit sessions/2026-05-13.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:47:38Z] Edit sessions/2026-05-13.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:47:45Z] Edit sessions/active-tasks.md session=99f751ec-dc48-4693-aadf-fc7b21d1772a
+[2026-05-13T13:56:47Z] Edit docs/versions/v1.4.6/README.md session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T13:56:56Z] Write docs/versions/v1.4.7/README.md session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T13:57:00Z] Edit docs/versions/README.md session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T13:57:21Z] Edit docs/versions/README.md session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T13:57:25Z] Edit sessions/active-tasks.md session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T13:57:32Z] Write sessions/memory/session/2026-05-13.json session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T14:10:05Z] Edit docs/contracts/2026-05-13-auto-clear-after-commit.md session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T14:12:27Z] Write docs/contracts/2026-05-13-agent-auto-trigger.md session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T14:12:36Z] Write /Users/tzknow/.claude/plans/starry-sleeping-stroustrup.md session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[AUDIT] Write on /Users/tzknow/.claude/plans/starry-sleeping-stroustrup.md - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T14:12:58Z] Edit docs/contracts/2026-05-13-agent-auto-trigger.md session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T14:13:12Z] Write scripts/check-contract-status.sh session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T14:13:32Z] Edit .claude/settings.local.json session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T14:13:36Z] Edit .claude/settings.local.json session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T14:16:14Z] Edit sessions/2026-05-13.md session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T14:16:25Z] Edit docs/contracts/2026-05-13-agent-auto-trigger.md session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T14:16:31Z] Edit docs/contracts/2026-05-13-agent-auto-trigger.md session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T14:16:37Z] Write sessions/memory/session/2026-05-13.json session=a3112fea-bbb2-418f-88ca-05281b91d1f6
+[2026-05-13T14:21:19Z] Edit docs/contracts/2026-05-13-auto-clear-after-commit.md session=4000f5b7-b3ed-4ea5-a69d-087cafa1dc31
+[2026-05-13T14:21:34Z] Write scripts/hooks/post-commit session=4000f5b7-b3ed-4ea5-a69d-087cafa1dc31
+[2026-05-13T14:21:34Z] Write scripts/install-hooks.sh session=4000f5b7-b3ed-4ea5-a69d-087cafa1dc31
+[2026-05-13T14:21:42Z] Edit CLAUDE.md session=4000f5b7-b3ed-4ea5-a69d-087cafa1dc31
+[2026-05-13T14:21:46Z] Edit CLAUDE.md session=4000f5b7-b3ed-4ea5-a69d-087cafa1dc31
+[2026-05-13T14:22:36Z] Edit sessions/2026-05-13.md session=4000f5b7-b3ed-4ea5-a69d-087cafa1dc31
+[2026-05-13T14:23:51Z] Edit docs/contracts/2026-05-13-auto-clear-after-commit.md session=4000f5b7-b3ed-4ea5-a69d-087cafa1dc31
+[2026-05-13T14:23:54Z] Edit sessions/2026-05-13.md session=4000f5b7-b3ed-4ea5-a69d-087cafa1dc31
+[2026-05-13T14:23:59Z] Edit sessions/active-tasks.md session=4000f5b7-b3ed-4ea5-a69d-087cafa1dc31
+[2026-05-13T14:32:06Z] Edit sessions/active-tasks.md session=82cd8062-c151-4b61-ae09-f7d61c9d1296
+[2026-05-13T14:32:56Z] Edit sessions/active-tasks.md session=82cd8062-c151-4b61-ae09-f7d61c9d1296
+[2026-05-13T14:33:00Z] Edit sessions/active-tasks.md session=82cd8062-c151-4b61-ae09-f7d61c9d1296
+[2026-05-13T14:33:07Z] Edit sessions/active-tasks.md session=82cd8062-c151-4b61-ae09-f7d61c9d1296
+[2026-05-13T14:33:13Z] Edit docs/versions/README.md session=82cd8062-c151-4b61-ae09-f7d61c9d1296
+[2026-05-13T14:33:17Z] Edit docs/versions/README.md session=82cd8062-c151-4b61-ae09-f7d61c9d1296
+[2026-05-13T14:33:25Z] Edit docs/versions/README.md session=82cd8062-c151-4b61-ae09-f7d61c9d1296
+[2026-05-13T14:33:43Z] Edit docs/versions/README.md session=82cd8062-c151-4b61-ae09-f7d61c9d1296
+[2026-05-13T14:33:46Z] Edit docs/versions/README.md session=82cd8062-c151-4b61-ae09-f7d61c9d1296
+[2026-05-13T14:33:50Z] Edit docs/versions/README.md session=82cd8062-c151-4b61-ae09-f7d61c9d1296
+[2026-05-13T14:33:53Z] Edit docs/versions/v1.4.7/README.md session=82cd8062-c151-4b61-ae09-f7d61c9d1296
+[2026-05-13T14:34:03Z] Edit sessions/2026-05-13.md session=82cd8062-c151-4b61-ae09-f7d61c9d1296
+[2026-05-13T15:04:27Z] Write docs/contracts/2026-05-13-v1.4.8-ux-improvements.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T15:05:54Z] Edit src/client/pages/RequirementReviewPage.tsx session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:06:14Z] Edit src/client/pages/RequirementReviewPage.tsx session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:08:32Z] Write src/server/services/local-scan/index.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Write on src/server/services/local-scan/index.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:08:57Z] Edit src/client/App.tsx session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:08:58Z] Edit src/server/index.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/server/index.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:09:02Z] Edit src/client/App.tsx session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:09:02Z] Edit src/client/App.tsx session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/client/App.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:09:03Z] Edit src/server/index.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/server/index.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:09:19Z] Edit src/shared/types.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/shared/types.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:09:20Z] Edit src/shared/types.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/shared/types.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:09:20Z] Edit src/shared/types.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/shared/types.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:09:20Z] Edit src/client/components/ReviewProgress.tsx session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/client/components/ReviewProgress.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:09:20Z] Edit src/server/services/sse-helper.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/server/services/sse-helper.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:09:26Z] Edit src/server/db.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/server/db.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T15:10:05Z] Edit tests/server/services/review-checkpoint-store.test.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T15:10:05Z] Edit tests/server/services/review-checkpoint-store.test.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T15:10:05Z] Edit tests/server/services/review-checkpoint-store.test.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T15:10:05Z] Edit tests/server/services/review-checkpoint-store.test.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T15:10:15Z] Edit tests/server/services/review-checkpoint-store.test.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T15:10:20Z] Edit tests/server/routes/review-checkpoint-routes.test.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T15:10:20Z] Edit tests/server/routes/review-checkpoint-routes.test.ts session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T15:11:23Z] Edit docs/retrospectives/README.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T15:11:23Z] Edit docs/product/index.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T15:11:23Z] Edit docs/architecture/local-code-scan.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T15:12:07Z] Edit sessions/2026-05-13.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T15:12:07Z] Edit docs/versions/README.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T15:12:15Z] Write docs/versions/v1.4.8/README.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T16:28:49Z] Edit src/client/pages/RequirementReviewPage.tsx session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T16:29:00Z] Edit src/client/pages/RequirementReviewPage.tsx session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T16:29:27Z] Write sessions/2026-05-14.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T16:29:30Z] Edit docs/contracts/2026-05-13-v1.4.8-ux-improvements.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T16:29:34Z] Edit src/client/pages/RequirementReviewPage.tsx session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T16:29:38Z] Edit src/client/pages/RequirementReviewPage.tsx session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T16:29:48Z] Edit docs/contracts/2026-05-13-v1.4.8-ux-improvements.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T16:31:05Z] Edit src/client/pages/RequirementReviewPage.tsx session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T17:04:09Z] Edit src/client/pages/RequirementReviewPage.tsx session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[AUDIT] Edit on src/client/pages/RequirementReviewPage.tsx - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-13T17:10:47Z] Edit CLAUDE.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T17:18:48Z] Edit docs/contracts/2026-05-13-v1.4.8-ux-improvements.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T17:18:48Z] Edit docs/versions/v1.4.8/README.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T17:18:48Z] Edit docs/versions/v1.4.8/README.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T17:18:49Z] Edit docs/versions/v1.4.8/README.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T17:18:52Z] Edit docs/versions/README.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T17:18:57Z] Edit sessions/2026-05-14.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T17:19:07Z] Edit sessions/2026-05-14.md session=4c36f995-06a7-44f8-a560-dbc5226a4331
+[2026-05-13T17:21:36Z] Edit docs/retrospectives/README.md session=4c36f995-06a7-44f8-a560-dbc5226a4331

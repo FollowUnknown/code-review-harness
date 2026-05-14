@@ -12,8 +12,8 @@ import type {
 /**
  * Shared SSE helpers (v1.4.4).
  *
- * Extracted from three duplicate inline implementations in:
- *   review.ts / review-local.ts / review-requirement.ts
+ * Extracted from two duplicate inline implementations in:
+ *   review.ts / review-requirement.ts
  *
  * Usage:
  *   const { sendSSE, nextStep, completeStep, getStep, sendEvent } = createSSEHelpers(res);

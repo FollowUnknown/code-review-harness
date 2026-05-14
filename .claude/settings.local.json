@@ -36,7 +36,9 @@
       "Bash(echo \"EXIT: $?\")",
       "Bash(bash -c 'echo test')",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(chmod +x:*)",
+      "Bash(bash scripts/check-contract-status.sh)"
     ],
     "deny": [
       "Bash(rm -rf*)",
@@ -79,6 +81,15 @@
           {
             "type": "command",
             "command": "bash scripts/auto-record-session.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/check-contract-status.sh"
           }
         ]
       }
