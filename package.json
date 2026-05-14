@@ -4,7 +4,7 @@
   "private": true,
   "description": "可视化代码评审 Web 应用",
   "scripts": {
-    "predev": "lsof -ti :3006 -ti :5178 | xargs kill -9 2>/dev/null || true",
+    "predev": "eval \"$(grep -E '^(PORT|VITE_PORT)=' .env 2>/dev/null)\" && lsof -ti :${PORT:-3006} -ti :${VITE_PORT:-5178} | xargs kill -9 2>/dev/null || true",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "tsx watch src/server/index.ts",
     "dev:client": "vite --host",

@@ -68,3 +68,6 @@
 [2026-05-14T08:49:39Z] Edit src/server/routes/review-requirement.ts session=577d436d-142c-4c92-b4cc-72005ef834cc
 [AUDIT] Edit on src/server/routes/review-requirement.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
 [2026-05-14T08:49:57Z] Edit docs/contracts/2026-05-14-sse-visibility-keepalive.md session=577d436d-142c-4c92-b4cc-72005ef834cc
+[2026-05-14T09:04:41Z] Edit vite.config.ts session=577d436d-142c-4c92-b4cc-72005ef834cc
+[AUDIT] Edit on vite.config.ts - allowed (contract: 2026-05-13-agent-auto-trigger.md)
+[2026-05-14T09:05:02Z] Edit package.json session=577d436d-142c-4c92-b4cc-72005ef834cc
