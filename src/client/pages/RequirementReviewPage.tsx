@@ -845,7 +845,7 @@ export function RequirementReviewPage() {
       )}
 
       {/* v1.4.4: incremental review progress */}
-      {showReviewProgress && reviewTotalBatches > 0 && (
+      {showReviewProgress && reviewTotalBatches > 0 && !reviewId && (
         <ReviewProgress
           reviewType="requirement"
           totalBatches={reviewTotalBatches}
