@@ -26,6 +26,21 @@ src/server/migrations/
 - `schema_version` 表记录已执行的版本
 - 启动时自动检测并执行未执行的 migration
 
+## 测试环境数据基线
+
+- 测试环境初始化默认以当前本地 `knowledge.db` 作为基线，而不是空库重建
+- 复制前必须先做 WAL checkpoint，确保 `knowledge.db-wal` 中的增量已落盘
+- 复制时必须同时考虑：
+  - `knowledge.db`
+  - `knowledge.db-wal`
+  - `knowledge.db-shm`
+- 复制后必须生成指纹文件，至少记录：
+  - DB 文件大小
+  - WAL / SHM 文件大小
+  - 关键表行数
+  - `schema_version` 状态
+- 任何 migration 执行前必须先备份测试环境目标库，失败可直接回滚
+
 ## 表命名规范
 
 - 表名：蛇形小写 `review_plans`

@@ -10,9 +10,9 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    port: parseInt(process.env.VITE_PORT || "5178", 10),
+    port: parseInt(process.env.VITE_PORT || "5173", 10),
     proxy: {
-      "/api": `http://localhost:${process.env.PORT || "3006"}`,
+      "/api": `http://localhost:${process.env.PORT || "3001"}`,
     },
   },
 });

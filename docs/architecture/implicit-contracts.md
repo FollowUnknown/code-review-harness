@@ -27,3 +27,10 @@
 - **违反后果**：改动范围不可控，DB 变更绕过红线审查，代码审查缺失
 - **发现日期**：2026-05-13
 - **事件**：Toast 通知、DB 优化、resume 修复三项改动全部跳过 Contract 直接实施
+
+### 评审后端默认 GitLab 协议
+- **场景**：部署后进行 MR/需求评审时，用户期望直接对接 GitHub PR
+- **规则**：当前业务评审后端默认以 GitLab API 与 GitLab diff 类型为主协议；GitHub 目前仅可作为代码托管 remote，不等同于已支持 GitHub PR 评审
+- **违反后果**：部署验收阶段出现“代码已推送但评审不可用”的误判，导致连通性排查方向错误
+- **发现日期**：2026-05-16
+- **涉及文件**：`src/server/services/gitlab.ts`、`src/server/routes/reviews.ts`、`src/shared/types.ts`

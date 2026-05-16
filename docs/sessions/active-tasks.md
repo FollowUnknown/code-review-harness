@@ -30,11 +30,20 @@
 | [v1.4.5](../docs/versions/v1.4.5/README.md) | 05/12 | GitLab API Preview | Integration | ✅ 已完成 |
 | [v1.4.6](../docs/versions/v1.4.6/README.md) | 05/13 | 需求评审记录管理 + 暂停恢复 | Phase 2 | ✅ 已完成 |
 | [v1.4.7](../docs/versions/v1.4.7/README.md) | 05/13 | 提交后自动清理 | Phase 2 | ✅ 已完成 |
+| [v1.4.9](../docs/versions/v1.4.9/README.md) | 05/16 | 稳定性收口 + 测试环境部署准备 | Phase 2 | ✅ 已完成 |
 
 ### 待跟进项（Contract 分析发现）
 - [x] **v1.4.4-recovery-flow 残留**：4 个测试文件未确认（review-pause-controller.test.ts、review-checkpoint-store.test.ts、sse-helper.test.ts、review-checkpoint-routes.test.ts）→ **✅ 已确认，Contract 已归档**
 - [x] **v1.4.6 收尾**：✅ pause-resume-ui-fix (completed)；✅ v1.4.6-requirement-review-records (completed，G5 详情页暂停按钮补充完成)；✅ sub-report-detail 已完成；✅ llm-validation-sse-timeout 已完成
 - [x] **Version README 同步**：v1.4.4/v1.4.5/v1.4.6 的 README.md 状态字段与实际不一致 → **✅ 已同步**
+
+### 新增待办（2026-05-16）
+- [x] V149-001: 测试环境构建与启动链路闭环 (P0, 来源: 2026-05-16, v1.4.9, 当前状态: completed)
+- [x] V149-002: 测试环境运行时配置与密钥治理 (P0, 来源: 2026-05-16, v1.4.9, 当前状态: completed)
+- [x] V149-003: 测试环境 SQLite 持久化与 Migration 收口 (P0, 来源: 2026-05-16, v1.4.9, 当前状态: completed)
+- [x] V149-004: 测试环境拓扑与 SSE 部署方案 (P1, 来源: 2026-05-16, v1.4.9, 当前状态: completed)
+- [x] V149-005: 测试环境部署步骤与冒烟检查清单 (P1, 来源: 2026-05-16, v1.4.9, 当前状态: completed)
+- [ ] V200-001: GitHub PR 评审能力规划（默认 GitLab，补充 GitHub）(P1, 来源: 2026-05-16, 当前状态: 待建 Contract)
 
 ## Execution 关联规范
 

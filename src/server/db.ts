@@ -3,6 +3,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { REVIEW_DIMENSIONS } from "../shared/constants";
 import { JAVA_BACKEND_DIMENSIONS } from "./llm/prompts/defaults";
+import { runMigrations } from "./migration-runner";
 
 let db: Database.Database | null = null;
 let readDb: Database.Database | null = null;
@@ -38,6 +39,9 @@ export function getReadDb(): Database.Database {
 }
 
 function initialize(db: Database.Database): void {
+  // Run file-based migrations first so future schema changes leave auditable records.
+  runMigrations(db);
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS reviews (
       id TEXT PRIMARY KEY,
@@ -229,6 +233,7 @@ function initialize(db: Database.Database): void {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE INDEX IF NOT EXISTS idx_llm_logs_review_id ON llm_logs(review_id);
+    CREATE INDEX IF NOT EXISTS idx_llm_logs_provider_model ON llm_logs(provider, model);
   `);
 
   // Review plans
