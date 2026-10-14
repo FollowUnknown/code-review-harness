@@ -1,7 +1,7 @@
 # Contract: 需求评审 Preview 拿不到 diff 项目（hotfix）
 
 > 日期: 2026-10-14
-> 状态: review_pending
+> 状态: completed
 > 类型: Business Task（hotfix）
 > 版本: v1.4.10
 
@@ -63,7 +63,15 @@
 
 ## 部署（待用户提供）
 
-我没有测试服务器（192.168.83.106）SSH 权限，需用户提供登录方式或自行执行部署命令。
+我没有测试服务器（192.168.83.106）SSH 权限（root / tzknow / deploy 均被拒），需用户提供登录方式或自行执行部署命令。
+
+## 交付
+
+- 提交：`01d1ffa` — `fix: 需求评审 Preview 不再把 GitLab 查询失败当成「无变更」`（9 个文件，+1254 / -39），已推送到 `origin/story-code-review`
+- 状态流转：`confirmed → in_progress → review_pending`（首轮评审不通过）`→ in_progress → review_pending`（次轮评审不通过）`→ in_progress → completed`
+- 未达成验收项（已记入 `docs/sessions/active-tasks.md`）：
+  - G6：全量测试基线仍有 237 个失败，属既有 migration 顺序问题 → `TASK-2026-10-14-DB-MIGRATION`
+  - G7：测试环境部署与冷启动验证 → `TASK-2026-10-14-DEPLOY`（阻塞：缺服务器访问权限）
 
 ---
 
