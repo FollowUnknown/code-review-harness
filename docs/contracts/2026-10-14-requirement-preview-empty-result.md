@@ -58,8 +58,8 @@
 - [x] G3 单测：重试耗尽 → `failed`，并在响应 `failures` 中体现
 - [x] G4 单测：`unchanged` 与 `no-branch` 不误报为 `failures`
 - [x] G5 原有字段（`projects` / `totalFiles` / `totalTokens` / `projectCount`）语义不变
+- [x] G7 部署到测试环境后，同一请求连续多次（含冷启动）返回真实 diff 项目 —— **已部署并验证**（见「测试环境部署与验证」）
 - [ ] G6 `npm run test` 全绿 —— **未达成**：全量基线 237 个失败，全部由既有 migration 顺序问题导致（`db.ts:43` 早于 `db.ts:220` 建 `llm_logs` 表），与本次改动无关，已用 `git stash` 验证改动前后一致；本次新增/更新测试 25 个用例全部通过
-- [ ] G7 部署到测试环境后，同一请求连续多次（含冷启动）返回真实 diff 项目 —— 待部署
 
 ## 部署（待用户提供）
 
@@ -194,6 +194,25 @@ reason: Request to http://10.255.255.1:80/... timed out
 2. **10s 单请求超时为经验值**，未做慢链路对照实验；测试环境若出现「慢但成功」的大 compare 被误判为 `failed`，需要放宽 `requestTimeoutMs`（已显式写在路由调用点）
 3. 本地兜底路径（`buildMultiProjectScanContext`）仍无法区分「真的无变更」与「扫描失败」——该风险同时存在于**完整评审**路径（那里连 `reason` 都没有）；完整修复需让其返回 per-project 状态
 4. 前端未消费 `scanned` / `failures`，用户界面仍会把空列表显示为「无变更」；本次修复的收益是**可诊断性**，用户侧观感不变
+
+### 测试环境部署与验证（2026-10-14 17:50）
+
+**部署前提发现**：测试环境（`192.168.83.106:/qiqiao/code-review-harness`，systemd 服务 `code-review`）拉取的是**内网 GitLab 仓库** `git.qiweioa.com.cn/liuhaitao/code-review-harness`（已到 v1.4.28），与本次修复所在的 GitHub 仓库 `FollowUnknown/code-review-harness` 是**两条线**。`7775c17` 在内网仓库中是其祖先，即同源但内网领先；内网仓库的 preview 实现与本次修复前的版本逐字一致（同一 bug）。
+
+**部署方式**：将本次修复**精准移植**到内网代码线（只新增 `GitLabApiError` / `fetchCompareDiffsDetailed` / `fetchCompareForProjects`，替换 preview 路由块；内网原有的 `fetchCompareDiffsForBranches` 未改动，故其 30s 超时不受影响），构建 `npm run build:server` 通过后重启服务。原始 commit `ec70c16` 与 `.bak-hotfix` 备份已保留。
+
+**验证结果**：
+
+| 检查 | 结果 |
+|------|------|
+| 冷启动后首次请求（重启服务后立即发起） | ✅ 0.75s 返回，无超时、无失败 |
+| 响应新增字段 | ✅ `scanned` / `failures` 正常返回 |
+| 现存分支 `develop` → `fixbug-private-4.3.0_01_1030`，连续 3 次 | ✅ 均为 26 个项目 / 662 个文件，结果一致，1.5–2.7s，`failures: 0` |
+| `scanned` 状态分布 | ✅ `{changed: 26, no-branch: 1, unchanged: 2}` |
+
+**关于用户报告的 `fixbug-0013306`**：该分支在验证过程中**被删除**（17:2x 本机实测它在 `do1cloud-qiqiao-runtime-web` 存在且有 4 个文件差异；17:5x 复查已 404，仅 `fdn-storage` 保留且差异为 0）。因此**当前**用该分支请求返回「无变更项目」是正确结果，而非缺陷；同期其它候选分支（`fixbug-0013716`、`fixbug-0013467`、`fixbug-0006901`）也已不存在。这也印证了本次修复的价值：修复前「分支不存在」与「查询失败」不可区分，修复后可凭 `scanned[].reason`（`404 Ref Not Found`）一眼定性。
+
+**遗留**：移植后的代码目前是测试服务器上的**未提交工作区改动**，若有人执行 `git pull` / `git checkout` 会被覆盖；需由内网仓库维护者决定如何合入（`.bak-hotfix` 为回滚备份）。
 
 ### 顺带发现：既有问题（不在本 Contract 范围）
 

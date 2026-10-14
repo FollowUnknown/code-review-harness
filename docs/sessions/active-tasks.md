@@ -49,9 +49,11 @@
 - [ ] ENV-001: 修复 git fetch 通道 —— `~/.ssh/config` 中 `github.com` 的 ProxyCommand 指向失效代理 `127.0.0.1:6789`，导致 `git fetch origin` 失败、远端跟踪引用长期过期（本次实测过期约 5 个月）(P1, 来源: 2026-05-14 信号清理轮次, 当前状态: 待处理；临时方案：HTTPS fetch 或 `ssh.github.com:443`)
 
 ### 新增待办（2026-10-14）
-- [x] TASK-2026-10-14-PREVIEW: 修复需求评审 Preview 把 GitLab 查询失败当成「无变更」返回空列表 (P0, 来源: 2026-10-14, 当前状态: review_pending；Contract: docs/contracts/2026-10-14-requirement-preview-empty-result.md；待测试环境部署验证)
+- [x] TASK-2026-10-14-PREVIEW: 修复需求评审 Preview 把 GitLab 查询失败当成「无变更」返回空列表 (P0, 来源: 2026-10-14, 当前状态: completed；Contract: docs/contracts/2026-10-14-requirement-preview-empty-result.md；已提交 01d1ffa / 6623bb5 并完成测试环境验证)
 - [ ] TASK-2026-10-14-DB-MIGRATION: 修正 `runMigrations` 与建表顺序 —— `db.ts:43` 早于 `db.ts:220` 建 `llm_logs` 表，导致 002 migration 在全新库上失败、服务启动报错、测试基线 237 个用例失败 (P0, 来源: 2026-10-14, 当前状态: 待建 Contract)
-- [ ] TASK-2026-10-14-DEPLOY: 测试环境部署本次修复并验证冷启动下 preview 不再返回空（缺服务器访问权限，待用户提供）(P0, 来源: 2026-10-14, 当前状态: 阻塞)
+- [x] TASK-2026-10-14-DEPLOY: 测试环境部署本次修复并验证冷启动下 preview 不再返回空 —— 已部署（精准移植到内网代码线 `/qiqiao/code-review-harness`）并通过验证：冷启动首请求 0.75s 无失败；`develop` 分支连续 3 次均为 26 个项目 / 662 个文件 (P0, 来源: 2026-10-14, 当前状态: completed)
+- [ ] TASK-2026-10-14-INTRANET-MERGE: 将测试服务器上的移植改动提交进内网仓库 `git.qiweioa.com.cn/liuhaitao/code-review-harness` —— 当前为未提交工作区改动（备份 `.bak-hotfix`，原 commit `ec70c16`），若被 git 操作覆盖即失效 (P0, 来源: 2026-10-14, 当前状态: 待内网仓库维护者处理)
+- [ ] TASK-2026-10-14-REPO-SPLIT: 厘清 GitHub 仓库 `FollowUnknown/code-review-harness` 与内网仓库 `liuhaitao/code-review-harness` 的关系与同步策略 —— 二者同源但已各自演进（内网到 v1.4.28），修复需要双线维护 (P1, 来源: 2026-10-14, 当前状态: 待决策)
 
 ## Execution 关联规范
 
