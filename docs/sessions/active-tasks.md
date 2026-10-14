@@ -52,8 +52,9 @@
 - [x] TASK-2026-10-14-PREVIEW: 修复需求评审 Preview 把 GitLab 查询失败当成「无变更」返回空列表 (P0, 来源: 2026-10-14, 当前状态: completed；Contract: docs/contracts/2026-10-14-requirement-preview-empty-result.md；已提交 01d1ffa / 6623bb5 并完成测试环境验证)
 - [ ] TASK-2026-10-14-DB-MIGRATION: 修正 `runMigrations` 与建表顺序 —— `db.ts:43` 早于 `db.ts:220` 建 `llm_logs` 表，导致 002 migration 在全新库上失败、服务启动报错、测试基线 237 个用例失败 (P0, 来源: 2026-10-14, 当前状态: 待建 Contract)
 - [x] TASK-2026-10-14-DEPLOY: 测试环境部署本次修复并验证冷启动下 preview 不再返回空 —— 已部署（精准移植到内网代码线 `/qiqiao/code-review-harness`）并通过验证：冷启动首请求 0.75s 无失败；`develop` 分支连续 3 次均为 26 个项目 / 662 个文件 (P0, 来源: 2026-10-14, 当前状态: completed)
-- [ ] TASK-2026-10-14-INTRANET-MERGE: 将测试服务器上的移植改动提交进内网仓库 `git.qiweioa.com.cn/liuhaitao/code-review-harness` —— 当前为未提交工作区改动（备份 `.bak-hotfix`，原 commit `ec70c16`），若被 git 操作覆盖即失效 (P0, 来源: 2026-10-14, 当前状态: 待内网仓库维护者处理)
-- [ ] TASK-2026-10-14-REPO-SPLIT: 厘清 GitHub 仓库 `FollowUnknown/code-review-harness` 与内网仓库 `liuhaitao/code-review-harness` 的关系与同步策略 —— 二者同源但已各自演进（内网到 v1.4.28），修复需要双线维护 (P1, 来源: 2026-10-14, 当前状态: 待决策)
+- [ ] TASK-2026-10-14-INTRANET-MERGE: 将修复合入内网仓库 `git.qiweioa.com.cn/liuhaitao/code-review-harness` 主干 —— **已推送分支 `hotfix/preview-compare-batch`（提交 0fcc293，基于内网最新 9050912）**，待走 MR 合并到 `story-code-review`；服务器当前运行在该 hotfix 分支上，合并后应切回主干并拉取 (P0, 来源: 2026-10-14, 当前状态: 待 MR 合并)
+- [x] TASK-2026-10-14-LOCAL-INTRANET: 本地纳入内网仓库管理 —— 已添加 remote `intranet`，已 fetch 全部分支；worktree `../cr-intranet` 保留用于后续内网侧改动 (P1, 来源: 2026-10-14, 当前状态: completed)
+- [ ] TASK-2026-10-14-REPO-SPLIT: 厘清 GitHub 仓库 `FollowUnknown/code-review-harness` 与内网仓库 `liuhaitao/code-review-harness` 的同步策略 —— 二者共同祖先为 `7775c17`，内网领先 101 个提交、GitHub 领先 2 个；目前任何修复都需双线维护 (P1, 来源: 2026-10-14, 当前状态: 待决策)
 
 ## Execution 关联规范
 
