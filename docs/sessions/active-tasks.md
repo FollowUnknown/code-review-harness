@@ -45,6 +45,14 @@
 - [x] V149-005: 测试环境部署步骤与冒烟检查清单 (P1, 来源: 2026-05-16, v1.4.9, 当前状态: completed)
 - [ ] V200-001: GitHub PR 评审能力规划（默认 GitLab，补充 GitHub）(P1, 来源: 2026-05-16, 当前状态: 待建 Contract)
 
+### 新增待办（环境修复）
+- [ ] ENV-001: 修复 git fetch 通道 —— `~/.ssh/config` 中 `github.com` 的 ProxyCommand 指向失效代理 `127.0.0.1:6789`，导致 `git fetch origin` 失败、远端跟踪引用长期过期（本次实测过期约 5 个月）(P1, 来源: 2026-05-14 信号清理轮次, 当前状态: 待处理；临时方案：HTTPS fetch 或 `ssh.github.com:443`)
+
+### 新增待办（2026-10-14）
+- [x] TASK-2026-10-14-PREVIEW: 修复需求评审 Preview 把 GitLab 查询失败当成「无变更」返回空列表 (P0, 来源: 2026-10-14, 当前状态: review_pending；Contract: docs/contracts/2026-10-14-requirement-preview-empty-result.md；待测试环境部署验证)
+- [ ] TASK-2026-10-14-DB-MIGRATION: 修正 `runMigrations` 与建表顺序 —— `db.ts:43` 早于 `db.ts:220` 建 `llm_logs` 表，导致 002 migration 在全新库上失败、服务启动报错、测试基线 237 个用例失败 (P0, 来源: 2026-10-14, 当前状态: 待建 Contract)
+- [ ] TASK-2026-10-14-DEPLOY: 测试环境部署本次修复并验证冷启动下 preview 不再返回空（缺服务器访问权限，待用户提供）(P0, 来源: 2026-10-14, 当前状态: 阻塞)
+
 ## Execution 关联规范
 
 任务可通过以下字段关联到 Execution 记录：

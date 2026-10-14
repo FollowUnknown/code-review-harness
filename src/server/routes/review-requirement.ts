@@ -17,7 +17,8 @@ import { callLLM, getLLMConfig, validateLLMKey } from "../llm";
 import { getReviewPrompt, getReviewUserPrompt } from "../llm/prompts/review";
 import { getDimensionsForProject } from "../services/dimensions";
 import { inferTechStack } from "../services/techstack";
-import { fetchCompareDiffsForBranches } from "../services/gitlab";
+import { fetchCompareForProjects } from "../services/gitlab";
+import type { CompareStatus } from "../services/gitlab";
 import { saveReviewRecord, updateReview, computeReviewStats } from "../services/review-store";
 import { createSubReport, updateSubReport, listSubReports } from "../services/review-sub-report-store";
 import { saveLLMLog } from "../services/llm-logger";
@@ -137,31 +138,63 @@ router.post("/requirement/preview", async (req: Request, res: Response) => {
       diffChars: number;
       diffPreview: Array<{ path: string; newFile: boolean; diffChars: number }>;
     }> = [];
+    // v1.4.10: 项目级状态明细（预备检查）与查询失败明细
+    const scanned: Array<{
+      project: string;
+      status: CompareStatus;
+      diffCount: number;
+      reason?: string;
+    }> = [];
+    const failures: Array<{ project: string; reason: string }> = [];
 
-    // GitLab API projects — parallel fetch
+    // GitLab API projects — v1.4.10: 受控并发 + 故障重试，失败不再被静默丢弃
     if (gitlabProjects.length > 0) {
-      const gitlabResults = await Promise.allSettled(
-        gitlabProjects.map(async (m) => {
-          const diffs = await fetchCompareDiffsForBranches(
-            m.gitlabHost!,
-            m.gitlabProjectPath!,
-            sourceBranch,
-            targetBranch,
-            resolvedGitlabToken!
-          );
-          return { mapping: m, diffs };
-        })
+      const outcomes = await fetchCompareForProjects(
+        gitlabProjects.map((m) => ({
+          project: m.project,
+          gitlabHost: m.gitlabHost!,
+          gitlabProjectPath: m.gitlabProjectPath!,
+        })),
+        sourceBranch,
+        targetBranch,
+        resolvedGitlabToken!,
+        // 调用点显式声明行为，避免默认值变化时静默改变线上表现。
+        // requestTimeoutMs 取 10s 是经验值：测试环境链路慢但成功的大 compare 可能被误判为 failed
+        // （会进 failures，不会静默），需要放宽时改这里。
+        { concurrency: 5, retries: 1, retryDelayMs: 500, requestTimeoutMs: 10_000 }
       );
 
-      for (const result of gitlabResults) {
-        if (result.status === "rejected") continue;
-        const { mapping, diffs } = result.value;
-        if (!diffs || diffs.length === 0) continue;
+      for (const outcome of outcomes) {
+        // no-branch / failed 都保留原始 message：
+        // GitLab 对「项目无权访问」和「分支不存在」都返回 404，只有 message 能区分
+        const reason = "reason" in outcome ? outcome.reason : undefined;
 
+        if (outcome.status === "failed") {
+          failures.push({ project: outcome.project, reason: outcome.reason });
+          scanned.push({
+            project: outcome.project,
+            status: "failed",
+            diffCount: 0,
+            reason: outcome.reason,
+          });
+          continue;
+        }
+        if (outcome.status !== "changed") {
+          scanned.push({
+            project: outcome.project,
+            status: outcome.status,
+            diffCount: 0,
+            // no-branch 带 GitLab 原始 message；unchanged 补一个明确原因，保持同一字段语义一致
+            reason: reason ?? "分支存在但无差异",
+          });
+          continue;
+        }
+
+        const diffs = outcome.diffs;
         const techStack = inferTechStack(diffs.map((d) => d.new_path));
         const diffChars = diffs.reduce((sum, d) => sum + d.diff.length, 0);
         previewProjects.push({
-          project: mapping.project,
+          project: outcome.project,
           techStack,
           diffCount: diffs.length,
           diffChars,
@@ -171,6 +204,7 @@ router.post("/requirement/preview", async (req: Request, res: Response) => {
             diffChars: d.diff.length,
           })),
         });
+        scanned.push({ project: outcome.project, status: "changed", diffCount: diffs.length });
       }
     }
 
@@ -189,6 +223,24 @@ router.post("/requirement/preview", async (req: Request, res: Response) => {
           diffChars: p.diffChars,
           diffPreview: p.diffPreview,
         });
+        scanned.push({ project: p.project, status: "changed", diffCount: p.diffCount });
+      }
+
+      // 本地扫描内部会跳过无 diff 的项目，这里补齐状态以便预备检查覆盖全部项目。
+      // 走到本分支的项目即「未通过 GitLab API 查询」（缺 token 或缺 gitlabHost/gitlabProjectPath），
+      // 而本地扫描同样无法区分「真的无变更」与「扫描失败」，因此统一在 reason 中说明来源。
+      const changedProjects = new Set(multiCtx.projects.map((p) => p.project));
+      for (const m of localProjects) {
+        if (!changedProjects.has(m.project)) {
+          scanned.push({
+            project: m.project,
+            status: "unchanged",
+            diffCount: 0,
+            reason: resolvedGitlabToken
+              ? "本地扫描未发现变更（该项目未配置 GitLab 项目路径，未走 GitLab API，无法区分「无变更」与「扫描失败」）"
+              : "本地扫描未发现变更（未配置 GitLab token，未走 GitLab API，无法区分「无变更」与「扫描失败」）",
+          });
+        }
       }
     }
 
@@ -202,6 +254,8 @@ router.post("/requirement/preview", async (req: Request, res: Response) => {
       totalFiles,
       totalTokens,
       projectCount: previewProjects.length,
+      scanned,
+      failures,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
